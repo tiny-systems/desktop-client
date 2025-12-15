@@ -78,6 +78,10 @@ jobs:
             pkg-config \
             dpkg-dev
 
+          # Create symlink for webkit2gtk-4.0 to webkit2gtk-4.1
+          # Wails 2.11.0 still looks for webkit2gtk-4.0
+          sudo ln -sf /usr/lib/x86_64-linux-gnu/pkgconfig/webkit2gtk-4.1.pc /usr/lib/x86_64-linux-gnu/pkgconfig/webkit2gtk-4.0.pc
+
       - name: Install frontend dependencies
         run: |
           cd frontend
