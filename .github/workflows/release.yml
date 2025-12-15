@@ -1,0 +1,239 @@
+name: Build Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS
+            os: macos-latest
+            arch: universal
+            output: tinysystems-darwin-universal.dmg
+            build_flags: "-platform darwin/universal"
+
+          - name: Windows
+            os: windows-latest
+            arch: amd64
+            output: tinysystems-windows-amd64.exe
+            build_flags: "-platform windows/amd64"
+
+          - name: Linux
+            os: ubuntu-latest
+            arch: amd64
+            output: tinysystems-linux-amd64.deb
+            build_flags: "-platform linux/amd64"
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          path: desktop-client
+
+      # Handle the go.mod replace directive for ../module
+      # Option 1: Checkout the module repository if it's in the same org
+      # Uncomment and modify if the module repo is available:
+      # - name: Checkout module dependency
+      #   uses: actions/checkout@v4
+      #   with:
+      #     repository: tiny-systems/module
+      #     path: module
+      #     token: ${{ secrets.GITHUB_TOKEN }}
+
+      # Option 2: Use vendoring (recommended for CI)
+      # Run 'go mod vendor' locally and commit the vendor directory
+      # Then uncomment this step:
+      # - name: Use vendored dependencies
+      #   run: echo "Using vendored dependencies"
+
+      # Option 3: Remove the replace directive temporarily
+      - name: Handle module dependency
+        shell: bash
+        working-directory: desktop-client
+        run: |
+          # Check if we should use vendoring or remove the replace directive
+          if [ ! -d "../module" ]; then
+            echo "Module directory not found, removing replace directive"
+            # Remove the replace directive for CI builds (compatible with both Linux and macOS sed)
+            if [[ "$OSTYPE" == "darwin"* ]]; then
+              sed -i '' '/^replace github.com\/tiny-systems\/module/d' go.mod
+            else
+              sed -i '/^replace github.com\/tiny-systems\/module/d' go.mod
+            fi
+            # Try to fetch the module normally
+            go mod download || echo "Warning: Could not download module, may need vendoring or private repo access"
+          fi
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.2'
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Wails
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
+
+      # macOS specific dependencies
+      - name: Install macOS dependencies
+        if: matrix.os == 'macos-latest'
+        run: |
+          # No additional dependencies needed for macOS
+
+      # Windows specific dependencies
+      - name: Install Windows dependencies
+        if: matrix.os == 'windows-latest'
+        run: |
+          # WebView2 is included in Windows 10/11
+          # NSIS is pre-installed on GitHub runners
+
+      # Linux specific dependencies
+      - name: Install Linux dependencies
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libgtk-3-dev \
+            libwebkit2gtk-4.0-dev \
+            build-essential \
+            pkg-config \
+            dpkg-dev
+
+      - name: Install frontend dependencies
+        working-directory: desktop-client
+        run: |
+          cd frontend
+          npm install
+
+      - name: Build application
+        working-directory: desktop-client
+        run: |
+          wails build ${{ matrix.build_flags }} -clean -o ${{ matrix.output }}
+        env:
+          CGO_ENABLED: 1
+
+      # Find and rename the built files
+      - name: Prepare artifacts (macOS)
+        if: matrix.os == 'macos-latest'
+        working-directory: desktop-client
+        run: |
+          # Wails creates a DMG in build/bin directory
+          if [ -f "build/bin/tinysystems.dmg" ]; then
+            mv build/bin/tinysystems.dmg build/bin/${{ matrix.output }}
+          elif [ -f "build/bin/desktop-client.dmg" ]; then
+            mv build/bin/desktop-client.dmg build/bin/${{ matrix.output }}
+          fi
+          ls -la build/bin/
+
+      - name: Prepare artifacts (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: bash
+        working-directory: desktop-client
+        run: |
+          # Wails creates an exe in build/bin directory
+          if [ -f "build/bin/tinysystems.exe" ]; then
+            mv build/bin/tinysystems.exe build/bin/${{ matrix.output }}
+          elif [ -f "build/bin/desktop-client.exe" ]; then
+            mv build/bin/desktop-client.exe build/bin/${{ matrix.output }}
+          fi
+          ls -la build/bin/
+
+      - name: Prepare artifacts (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        working-directory: desktop-client
+        run: |
+          # Build DEB package
+          if [ -f "build/bin/tinysystems" ]; then
+            # Create DEB package structure
+            mkdir -p build/deb/DEBIAN
+            mkdir -p build/deb/usr/local/bin
+
+            # Copy binary
+            cp build/bin/tinysystems build/deb/usr/local/bin/
+
+            # Create control file
+            cat > build/deb/DEBIAN/control << EOF
+          Package: tinysystems
+          Version: ${GITHUB_REF#refs/tags/v}
+          Section: utils
+          Priority: optional
+          Architecture: amd64
+          Maintainer: Maksym Trofimenko <hello@tinysystems.io>
+          Description: TinySystems Desktop Client
+           Desktop client for TinySystems
+          EOF
+
+            # Build DEB package
+            dpkg-deb --build build/deb build/bin/${{ matrix.output }}
+          elif [ -f "build/bin/desktop-client" ]; then
+            # Create DEB package structure
+            mkdir -p build/deb/DEBIAN
+            mkdir -p build/deb/usr/local/bin
+
+            # Copy binary
+            cp build/bin/desktop-client build/deb/usr/local/bin/tinysystems
+
+            # Create control file
+            cat > build/deb/DEBIAN/control << EOF
+          Package: tinysystems
+          Version: ${GITHUB_REF#refs/tags/v}
+          Section: utils
+          Priority: optional
+          Architecture: amd64
+          Maintainer: Maksym Trofimenko <hello@tinysystems.io>
+          Description: TinySystems Desktop Client
+           Desktop client for TinySystems
+          EOF
+
+            # Build DEB package
+            dpkg-deb --build build/deb build/bin/${{ matrix.output }}
+          fi
+          ls -la build/bin/
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.output }}
+          path: desktop-client/build/bin/${{ matrix.output }}
+          if-no-files-found: error
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: List artifacts
+        run: ls -la artifacts/
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            artifacts/tinysystems-darwin-universal.dmg
+            artifacts/tinysystems-windows-amd64.exe
+            artifacts/tinysystems-linux-amd64.deb
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
