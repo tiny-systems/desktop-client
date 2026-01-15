@@ -5,7 +5,7 @@ const props = defineProps({
   ctx:Object
 })
 
-const emit = defineEmits(['select'])
+const emit = defineEmits(['select', 'contexts-loaded'])
 
 // Define the path to your Go backend functions.
 // This assumes your main Go struct is named 'App' and is bound to the Wails runtime.
@@ -44,6 +44,7 @@ const loadContexts = async () => {
     const fetchedContexts = await GoApp.GetKubeContexts();
 
     contexts.value = fetchedContexts;
+    emit('contexts-loaded', fetchedContexts.length > 0)
 
     if (fetchedContexts.length === 0) {
       statusMessage.value = 'No Kubernetes contexts found in your kubeconfig file.';

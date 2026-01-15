@@ -3,7 +3,7 @@
     <!-- Header -->
     <header class="sticky top-0 bg-white dark:bg-gray-900 z-50 border-b border-gray-200 dark:border-gray-700">
       <div class="px-4 py-3 flex items-center justify-between">
-        <ContextSelector @select="onSelect" :ctx="ctx"/>
+        <ContextSelector @select="onSelect" @contexts-loaded="onContextsLoaded" :ctx="ctx"/>
         <button
           v-if="ctx"
           @click="showCreateDialog = true"
@@ -80,6 +80,19 @@
       </div>
     </main>
 
+    <!-- No context selected -->
+    <main v-else-if="hasContexts" class="flex-1 flex items-center justify-center">
+      <div class="text-center text-gray-500 dark:text-gray-400">
+        <svg class="w-16 h-16 mx-auto mb-4 text-gray-300 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01"/>
+        </svg>
+        <p class="text-lg">Select a context and namespace to get started</p>
+      </div>
+    </main>
+
+    <!-- No contexts available -->
+    <main v-else class="flex-1"></main>
+
     <!-- Create Project Dialog -->
     <div v-if="showCreateDialog" class="fixed inset-0 z-50 overflow-y-auto">
       <div class="fixed inset-0 bg-black/40 backdrop-blur-md" @click="closeCreateDialog"></div>
@@ -126,16 +139,6 @@
         </div>
       </div>
     </div>
-
-    <!-- No context selected -->
-    <main v-else class="flex-1 flex items-center justify-center">
-      <div class="text-center text-gray-500 dark:text-gray-400">
-        <svg class="w-16 h-16 mx-auto mb-4 text-gray-300 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01"/>
-        </svg>
-        <p class="text-lg">Select a context and namespace to get started</p>
-      </div>
-    </main>
   </div>
 </template>
 <script setup>
@@ -146,6 +149,7 @@ const props = defineProps({
 })
 
 const ctx = ref(props.ctx)
+const hasContexts = ref(false)
 
 const onSelect = function (c) {
   ctx.value = c
@@ -154,6 +158,10 @@ const onSelect = function (c) {
     return
   }
   loadProjects(c.name, c.ns)
+}
+
+const onContextsLoaded = function (hasAny) {
+  hasContexts.value = hasAny
 }
 const emit = defineEmits(['select-project', 'select-context'])
 

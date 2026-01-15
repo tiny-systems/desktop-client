@@ -39,6 +39,8 @@ export function GetWidgets(arg1:string,arg2:string,arg3:string,arg4:string):Prom
 
 export function RenameFlow(arg1:string,arg2:string,arg3:string,arg4:string):Promise<void>;
 
+export function RenameProject(arg1:string,arg2:string,arg3:string,arg4:string):Promise<void>;
+
 export function SaveWidgets(arg1:string,arg2:string,arg3:string,arg4:string,arg5:Array<main.Widget>):Promise<void>;
 
 export function SendSignal(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string):Promise<void>;

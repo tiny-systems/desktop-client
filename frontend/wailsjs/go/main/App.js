@@ -74,6 +74,10 @@ export function RenameFlow(arg1, arg2, arg3, arg4) {
   return window['go']['main']['App']['RenameFlow'](arg1, arg2, arg3, arg4);
 }
 
+export function RenameProject(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['App']['RenameProject'](arg1, arg2, arg3, arg4);
+}
+
 export function SaveWidgets(arg1, arg2, arg3, arg4, arg5) {
   return window['go']['main']['App']['SaveWidgets'](arg1, arg2, arg3, arg4, arg5);
 }

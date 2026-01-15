@@ -68,6 +68,19 @@ const handleDeleteProject = async () => {
   }
 }
 
+const handleRenameProject = async (newName) => {
+  if (!GoApp) return
+
+  try {
+    await GoApp.RenameProject(props.ctx, props.ns, props.name, newName)
+    if (projectDetails.value) {
+      projectDetails.value.title = newName
+    }
+  } catch (err) {
+    handleError(`Failed to rename project: ${err}`)
+  }
+}
+
 onMounted(async () => {
   loading.value = true
   await Promise.all([loadProjectDetails(), loadStats()])
@@ -93,6 +106,7 @@ onMounted(async () => {
         :project-name="name"
         @close="emit('close')"
         @delete-project="handleDeleteProject"
+        @rename-project="handleRenameProject"
       />
 
       <ProjectStatsBar

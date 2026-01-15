@@ -735,6 +735,34 @@ func (a *App) DeleteProject(contextName string, namespace string, projectName st
 	return nil
 }
 
+// RenameProject renames a project by updating its name annotation
+func (a *App) RenameProject(contextName string, namespace string, projectName string, newName string) error {
+	if newName == "" {
+		return fmt.Errorf("new name is required")
+	}
+
+	mgr, err := a.getManager(contextName, namespace)
+	if err != nil {
+		return err
+	}
+
+	project, err := mgr.GetProject(a.ctx, projectName, namespace)
+	if err != nil {
+		return fmt.Errorf("failed to get project: %w", err)
+	}
+
+	if project.Annotations == nil {
+		project.Annotations = make(map[string]string)
+	}
+	project.Annotations[v1alpha1.ProjectNameAnnotation] = newName
+
+	if err := mgr.GetK8sClient().Update(a.ctx, project); err != nil {
+		return fmt.Errorf("failed to rename project: %w", err)
+	}
+
+	return nil
+}
+
 // CreateDashboardPage creates a new dashboard page for a project
 func (a *App) CreateDashboardPage(contextName string, namespace string, projectName string, title string) (*WidgetPage, error) {
 	if title == "" {
