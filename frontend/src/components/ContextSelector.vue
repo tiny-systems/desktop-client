@@ -179,67 +179,77 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="kube-context-selector-app">
-    <div class="pb-2">
-      <div class="bg-white rounded-sm w-full min-w-full max-w-md mx-auto space-y-4">
-        <!-- Context Selector -->
-        <div class="flex justify-stretch gap-2">
-          <div>
-            <label for="context-selector" class="block text-sm font-medium text-gray-600">1. Select Context</label>
-            <select
-              id="context-selector"
-              v-model="selectedContextName"
-              @change="handleContextChange"
-              :disabled="isLoading || contexts.length === 0"
-              class="appearance-none bg-gray-100 border border-gray-300 rounded-md px-4 py-2 pr-8 focus:outline-none focus:ring-2 focus:ring-blue-500 max-w-2xl w-full"
-            >
-              <option value="" disabled>{{ loadingText }}</option>
-              <option
-                v-for="context in contexts"
-                :key="context.name"
-                :value="context.name"
-              >
-                {{ context.name }} ({{ context.cluster }})
-              </option>
-            </select>
-          </div>
+  <div class="context-selector">
+    <div class="flex items-end gap-3 flex-nowrap">
+      <!-- Context Selector -->
+      <div class="flex-shrink min-w-0">
+        <label for="context-selector" class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Context</label>
+        <select
+          id="context-selector"
+          v-model="selectedContextName"
+          @change="handleContextChange"
+          :disabled="isLoading || contexts.length === 0"
+          class="appearance-none bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 rounded-lg px-3 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 dark:focus:ring-sky-400 focus:border-transparent w-full max-w-xs"
+        >
+          <option value="" disabled>{{ loadingText }}</option>
+          <option
+            v-for="context in contexts"
+            :key="context.name"
+            :value="context.name"
+          >
+            {{ context.name }} ({{ context.cluster }})
+          </option>
+        </select>
+      </div>
 
-          <!-- Namespace Selector (Visible only after successful Authorization) -->
-          <div v-if="isAuthorized">
-            <label for="namespace-selector" class="block text-sm font-medium text-gray-600">2. Select
-              Namespace</label>
-            <select
-              id="namespace-selector"
-              v-model="selectedNamespace"
-              @change="handleNamespaceChange"
-              :disabled="namespaces.length === 0"
-              class="appearance-none bg-gray-100 border border-gray-300 rounded-md px-4 py-2 pr-8 focus:outline-none focus:ring-2 focus:ring-blue-500 max-w-2xl w-full"
-            >
-              <option value="" disabled v-if="namespaces.length === 0">No namespaces found</option>
-              <option
-                v-for="ns in namespaces"
-                :key="ns"
-                :value="ns"
-              >
-                {{ ns }}
-              </option>
-            </select>
-          </div>
-          <div v-else :class="['m-4 p-3 rounded-lg', statusClass === 'error' ? 'bg-red-100' : statusClass === 'success' ? 'bg-green-100' : statusClass === 'info' ? 'bg-blue-100' : 'bg-gray-100']">
-            <div v-if="isConnecting" class="flex items-center space-x-2 text-sm font-medium text-blue-700">
-              <span>{{ statusMessage }}</span>
-            </div>
-            <p v-else :class="['text-sm font-medium', statusClass]">
-              {{ statusMessage }}
-            </p>
-          </div>
-          <div class="flex items-center space-x-2 pt-5" v-if="isAuthorized">
-            <button tabindex="0" class="text-gray-600 hover:text-blue-500 cursor-pointer p-2.5 border rounded-sm border-gray-300" @click="handleNamespaceChange">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="size-5">
-                <path fill-rule="evenodd" d="M15.312 11.424a5.5 5.5 0 0 1-9.201 2.466l-.312-.311h2.433a.75.75 0 0 0 0-1.5H3.989a.75.75 0 0 0-.75.75v4.242a.75.75 0 0 0 1.5 0v-2.43l.31.31a7 7 0 0 0 11.712-3.138.75.75 0 0 0-1.449-.39Zm1.23-3.723a.75.75 0 0 0 .219-.53V2.929a.75.75 0 0 0-1.5 0V5.36l-.31-.31A7 7 0 0 0 3.239 8.188a.75.75 0 1 0 1.448.389A5.5 5.5 0 0 1 13.89 6.11l.311.31h-2.432a.75.75 0 0 0 0 1.5h4.243a.75.75 0 0 0 .53-.219Z" clip-rule="evenodd" />
-              </svg>
-            </button>
-          </div>
+      <!-- Namespace Selector -->
+      <div v-if="isAuthorized" class="flex-shrink-0">
+        <label for="namespace-selector" class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Namespace</label>
+        <select
+          id="namespace-selector"
+          v-model="selectedNamespace"
+          @change="handleNamespaceChange"
+          :disabled="namespaces.length === 0"
+          class="appearance-none bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 rounded-lg px-3 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 dark:focus:ring-sky-400 focus:border-transparent min-w-40"
+        >
+          <option value="" disabled v-if="namespaces.length === 0">No namespaces</option>
+          <option
+            v-for="ns in namespaces"
+            :key="ns"
+            :value="ns"
+          >
+            {{ ns }}
+          </option>
+        </select>
+      </div>
+
+      <!-- Refresh button -->
+      <div v-if="isAuthorized" class="flex-shrink-0">
+        <button
+          @click="handleNamespaceChange"
+          class="p-2 text-gray-500 dark:text-gray-400 hover:text-sky-600 dark:hover:text-sky-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+          title="Refresh"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5">
+            <path fill-rule="evenodd" d="M15.312 11.424a5.5 5.5 0 0 1-9.201 2.466l-.312-.311h2.433a.75.75 0 0 0 0-1.5H3.989a.75.75 0 0 0-.75.75v4.242a.75.75 0 0 0 1.5 0v-2.43l.31.31a7 7 0 0 0 11.712-3.138.75.75 0 0 0-1.449-.39Zm1.23-3.723a.75.75 0 0 0 .219-.53V2.929a.75.75 0 0 0-1.5 0V5.36l-.31-.31A7 7 0 0 0 3.239 8.188a.75.75 0 1 0 1.448.389A5.5 5.5 0 0 1 13.89 6.11l.311.31h-2.432a.75.75 0 0 0 0 1.5h4.243a.75.75 0 0 0 .53-.219Z" clip-rule="evenodd" />
+          </svg>
+        </button>
+      </div>
+
+      <!-- Status message -->
+      <div v-if="!isAuthorized && (isConnecting || statusMessage)" class="flex items-center flex-shrink min-w-0">
+        <div v-if="isConnecting" class="flex items-center space-x-2 text-sm text-sky-600 dark:text-sky-400 whitespace-nowrap">
+          <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-sky-500 flex-shrink-0"></div>
+          <span class="truncate">{{ statusMessage }}</span>
+        </div>
+        <div v-else-if="statusClass === 'error'" class="flex items-center space-x-2 px-3 py-1.5 bg-red-50 dark:bg-red-900/20 rounded-lg whitespace-nowrap">
+          <svg class="w-4 h-4 text-red-500 dark:text-red-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+          </svg>
+          <span class="text-sm text-red-600 dark:text-red-400 truncate">{{ statusMessage }}</span>
+        </div>
+        <div v-else-if="statusMessage" class="text-sm text-gray-500 dark:text-gray-400 truncate">
+          {{ statusMessage }}
         </div>
       </div>
     </div>

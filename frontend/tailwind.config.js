@@ -6,6 +6,9 @@ export default {
     // This glob pattern ensures all your Vue components and scripts are included
     "./src/**/*.{vue,js,ts,jsx,tsx}",
   ],
-  theme: {},
+  darkMode: 'media', // Use system preference for dark mode
+  theme: {
+    extend: {},
+  },
   plugins: [],
 }

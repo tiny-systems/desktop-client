@@ -7,10 +7,38 @@ export function CheckAuthorization(arg1:string):Promise<void>;
 
 export function ConnectToCluster(arg1:string):Promise<kubernetes.Clientset>;
 
+export function CreateDashboardPage(arg1:string,arg2:string,arg3:string,arg4:string):Promise<main.WidgetPage>;
+
+export function CreateProject(arg1:string,arg2:string,arg3:string):Promise<main.Project>;
+
+export function DeleteDashboardPage(arg1:string,arg2:string,arg3:string):Promise<void>;
+
+export function DeleteProject(arg1:string,arg2:string,arg3:string):Promise<void>;
+
+export function GetFlowGraph(arg1:string,arg2:string,arg3:string,arg4:string):Promise<Record<string, any>>;
+
+export function GetFlows(arg1:string,arg2:string,arg3:string):Promise<Array<main.Flow>>;
+
 export function GetKubeContexts():Promise<Array<main.KubeContext>>;
 
 export function GetNamespaces(arg1:string):Promise<Array<string>>;
 
 export function GetProject(arg1:string,arg2:string,arg3:string):Promise<main.Project>;
 
+export function GetProjectDetails(arg1:string,arg2:string,arg3:string):Promise<main.ProjectDetails>;
+
+export function GetProjectStats(arg1:string,arg2:string,arg3:string):Promise<main.ProjectStats>;
+
 export function GetProjects(arg1:string,arg2:string):Promise<Array<main.Project>>;
+
+export function GetWidgetPages(arg1:string,arg2:string,arg3:string):Promise<Array<main.WidgetPage>>;
+
+export function GetWidgets(arg1:string,arg2:string,arg3:string,arg4:string):Promise<Array<main.Widget>>;
+
+export function SaveWidgets(arg1:string,arg2:string,arg3:string,arg4:string,arg5:Array<main.Widget>):Promise<void>;
+
+export function SendSignal(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string):Promise<void>;
+
+export function StopWatchProjectNodes():Promise<void>;
+
+export function WatchProjectNodes(arg1:string,arg2:string,arg3:string):Promise<void>;

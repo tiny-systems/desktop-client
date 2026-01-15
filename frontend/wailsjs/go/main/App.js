@@ -10,6 +10,30 @@ export function ConnectToCluster(arg1) {
   return window['go']['main']['App']['ConnectToCluster'](arg1);
 }
 
+export function CreateDashboardPage(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['App']['CreateDashboardPage'](arg1, arg2, arg3, arg4);
+}
+
+export function CreateProject(arg1, arg2, arg3) {
+  return window['go']['main']['App']['CreateProject'](arg1, arg2, arg3);
+}
+
+export function DeleteDashboardPage(arg1, arg2, arg3) {
+  return window['go']['main']['App']['DeleteDashboardPage'](arg1, arg2, arg3);
+}
+
+export function DeleteProject(arg1, arg2, arg3) {
+  return window['go']['main']['App']['DeleteProject'](arg1, arg2, arg3);
+}
+
+export function GetFlowGraph(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['App']['GetFlowGraph'](arg1, arg2, arg3, arg4);
+}
+
+export function GetFlows(arg1, arg2, arg3) {
+  return window['go']['main']['App']['GetFlows'](arg1, arg2, arg3);
+}
+
 export function GetKubeContexts() {
   return window['go']['main']['App']['GetKubeContexts']();
 }
@@ -22,6 +46,38 @@ export function GetProject(arg1, arg2, arg3) {
   return window['go']['main']['App']['GetProject'](arg1, arg2, arg3);
 }
 
+export function GetProjectDetails(arg1, arg2, arg3) {
+  return window['go']['main']['App']['GetProjectDetails'](arg1, arg2, arg3);
+}
+
+export function GetProjectStats(arg1, arg2, arg3) {
+  return window['go']['main']['App']['GetProjectStats'](arg1, arg2, arg3);
+}
+
 export function GetProjects(arg1, arg2) {
   return window['go']['main']['App']['GetProjects'](arg1, arg2);
+}
+
+export function GetWidgetPages(arg1, arg2, arg3) {
+  return window['go']['main']['App']['GetWidgetPages'](arg1, arg2, arg3);
+}
+
+export function GetWidgets(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['App']['GetWidgets'](arg1, arg2, arg3, arg4);
+}
+
+export function SaveWidgets(arg1, arg2, arg3, arg4, arg5) {
+  return window['go']['main']['App']['SaveWidgets'](arg1, arg2, arg3, arg4, arg5);
+}
+
+export function SendSignal(arg1, arg2, arg3, arg4, arg5) {
+  return window['go']['main']['App']['SendSignal'](arg1, arg2, arg3, arg4, arg5);
+}
+
+export function StopWatchProjectNodes() {
+  return window['go']['main']['App']['StopWatchProjectNodes']();
+}
+
+export function WatchProjectNodes(arg1, arg2, arg3) {
+  return window['go']['main']['App']['WatchProjectNodes'](arg1, arg2, arg3);
 }

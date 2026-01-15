@@ -15,8 +15,10 @@ const selectContext = (c) => {
 }
 </script>
 <template>
-  <div class="h-screen max-w-7xl mx-auto">
-    <Project v-if="project" @close="project = null" :ctx="ctx.name" :ns="ctx.ns" :name="project.name"></Project>
-    <ProjectList :ctx="ctx" @selectProject="selectProject" @selectContext="selectContext" v-else></ProjectList>
+  <div class="h-screen bg-gray-50 dark:bg-gray-900">
+    <div class="max-w-7xl mx-auto h-full">
+      <Project v-if="project" @close="project = null" :ctx="ctx.name" :ns="ctx.ns" :name="project.name"></Project>
+      <ProjectList :ctx="ctx" @selectProject="selectProject" @selectContext="selectContext" v-else></ProjectList>
+    </div>
   </div>
 </template>

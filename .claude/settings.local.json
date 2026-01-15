@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install:*)",
+      "Bash(npm run build:*)",
+      "Bash(go build:*)",
+      "Bash(wails dev)",
+      "Bash(GOROOT=/opt/homebrew/Cellar/go/1.25.5/libexec /opt/homebrew/bin/go build:*)",
+      "Bash(find:*)",
+      "Bash(grep:*)",
+      "Bash(go version:*)",
+      "Bash(ls:*)",
+      "Bash(go list:*)",
+      "Bash(go doc:*)",
+      "Bash(/opt/homebrew/bin/go build:*)"
+    ]
+  }
+}

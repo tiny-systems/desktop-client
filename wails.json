@@ -9,5 +9,15 @@
   "author": {
     "name": "Maksym Trofimenko",
     "email": "hello@tinysystems.io"
+  },
+  "info": {
+    "productName": "TinySystems",
+    "productVersion": "1.0.0",
+    "copyright": "Copyright © 2025 TinySystems",
+    "comments": "Desktop client for TinySystems"
+  },
+  "mac": {
+    "entitlements": "build/darwin/entitlements.plist",
+    "info": "build/darwin/Info.plist"
   }
 }

@@ -59,6 +59,32 @@ jobs:
         run: |
           # No additional dependencies needed for macOS
 
+      # Import signing certificate (macOS only)
+      - name: Import Code Signing Certificate
+        if: matrix.os == 'macos-latest'
+        env:
+          MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
+          MACOS_CERTIFICATE_PWD: ${{ secrets.MACOS_CERTIFICATE_PWD }}
+        run: |
+          # Create temporary keychain for signing
+          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+          KEYCHAIN_PASSWORD=$(openssl rand -base64 32)
+
+          # Create and unlock keychain
+          security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+
+          # Import certificate
+          echo $MACOS_CERTIFICATE | base64 --decode > certificate.p12
+          security import certificate.p12 -k $KEYCHAIN_PATH -P "$MACOS_CERTIFICATE_PWD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+
+          # Add keychain to search list
+          security list-keychain -d user -s $KEYCHAIN_PATH
+
+          rm -f certificate.p12
+
       # Windows specific dependencies
       - name: Install Windows dependencies
         if: matrix.os == 'windows-latest'
@@ -96,6 +122,10 @@ jobs:
       # Find and rename the built files
       - name: Prepare artifacts (macOS)
         if: matrix.os == 'macos-latest'
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           # Wails creates a .app bundle, we need to create a DMG
           if [ -d "build/bin/tinysystems.app" ]; then
@@ -108,11 +138,56 @@ jobs:
             exit 1
           fi
 
-          # Create a DMG from the .app bundle
-          hdiutil create -volname "TinySystems" \
-            -srcfolder "build/bin/${APP_NAME}" \
-            -ov -format UDZO \
-            "build/bin/${{ matrix.output }}"
+          # Sign the app with entitlements
+          if [ -n "${{ secrets.MACOS_CERTIFICATE }}" ]; then
+            echo "Signing app with Developer ID certificate..."
+            codesign --force --deep \
+              --sign "Developer ID Application" \
+              --entitlements build/darwin/entitlements.plist \
+              --options runtime \
+              --timestamp \
+              "build/bin/${APP_NAME}"
+
+            # Verify signature
+            codesign -dv --verbose=4 "build/bin/${APP_NAME}"
+
+            # Create DMG
+            hdiutil create -volname "TinySystems" \
+              -srcfolder "build/bin/${APP_NAME}" \
+              -ov -format UDZO \
+              "build/bin/${{ matrix.output }}"
+
+            # Sign the DMG
+            codesign --force \
+              --sign "Developer ID Application" \
+              --timestamp \
+              "build/bin/${{ matrix.output }}"
+
+            # Notarize the DMG
+            if [ -n "$APPLE_ID" ] && [ -n "$APPLE_APP_PASSWORD" ] && [ -n "$APPLE_TEAM_ID" ]; then
+              echo "Notarizing DMG..."
+              xcrun notarytool submit "build/bin/${{ matrix.output }}" \
+                --apple-id "$APPLE_ID" \
+                --password "$APPLE_APP_PASSWORD" \
+                --team-id "$APPLE_TEAM_ID" \
+                --wait
+
+              # Staple the notarization ticket
+              xcrun stapler staple "build/bin/${{ matrix.output }}"
+            else
+              echo "Warning: Notarization credentials not set. Skipping notarization."
+            fi
+          else
+            echo "Warning: No signing certificate found. Using ad-hoc signature..."
+            codesign --force --deep --sign - \
+              --entitlements build/darwin/entitlements.plist \
+              "build/bin/${APP_NAME}"
+
+            hdiutil create -volname "TinySystems" \
+              -srcfolder "build/bin/${APP_NAME}" \
+              -ov -format UDZO \
+              "build/bin/${{ matrix.output }}"
+          fi
 
           ls -la build/bin/
 
