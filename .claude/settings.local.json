@@ -12,7 +12,16 @@
       "Bash(ls:*)",
       "Bash(go list:*)",
       "Bash(go doc:*)",
-      "Bash(/opt/homebrew/bin/go build:*)"
+      "Bash(/opt/homebrew/bin/go build:*)",
+      "WebFetch(domain:tinysystems.io)",
+      "Bash(rsvg-convert:*)",
+      "Bash(sips:*)",
+      "Bash(convert:*)",
+      "Bash(iconutil -c icns:*)",
+      "Bash(/bin/cp:*)",
+      "Bash(bash -c:*)",
+      "Bash(env -i HOME=\"$HOME\" PATH=\"/bin:/usr/bin\" /bin/bash -c:*)",
+      "Bash(echo:*)"
     ]
   }
 }

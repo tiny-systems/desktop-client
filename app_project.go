@@ -310,6 +310,68 @@ func (a *App) GetFlows(contextName string, namespace string, projectName string)
 	return result, nil
 }
 
+// CreateFlow creates a new flow in a project
+func (a *App) CreateFlow(contextName string, namespace string, projectName string, flowName string) (*Flow, error) {
+	if flowName == "" {
+		return nil, fmt.Errorf("flow name is required")
+	}
+
+	mgr, err := a.getManager(contextName, namespace)
+	if err != nil {
+		return nil, err
+	}
+
+	resourceName, err := mgr.CreateFlow(a.ctx, namespace, projectName, flowName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create flow: %w", err)
+	}
+
+	return &Flow{
+		Name:         flowName,
+		ResourceName: *resourceName,
+		NodeCount:    0,
+	}, nil
+}
+
+// UndeployFlow deletes a flow and all its nodes from the cluster
+func (a *App) UndeployFlow(contextName string, namespace string, flowResourceName string) error {
+	if flowResourceName == "" {
+		return fmt.Errorf("flow resource name is required")
+	}
+
+	mgr, err := a.getManager(contextName, namespace)
+	if err != nil {
+		return err
+	}
+
+	if err := mgr.DeleteFlow(a.ctx, flowResourceName); err != nil {
+		return fmt.Errorf("failed to undeploy flow: %w", err)
+	}
+
+	return nil
+}
+
+// RenameFlow renames a flow
+func (a *App) RenameFlow(contextName string, namespace string, flowResourceName string, newName string) error {
+	if flowResourceName == "" {
+		return fmt.Errorf("flow resource name is required")
+	}
+	if newName == "" {
+		return fmt.Errorf("new name is required")
+	}
+
+	mgr, err := a.getManager(contextName, namespace)
+	if err != nil {
+		return err
+	}
+
+	if err := mgr.RenameFlow(a.ctx, flowResourceName, namespace, newName); err != nil {
+		return fmt.Errorf("failed to rename flow: %w", err)
+	}
+
+	return nil
+}
+
 // GetFlowGraph fetches the graph data for a flow (for preview)
 func (a *App) GetFlowGraph(contextName string, namespace string, projectName string, flowResourceName string) (map[string]interface{}, error) {
 	mgr, err := a.getManager(contextName, namespace)

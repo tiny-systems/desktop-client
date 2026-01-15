@@ -9,6 +9,8 @@ export function ConnectToCluster(arg1:string):Promise<kubernetes.Clientset>;
 
 export function CreateDashboardPage(arg1:string,arg2:string,arg3:string,arg4:string):Promise<main.WidgetPage>;
 
+export function CreateFlow(arg1:string,arg2:string,arg3:string,arg4:string):Promise<main.Flow>;
+
 export function CreateProject(arg1:string,arg2:string,arg3:string):Promise<main.Project>;
 
 export function DeleteDashboardPage(arg1:string,arg2:string,arg3:string):Promise<void>;
@@ -35,10 +37,14 @@ export function GetWidgetPages(arg1:string,arg2:string,arg3:string):Promise<Arra
 
 export function GetWidgets(arg1:string,arg2:string,arg3:string,arg4:string):Promise<Array<main.Widget>>;
 
+export function RenameFlow(arg1:string,arg2:string,arg3:string,arg4:string):Promise<void>;
+
 export function SaveWidgets(arg1:string,arg2:string,arg3:string,arg4:string,arg5:Array<main.Widget>):Promise<void>;
 
 export function SendSignal(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string):Promise<void>;
 
 export function StopWatchProjectNodes():Promise<void>;
+
+export function UndeployFlow(arg1:string,arg2:string,arg3:string):Promise<void>;
 
 export function WatchProjectNodes(arg1:string,arg2:string,arg3:string):Promise<void>;

@@ -14,6 +14,10 @@ export function CreateDashboardPage(arg1, arg2, arg3, arg4) {
   return window['go']['main']['App']['CreateDashboardPage'](arg1, arg2, arg3, arg4);
 }
 
+export function CreateFlow(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['App']['CreateFlow'](arg1, arg2, arg3, arg4);
+}
+
 export function CreateProject(arg1, arg2, arg3) {
   return window['go']['main']['App']['CreateProject'](arg1, arg2, arg3);
 }
@@ -66,6 +70,10 @@ export function GetWidgets(arg1, arg2, arg3, arg4) {
   return window['go']['main']['App']['GetWidgets'](arg1, arg2, arg3, arg4);
 }
 
+export function RenameFlow(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['App']['RenameFlow'](arg1, arg2, arg3, arg4);
+}
+
 export function SaveWidgets(arg1, arg2, arg3, arg4, arg5) {
   return window['go']['main']['App']['SaveWidgets'](arg1, arg2, arg3, arg4, arg5);
 }
@@ -76,6 +84,10 @@ export function SendSignal(arg1, arg2, arg3, arg4, arg5) {
 
 export function StopWatchProjectNodes() {
   return window['go']['main']['App']['StopWatchProjectNodes']();
+}
+
+export function UndeployFlow(arg1, arg2, arg3) {
+  return window['go']['main']['App']['UndeployFlow'](arg1, arg2, arg3);
 }
 
 export function WatchProjectNodes(arg1, arg2, arg3) {
