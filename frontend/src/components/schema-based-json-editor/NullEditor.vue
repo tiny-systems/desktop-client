@@ -5,6 +5,7 @@ import type { PropType } from 'vue'
 import * as common from './common'
 
 export default {
+  components: {},
   props: {
     schema: {
       type: Object as PropType<common.NullSchema>,
@@ -33,5 +34,11 @@ export default {
       buttonGroupStyle: common.buttonGroupStyleString,
     }
   },
+  beforeMount() {
+  },
+  computed: {
+  },
+  methods: {
+  }
 }
 </script>

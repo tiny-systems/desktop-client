@@ -96,8 +96,8 @@ const handleTitleChange = (event) => {
 </script>
 
 <template>
-  <div class="widget-container h-full flex flex-col bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden group">
-    <div class="widget-header px-2 py-1 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+  <div class="widget-container h-full flex flex-col bg-white dark:bg-gray-900 overflow-hidden group">
+    <div class="widget-header px-3 py-2 flex items-center justify-between">
       <template v-if="editMode">
         <input
           type="text"
@@ -155,11 +155,11 @@ const handleTitleChange = (event) => {
           </button>
         </div>
       </template>
-      <h3 v-else class="text-xs font-medium text-gray-700 dark:text-gray-300 truncate">
+      <h3 v-else class="text-sm font-medium text-gray-700 dark:text-gray-300 truncate w-full text-center">
         {{ widget.title || widget.nodeName }}
       </h3>
     </div>
-    <div class="widget-content flex-1 overflow-auto px-0.5 py-0.5">
+    <div class="widget-content flex-1 overflow-auto px-3 py-2">
       <JSONEditor
         v-if="schemaSnapshot && Object.keys(schemaSnapshot).length > 0"
         :key="editorKey"

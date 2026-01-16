@@ -11,7 +11,7 @@ const props = defineProps({
   projectName: String,
 })
 
-const emit = defineEmits(['error'])
+const emit = defineEmits(['error', 'open-flow'])
 
 const flows = ref([])
 const loading = ref(true)
@@ -119,6 +119,7 @@ onMounted(() => {
           @error="(err) => emit('error', err)"
           @undeploy="handleUndeploy"
           @rename="handleRename"
+          @open="(f) => emit('open-flow', f)"
         />
       </div>
     </div>

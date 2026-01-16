@@ -21,7 +21,27 @@
       "Bash(/bin/cp:*)",
       "Bash(bash -c:*)",
       "Bash(env -i HOME=\"$HOME\" PATH=\"/bin:/usr/bin\" /bin/bash -c:*)",
-      "Bash(echo:*)"
+      "Bash(echo:*)",
+      "Bash(go vet:*)",
+      "Bash(gofmt:*)",
+      "Bash(/bin/bash -c \"cd /Users/mtrofimenko/Work/Current/tiny-systems/desktop-client && pwd\")",
+      "WebSearch",
+      "Bash(/opt/homebrew/opt/go/bin/go version:*)",
+      "Bash(wails build:*)",
+      "Bash(go env:*)",
+      "Bash(GOROOT=/opt/homebrew/opt/go/libexec wails build:*)",
+      "Bash(GOROOT=/opt/homebrew/opt/go/libexec go build:*)",
+      "Bash(GOROOT=/opt/homebrew/opt/go/libexec go get:*)",
+      "Bash(go mod tidy:*)",
+      "Bash(GOROOT=/opt/homebrew/opt/go/libexec go mod tidy:*)",
+      "Bash(/opt/homebrew/bin/go env:*)",
+      "Bash(GOROOT=/opt/homebrew/Cellar/go/1.25.5/libexec /opt/homebrew/bin/go get:*)",
+      "Bash(GOROOT=/opt/homebrew/Cellar/go/1.25.5/libexec /opt/homebrew/bin/go mod tidy:*)",
+      "Bash(wc:*)",
+      "Bash(GOROOT=/opt/homebrew/opt/go/libexec /opt/homebrew/bin/go version:*)",
+      "Bash(GOROOT=/opt/homebrew/opt/go/libexec /opt/homebrew/bin/go build:*)",
+      "Bash(for file in /Users/mtrofimenko/Work/Current/tiny-systems/platform/manager/services/grpc-api/flow/*.go)",
+      "Bash(done)"
     ]
   }
 }

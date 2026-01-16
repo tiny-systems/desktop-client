@@ -1,75 +1,88 @@
-<script lang="ts">
-import type { PropType } from 'vue'
-import * as common from './common'
+<script setup>
+/**
+ * JSON Schema Editor wrapper component
+ * Renders form controls based on JSON Schema
+ */
+import { computed } from 'vue'
 import Editor from './Editor.vue'
+import * as common from './common'
 
-export default {
-  components: {
-    editor: Editor
+const props = defineProps({
+  schema: {
+    type: Object,
+    default: () => ({})
   },
-  emits: ['update-value'],
-  props: {
-    schema: {
-      type: Object as PropType<common.Schema>,
-      required: true,
-    },
-    initialValue: null,
-    locale: Object as PropType<common.Locale>,
-    theme: null,
-    readonly: Boolean,
-    allowLookup: Boolean,
-    plainStruct: Boolean,
-    noBorder: Boolean,
-    disableCollapse: Boolean,
-    allowEditSchema: Boolean,
-    minItemCountIfNeedFilter: Number,
-    hasDeleteButton: {
-      type: Boolean,
-      required: false,
-    },
+  initialValue: {
+    type: [Object, String, Number, Boolean, Array],
+    default: undefined
   },
-  computed: {
-    themeObject(): common.Theme {
-      return common.getTheme(this.theme)
-    },
-    localeObject(): common.Locale {
-      return common.getLocale(this.locale)
-    }
+  readonly: {
+    type: Boolean,
+    default: false
   },
-  methods: {
-    getReference (name: string)  {
-      if (this.schema && this.schema.$defs) {
-        const key = name.substring('#/$defs/'.length)
-        const result = this.schema.$defs[key]
-        if (result) {
-          // Deep clone to prevent mutation of original $defs
-          return JSON.parse(JSON.stringify(result))
-        }
-        return result
-      }
-      return undefined
-    },
-    updateValue(...args: any[]) {
-      this.$emit('update-value', ...args)
-    }
+  plainStruct: {
+    type: Boolean,
+    default: false
   },
+  theme: {
+    type: String,
+    default: 'small'
+  },
+  noBorder: {
+    type: Boolean,
+    default: false
+  },
+  disableCollapse: {
+    type: Boolean,
+    default: false
+  }
+})
+
+const emit = defineEmits(['update-value', 'lookup'])
+
+// Get theme object
+const themeObj = computed(() => common.getTheme(props.theme))
+
+// Get locale object
+const locale = computed(() => common.defaultLocale)
+
+// Get reference function for resolving $ref in schemas
+const getReference = (ref) => {
+  if (!props.schema?.$defs) return undefined
+  const refName = ref.replace('#/$defs/', '')
+  return props.schema.$defs[refName]
+}
+
+// Handle value updates from editor
+const handleUpdateValue = (event) => {
+  emit('update-value', event)
+}
+
+// Handle lookup events
+const handleLookup = (...args) => {
+  emit('lookup', ...args)
 }
 </script>
+
 <template>
-  <editor :schema="schema"
-    :initial-value="initialValue"
-    :getReference="getReference"
-    :theme="themeObject"
-    :locale="localeObject"
-    :readonly="readonly"
-    :allow-edit-schema="allowEditSchema"
-    :required="true"
-    :allow-lookup="allowLookup"
-    :no-border="noBorder"
-    :plain-struct="plainStruct"
-    :has-delete-button="hasDeleteButton"
-    :disableCollapse="disableCollapse"
-    :minItemCountIfNeedFilter="minItemCountIfNeedFilter"
-    @update-value="updateValue">
-  </editor>
+  <div class="json-editor">
+    <Editor
+      v-if="schema && Object.keys(schema).length > 0"
+      :schema="schema"
+      :initial-value="initialValue"
+      :theme="themeObj"
+      :locale="locale"
+      :getReference="getReference"
+      :readonly="readonly"
+      :required="true"
+      :no-border="noBorder"
+      :plain-struct="plainStruct"
+      :disable-collapse="disableCollapse"
+      @update-value="handleUpdateValue"
+      @lookup="handleLookup"
+    />
+    <div v-else class="text-center py-2 text-gray-500 dark:text-gray-400 text-sm">
+      No configurable properties
+    </div>
+  </div>
 </template>

@@ -1,6 +1,12 @@
 <script setup>
-import { BaseEdge, getBezierPath } from '@vue-flow/core'
+import { BaseEdge, getBezierPath, EdgeLabelRenderer } from '@vue-flow/core'
+import { PencilSquareIcon } from '@heroicons/vue/24/outline'
 import { computed } from 'vue'
+import { useFlowStore } from '../../stores/flow'
+
+defineOptions({
+  inheritAttrs: false
+})
 
 const props = defineProps({
   disabled: {
@@ -10,6 +16,9 @@ const props = defineProps({
     type: Boolean
   },
   selected: {
+    type: Boolean
+  },
+  editorMode: {
     type: Boolean
   },
   id: {
@@ -58,9 +67,92 @@ const props = defineProps({
   },
 })
 
-const path = computed(() => getBezierPath(props))
+const flowStore = useFlowStore()
+
+// Handle edge selection
+const handleEdgeSelect = () => {
+  flowStore.select(props.id)
+}
+
+const path = computed(() => getBezierPath({
+  sourceX: props.sourceX,
+  sourceY: props.sourceY,
+  targetX: props.targetX,
+  targetY: props.targetY,
+  sourcePosition: props.sourcePosition,
+  targetPosition: props.targetPosition,
+  curvature: props.curvature,
+}))
+
+// Edge style - light gray stroke
+const edgeStyle = computed(() => ({
+  stroke: props.selected ? '#0ea5e9' : '#d1d5db',
+  strokeWidth: props.selected ? 2 : 1,
+  ...props.style
+}))
+
+// Icon class based on state - matches platform implementation exactly
+const iconClass = computed(() => {
+  // Invalid edge - red
+  if (props.data?.valid === false) {
+    return 'fill-red-500 stroke-red-200 dark:fill-red-700 dark:stroke-red-300 dark:opacity-70'
+  }
+  // Selected edge - sky blue
+  if (props.selected) {
+    return 'fill-sky-500 stroke-sky-200 dark:fill-sky-700 dark:stroke-sky-300 dark:opacity-70'
+  }
+  // Default - light gray to match platform
+  return 'fill-gray-200 text-gray-400 dark:text-gray-300 dark:fill-gray-900 dark:opacity-40'
+})
+
+// Format milliseconds to readable time
+const msToTime = (ms) => {
+  if (ms < 1) return '<1ms'
+  if (ms < 1000) return `${Math.round(ms)}ms`
+  return `${(ms / 1000).toFixed(2)}s`
+}
 </script>
 
 <template>
-  <BaseEdge :id="id" :style="style" :path="path[0]" :marker-end="markerEnd"/>
+  <BaseEdge
+    :id="id"
+    :style="edgeStyle"
+    :path="path[0]"
+    :marker-end="markerEnd"
+  />
+
+  <!-- Edit button and trace info at edge midpoint -->
+  <EdgeLabelRenderer>
+    <div
+      v-if="!data?.blocked"
+      :style="{
+        pointerEvents: 'all',
+        position: 'absolute',
+        color: 'black',
+        textAlign: 'center',
+        transform: `translate(-50%, -50%) translate(${path[1]}px, ${path[2]}px)`,
+      }"
+      class="nodrag nopan"
+    >
+      <!-- Edit button - shows when noConfigure is not set -->
+      <button
+        v-if="!noConfigure"
+        :title="data?.valid === false ? data?.error : 'Configure'"
+        @click="handleEdgeSelect"
+      >
+        <PencilSquareIcon
+          :class="['w-5 h-5', iconClass]"
+        />
+      </button>
+
+      <!-- Trace latency display -->
+      <div
+        v-if="data?.trace && data.trace.sequence !== undefined && data.trace.sequence > 0"
+        class="text-xs w-full text-center text-sky-500"
+        :title="'Span# ' + data.trace.sequence"
+      >
+        {{ msToTime(data.trace.latency || 0) }}
+      </div>
+    </div>
+  </EdgeLabelRenderer>
 </template>

@@ -9,9 +9,17 @@
 @import "gridstack/dist/gridstack-extra.min.css";
 
 /* Base styles */
+html, body {
+  @apply w-full h-full m-0 p-0 overflow-hidden;
+}
+
 body {
   @apply bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100;
   transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+#app {
+  @apply w-full h-full overflow-hidden;
 }
 
 /* Custom select dropdown arrow for light/dark modes */

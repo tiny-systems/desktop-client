@@ -1,13 +1,12 @@
 <template>
-  <span v-if="!required && !isReadOnly">
-    <button :class="theme.button" type="button" @click="$emit('toggleOptional')">
-      {{ value === undefined ? 'Define' : 'Clear' }}
-    </button>
-  </span>
+  <label :class="theme.label" v-if="hasOptionalCheckbox && !isReadOnly">
+    <input type="checkbox" :class="theme.checkboxInput" @change="$emit('toggleOptional')" :checked="value === undefined" :disabled="isReadOnly" />
+    {{locale.info.notExists}}
+  </label>
 </template>
 <script lang="ts">
 import type { PropType } from 'vue'
-import type { Theme, Locale } from './common'
+import * as common from './common'
 
 export default {
   emits: ['toggleOptional'],
@@ -16,12 +15,17 @@ export default {
     value: null,
     isReadOnly: Boolean,
     theme: {
-      type: Object as PropType<Theme>,
+      type: Object as PropType<common.Theme>,
       required: true,
     },
     locale: {
-      type: Object as PropType<Locale>,
+      type: Object as PropType<common.Locale>,
       required: true,
+    },
+  },
+  computed: {
+    hasOptionalCheckbox(): boolean {
+      return !this.required && (this.value === undefined || !this.isReadOnly)
     },
   }
 }

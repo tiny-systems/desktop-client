@@ -181,7 +181,7 @@ onMounted(() => {
 
 <template>
   <div class="context-selector">
-    <div class="flex items-end gap-3 flex-nowrap">
+    <div class="flex items-end gap-3 flex-wrap">
       <!-- Context Selector -->
       <div class="flex-shrink min-w-0">
         <label for="context-selector" class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Context</label>

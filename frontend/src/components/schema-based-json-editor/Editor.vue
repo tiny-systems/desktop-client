@@ -14,6 +14,7 @@
     :required="required"
     :table-mode="tableMode"
     :has-delete-button="hasDeleteButton"
+    @lookup="lookup"
     @update-value="updateValue">
   </any-editor>
   <object-editor v-else-if="hasType(realSchema.type, 'object')"
@@ -34,6 +35,7 @@
      :disableCollapse="disableCollapse"
      :table-mode="tableMode"
      :minItemCountIfNeedFilter="minItemCountIfNeedFilter"
+     @lookup="lookup"
      @update-value="updateValue">
   </object-editor>
   <array-editor v-else-if="hasType(realSchema.type, 'array')"
@@ -52,6 +54,7 @@
     :disableCollapse="disableCollapse"
     :table-mode="tableMode"
     :minItemCountIfNeedFilter="minItemCountIfNeedFilter"
+    @lookup="lookup"
     @update-value="updateValue">
   </array-editor>
   <number-editor v-else-if="hasType(realSchema.type,'number') || hasType(realSchema.type, 'integer')"
@@ -67,6 +70,7 @@
      :required="required"
      :table-mode="tableMode"
      :has-delete-button="hasDeleteButton"
+     @lookup="lookup"
      @update-value="updateValue">
   </number-editor>
   <boolean-editor v-else-if="hasType(realSchema.type, 'boolean')"
@@ -82,6 +86,7 @@
     :required="required"
     :table-mode="tableMode"
     :has-delete-button="hasDeleteButton"
+    @lookup="lookup"
     @update-value="updateValue">
   </boolean-editor>
   <string-editor v-else-if="hasType(realSchema.type, 'string')"
@@ -97,6 +102,7 @@
      :required="required"
      :table-mode="tableMode"
      :has-delete-button="hasDeleteButton"
+     @lookup="lookup"
      @update-value="updateValue">
   </string-editor>
   <null-editor v-else-if="hasType(realSchema.type,  'null') || hasType(realSchema.type,  null)"
@@ -138,7 +144,7 @@ export default {
     'object-editor': ObjectEditor,
     'string-editor': StringEditor,
   },
-  emits: ['update-value'],
+  emits: ['lookup', 'update-value'],
   props: {
     schema: {
       required: true,
@@ -174,36 +180,24 @@ export default {
   },
   computed: {
     realSchema(): Schema {
-      const schema = this.getRealSchemaRecursive(this.schema as Schema)
-      // Infer type from schema structure if not explicitly set
-      return this.inferSchemaType(schema)
+      //@ts-ignore
+      return this.getRealSchemaRecursive(this.schema)
     },
+
   },
   methods: {
-    inferSchemaType(s: Schema): Schema {
-      if (!s || s.type) {
-        return s
-      }
-      // Infer type: "object" if schema has properties
-      if (s.properties) {
-        return { ...s, type: 'object' }
-      }
-      // Infer type: "array" if schema has items
-      if (s.items) {
-        return { ...s, type: 'array' }
-      }
-      return s
-    },
     realSchemaFull(s: any): Schema {
       if (!isObject(s)) {
         return s
       }
 
       s = this.getRealSchemaRecursive(s)
-      s = this.inferSchemaType(s)
+      //@ts-ignore
       for (const property in s) {
-        if (isObject((s as any)[property])) {
-          (s as any)[property] = this.realSchemaFull((s as any)[property])
+        //@ts-ignore
+        if (isObject(s[property])) {
+          //@ts-ignore
+          s[property] = this.realSchemaFull(s[property])
         }
       }
       return s
@@ -213,7 +207,6 @@ export default {
         // ref overrides defs in some props
         const reference = this.getReference(s.$ref)
         if (reference) {
-          // Copy override properties from the $ref usage to the resolved reference
           if (s.title !== undefined) {
             reference.title = s.title
           }
@@ -231,7 +224,9 @@ export default {
       }
       return s
     },
-    hasType(types: any, check: any) {
+    //@ts-ignore
+    hasType(types, check) {
+
       let val = types
 
       if (isProxy(val)) {
@@ -241,6 +236,9 @@ export default {
         return val.includes(check)
       }
       return val == check
+    },
+    lookup(...args: any[]) {
+      this.$emit('lookup', ...args)
     },
     updateValue(...args: any[]) {
       this.$emit('update-value', ...args)

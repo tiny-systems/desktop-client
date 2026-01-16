@@ -3,6 +3,9 @@
     <div :class="theme.title">
       <div class="flex space-x-1 w-full">
         <div class="pl-1" v-if="titleToShow != ''">{{titleToShow}}</div>
+        <button v-if="allowEditSchema && schema.configurable && value !== undefined" @click="configureSchema()" title="Configure type" type="button" class="w-6 h-6 border border-sky-500 dark:border-sky-800  rounded p-1 button inline-block cursor-pointer hover:bg-sky-300 dark:hover:bg-sky-800">
+          <PencilIcon></PencilIcon>
+        </button>
       </div>
       <div :class="theme.buttonGroup" :style="buttonGroupStyle">
         <optional :required="required"
@@ -14,39 +17,43 @@
         </optional>
       </div>
     </div>
-    <div class="flex" v-if="value !== undefined">
+    <div :class="['flex', deleteHover ? 'bg-red-100 dark:bg-red-900/50 border-0 rounded' : (hover ? 'bg-indigo-100 dark:bg-indigo-800 border-0 rounded' : '')]" v-if="value !== undefined">
+      <div v-if="canUpload">
+        Upload
+      </div>
       <textarea v-if="useTextArea"
-          :class="[errorMessage ? theme.errorTextarea : theme.textarea]"
-          @change="onChange($event)" @keyup="onChange($event)" rows="10"
-          :disabled="isReadOnly" :value="value"></textarea>
+          :class="[errorMessage ? theme.errorTextarea : theme.textarea, !!expression ? theme.expression : '']"
+          @change="onChange($event)" @keyup="onChange($event)" :rows="!!expression ? 3 : 10"
+          :disabled="isReadOnly || !!expression" :value="expression || value"></textarea>
       <vue-monaco-editor v-if="useCodeEditor"
-        :class="[errorMessage ? theme.errorCodeEditor : theme.codeEditor, 'min-h-80']"
-        :value="value"
+        :class="[errorMessage ? theme.errorCodeEditor : theme.codeEditor, !!expression ? theme.expression : '', 'min-h-80']"
+        :value="expression || value"
         :language="schema.language"
         :theme="codeEditorTheme"
         @change="onChange({target:{value:$event}})"
         :options="{
           formatOnType: true,
           formatOnPaste: true,
-          readonly: isReadOnly
+          readonly: isReadOnly || !!expression
         }"
       />
       <input v-if="useInput"
-             :class="[errorMessage ? theme.errorInput : theme.input]"
+             :class="[errorMessage ? theme.errorInput : theme.input, !!expression ? theme.expression : theme.staticText]"
              :type="getInputType(schema.format || 'text')"
              :name="schema.title || 'name'"
              @change="onChange($event)"
              @keyup="onChange($event)"
-             :value="value"
+             :value="expression || value"
              autocomplete="off"
-             :disabled="isReadOnly"/>
+             :disabled="isReadOnly || !!expression"/>
       <!-- Standard select for small option lists -->
       <select v-if="useSelectComponent && !useRadioBoxComponent && !useSearchableSelect"
-              :class="[errorMessage ? theme.selectError : theme.select]"
-              :value="value"
-              :disabled="isReadOnly"
+              :class="[errorMessage ? theme.selectError : theme.select, !!expression ? theme.expression : theme.staticText]"
+              :value="!!expression ? 'expression' : value"
+              :disabled="isReadOnly || !!expression"
               @change="updateSelection($event.target.value)">
         <option v-for="option in options" :key="option.value" :value="option.value">{{option.label}}</option>
+        <option v-if="expression" value="expression">{{expression}}</option>
       </select>
       <!-- Searchable select for large option lists (20+ options) -->
       <div v-if="useSelectComponent && !useRadioBoxComponent && useSearchableSelect" ref="searchableSelectRef" class="relative w-full">
@@ -56,7 +63,7 @@
             :class="[errorMessage ? theme.errorInput : theme.input, 'pr-8']"
             :value="searchQuery !== null ? searchQuery : selectedOptionLabel"
             :placeholder="selectedOptionLabel || 'Search...'"
-            :disabled="isReadOnly"
+            :disabled="isReadOnly || !!expression"
             @focus="openSearchableDropdown"
             @input="onSearchInput($event)"
             @keydown.escape="closeSearchableDropdown"
@@ -68,7 +75,7 @@
             type="button"
             class="absolute inset-y-0 right-0 flex items-center pr-2"
             @click="toggleSearchableDropdown"
-            :disabled="isReadOnly"
+            :disabled="isReadOnly || !!expression"
           >
             <ChevronDownIcon class="h-4 w-4 text-gray-400" />
           </button>
@@ -99,7 +106,7 @@
           </div>
         </Teleport>
       </div>
-      <div v-if="useRadioBoxComponent" class="w-full">
+      <div v-if="useRadioBoxComponent && !expression" class="w-full">
         <span v-for="option in options" :key="option.value" :class="theme.radiobox">
           <label :class="theme.label">
             <input type="radio"
@@ -110,12 +117,26 @@
           </label>
         </span>
       </div>
+      <div v-if="useRadioBoxComponent && !!expression" class="w-full">
+        <label :class="theme.expression">
+          <input type="radio" :checked="true" name="expression" :readonly="true" />
+          {{expression}}
+        </label>
+      </div>
       <img v-if="willPreviewImage"
            :class="theme.img"
            :style="imagePreviewStyle"
            :src="getImageUrl" />
 
-      <button v-if="hasDeleteButtonFunction" type="button" class="ml-1 w-4 text-sky-500 inline-block cursor-pointer ml-1" @click="$emit('delete')" title="Delete">
+      <button  v-if="hasDeleteButtonFunction" type="button" class="ml-1 w-4 text-indigo-500 inline-block cursor-pointer ml-1"  @click="$emit('delete')" title="Delete">
+        <XCircleIcon></XCircleIcon>
+      </button>
+      <button v-if="allowLookup && value !== undefined" @mouseover="hover = true" @mouseleave="hover = false" type="button" class="w-4 block text-indigo-500 cursor-pointer mx-1" @click="$emit('lookup', getAllValue(), schema, onChangeExpression)" :title="expression ? 'Edit expression' : 'Apply expression'">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" >
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 7.5l3 2.25-3 2.25m4.5 0h3m-9 8.25h13.5A2.25 2.25 0 0021 18V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 6v12a2.25 2.25 0 002.25 2.25z" />
+        </svg>
+      </button>
+      <button v-if="expression" type="button" class="w-4 block text-red-500 cursor-pointer mx-1" @mouseover="deleteHover = true" @mouseleave="deleteHover = false" @click="clearExpression" title="Clear expression">
         <XCircleIcon></XCircleIcon>
       </button>
     </div>
@@ -127,23 +148,24 @@
 import type { PropType } from 'vue'
 import { defineAsyncComponent } from 'vue'
 import * as common from './common'
-import { XCircleIcon, ChevronDownIcon } from '@heroicons/vue/24/outline'
+import {XCircleIcon, ChevronRightIcon, ChevronDownIcon, PencilIcon} from '@heroicons/vue/24/outline'
 import Optional from './Optional.vue'
 import Description from './Description.vue'
+import { useDark } from "@vueuse/core";
 
-// Lazy load monaco editor
+// Lazy load monaco editor to avoid SSR issues
 const VueMonacoEditor = defineAsyncComponent(() =>
   import('@guolao/vue-monaco-editor').then(m => m.VueMonacoEditor)
 )
 
 export default {
   components: {
-    XCircleIcon, ChevronDownIcon,
+    XCircleIcon, ChevronRightIcon, ChevronDownIcon, PencilIcon,
     optional: Optional,
     description: Description,
     'vue-monaco-editor': VueMonacoEditor
   },
-  emits: ['delete', 'update-value'],
+  emits: ['delete', 'update-value', 'lookup'],
   props: {
     schema: {
       type: Object as PropType<common.StringSchema>,
@@ -173,6 +195,10 @@ export default {
     return {
       codeEditorTheme: 'vs',
       value: '' as string | undefined,
+      expression: undefined,
+      portName: null,
+      hover: false,
+      deleteHover: false,
       errorMessage: '' as string | undefined,
       buttonGroupStyle: common.buttonGroupStyleString,
       imagePreviewStyle: common.imagePreviewStyleString,
@@ -185,16 +211,23 @@ export default {
   },
   beforeMount() {
     this.value = this.getValue()
+    // Extract expression from {{expr}} pattern
+    this.expression = this.extractExpression(this.initialValue)
     this.validate()
     if (this.value !== undefined) {
       this.emitValue()
     }
   },
   mounted() {
-    // Check for dark mode preference
-    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-      this.codeEditorTheme = 'vs-dark'
-    }
+    const isDark = useDark({
+      onChanged: (dark) => {
+        if (dark) {
+          this.codeEditorTheme = 'vs-dark'
+        } else {
+          this.codeEditorTheme = 'vs'
+        }
+      }
+    })
     // Add click outside listener for searchable dropdown
     document.addEventListener('click', this.handleClickOutside)
   },
@@ -202,8 +235,18 @@ export default {
     document.removeEventListener('click', this.handleClickOutside)
   },
   methods: {
+    configureSchema() {
+      this.schema.configure = true
+    },
     getValue():string {
+      // For new {{expr}} format, extract actual value (not the expression wrapper)
       if (typeof this.initialValue === 'string') {
+        const match = this.initialValue.match(/^\{\{(.+)\}\}$/)
+        if (match) {
+          // It's an expression - return empty string so field shows as "defined"
+          // The actual expression is stored in this.expression
+          return ''
+        }
         return this.initialValue
       }
       return common.getDefaultValue(this.required, this.schema, this.initialValue) as string
@@ -219,13 +262,21 @@ export default {
       this.validate()
       this.emitValue()
     },
+    onChangeExpression(dataExpression: string, portName: string) {
+      this.expression = dataExpression
+      this.portName = portName
+      this.validate()
+      this.emitValue()
+    },
     updateSelection(value: string) {
       this.value = value
       this.validate()
       this.emitValue()
     },
     toggleOptional() {
-      this.value = common.toggleOptional(this.value, this.schema, this.initialValue) as string | undefined
+      // Don't pass initialValue if it's an expression - we don't want the expression string as fallback value
+      const fallbackValue = this.extractExpression(this.initialValue) ? undefined : this.initialValue
+      this.value = common.toggleOptional(this.value, this.schema, fallbackValue) as string | undefined
       this.validate()
       this.emitValue()
     },
@@ -236,14 +287,33 @@ export default {
       if(this.value === undefined || this.plainStruct) {
         return this.value
       }
+      // New format: expression wrapped in {{expr}}, literals are plain values
+      if (this.expression) {
+        return `{{${this.expression}}}`
+      }
       return this.value || ''
     },
+    extractExpression(val: any): string | undefined {
+      if (typeof val === 'string') {
+        // New format: {{expression}}
+        const match = val.match(/^\{\{(.+)\}\}$/)
+        if (match) {
+          return match[1]
+        }
+      }
+      return undefined
+    },
+    clearExpression() {
+      this.expression = undefined
+      this.validate()
+      this.emitValue()
+    },
     validate() {
-      if (this.isReadOnly) {
+      if (!!this.expression || this.isReadOnly) {
         this.errorMessage = ''
         return;
       }
-      this.errorMessage = common.getErrorMessageOfString(this.value, this.schema, this.required, this.locale)
+      this.errorMessage = common.getErrorMessageOfString(this.value, this.schema, this.required,  this.locale)
     },
     // Searchable select methods
     openSearchableDropdown() {
@@ -332,6 +402,9 @@ export default {
         && (this.schema.enum === undefined || this.isReadOnly)
         && (this.schema.format === 'code' || this.schema.format === 'json')
     },
+    useDatePicker(): boolean | undefined {
+      return this.value !== undefined && this.schema.format ==='date-time'
+    },
     useInput(): boolean | undefined {
       return this.value !== undefined
         && (this.schema.enum === undefined || this.isReadOnly)
@@ -382,6 +455,9 @@ export default {
       label: string | number;
     }[] {
       return common.getOptions(this.schema)
+    },
+    canUpload(): boolean {
+      return this.schema.format === 'base64'
     },
     className(): string {
       const rowClass = this.errorMessage ? this.theme.errorRow : this.theme.row

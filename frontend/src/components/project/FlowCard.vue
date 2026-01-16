@@ -15,7 +15,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['error', 'undeploy', 'rename'])
+const emit = defineEmits(['error', 'undeploy', 'rename', 'open'])
 
 const graph = ref(null)
 const loading = ref(true)
@@ -98,7 +98,12 @@ const undeployFlow = async () => {
 </script>
 
 <template>
-  <div class="flow-card bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-md transition-shadow">
+  <div
+    class="flow-card bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
+    @click="emit('open', flow)"
+    tabindex="0"
+    @keydown.enter="emit('open', flow)"
+  >
     <div class="flow-preview h-40 bg-gray-50 dark:bg-gray-800 relative">
       <div v-if="loading" class="flex items-center justify-center h-full">
         <span class="text-xs text-gray-400">Loading...</span>

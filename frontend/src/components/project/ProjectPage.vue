@@ -4,6 +4,7 @@ import ProjectHeader from './ProjectHeader.vue'
 import ProjectStatsBar from './ProjectStatsBar.vue'
 import WidgetsTab from './WidgetsTab.vue'
 import FlowsTab from './FlowsTab.vue'
+import FlowEditorPage from '../flow-editor/FlowEditorPage.vue'
 
 const GoApp = window.go.main.App
 
@@ -14,6 +15,9 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['close'])
+
+// Flow editor state
+const selectedFlow = ref(null)
 
 const projectDetails = ref(null)
 const stats = ref({
@@ -81,6 +85,14 @@ const handleRenameProject = async (newName) => {
   }
 }
 
+const handleOpenFlow = (flow) => {
+  selectedFlow.value = flow
+}
+
+const handleCloseFlowEditor = () => {
+  selectedFlow.value = null
+}
+
 onMounted(async () => {
   loading.value = true
   await Promise.all([loadProjectDetails(), loadStats()])
@@ -90,8 +102,18 @@ onMounted(async () => {
 
 <template>
   <div class="project-page h-full flex flex-col bg-white dark:bg-gray-900">
+    <!-- Flow Editor (full screen overlay) -->
+    <FlowEditorPage
+      v-if="selectedFlow"
+      :ctx="ctx"
+      :ns="ns"
+      :project-name="name"
+      :flow-resource-name="selectedFlow.resourceName"
+      @close="handleCloseFlowEditor"
+    />
+
     <!-- Loading state -->
-    <div v-if="loading" class="flex items-center justify-center h-full">
+    <div v-else-if="loading" class="flex items-center justify-center h-full">
       <div class="text-center">
         <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-sky-500 mx-auto mb-4"></div>
         <span class="text-gray-500 dark:text-gray-400">Loading project...</span>
@@ -135,6 +157,7 @@ onMounted(async () => {
           :ns="ns"
           :project-name="name"
           @error="handleError"
+          @open-flow="handleOpenFlow"
         />
       </div>
     </template>

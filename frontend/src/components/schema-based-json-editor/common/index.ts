@@ -1,17 +1,10 @@
 // @ts-ignore
-import {isObject, isInteger, toNumber, toInteger} from 'lodash'
+import { isObject, isInteger, toNumber, toInteger } from 'lodash'
 export const buttonGroupStyleString = "margin-left: 10px";
 export const imagePreviewStyleString = "";
 export { toNumber, toInteger }
 export type Schema = ObjectSchema | ArraySchema | NumberSchema | StringSchema | BooleanSchema | NullSchema | AnySchema
 export type ValueType = { [name: string]: any } | any[] | number | boolean | string | null | undefined
-
-// Event payload type for update-value events
-export interface ValidityValue<T> {
-  value: T
-  isValid: boolean
-  isAction?: boolean
-}
 
 type EqualCondition = [string, '===' | 'equal', any]
 type InCondition = [string, 'in', any]
@@ -54,7 +47,17 @@ export interface CommonSchema {
   configurable?: boolean
   configure?: boolean
   tab?: string
+  className?: string
+  colSpan?: string
+  align?: string
 }
+
+export interface ValidityValue<T> {
+  value: T;
+  isValid: boolean;
+  isAction?: boolean;
+}
+
 /**
  * @public
  */
@@ -172,18 +175,21 @@ export function getLocale(locale: undefined | null | Locale): Locale {
 export const largeTheme = {
   card: 'w-full',
   row: 'block pb-1',
-  img: 'p-1 mt-1 w-full bg-white rounded-md border shadow-sm dark:bg-gray-900 border-gray-200 dark:border-gray-800',
+  rowContainer: '',
+  img: 'p-1 mt-1 w-full bg-white rounded-md border shadow-sm dark:bg-gray-900 border-gray-200 dark:border-gray-700',
   errorRow: 'border-red-500',
   button: 'px-2 py-2 cursor-pointer text-md leading-4 font-medium rounded-md text-sky-700 bg-sky-100 enabled:hover:bg-sky-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 dark:bg-sky-600 enabled:dark:hover:bg-sky-500 dark:text-black disabled:opacity-50',
   input: 'bg-gray-50 border mx-1 text-sm dark:text-gray-300 rounded-md block w-full p-2 dark:bg-gray-800 dark:placeholder-gray-400 disabled:shadow-none',
   errorInput: 'bg-red-50 mx-1 border border-red-500 text-red-900 placeholder-red-700 text-sm rounded-md focus:ring-red-500 dark:bg-gray-800 focus:border-red-500 block w-full p-2 dark:text-red-500 dark:placeholder-red-500 dark:border-red-500',
   textarea: 'bg-gray-50 mx-1 border text-sm dark:text-gray-300 rounded-md block w-full p-2 dark:bg-gray-800 dark:placeholder-gray-400 dark:focus:ring-blue-500',
+  codeEditor: 'bg-gray-50 p-2 border text-sm dark:border-gray-700 dark:text-gray-300 rounded-md block w-full dark:bg-gray-800 dark:placeholder-gray-400 dark:focus:ring-blue-500',
   errorTextarea: 'bg-gray-50 mx-1 border border-red-300 text-gray-900 text-sm rounded-md focus:ring-red-500 focus:border-red-500 block w-full p-2 dark:bg-gray-800 dark:border-red-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-red-500 dark:focus:border-red-500',
+  errorCodeEditor: 'bg-gray-50 border p-1 border-red-300 text-gray-900 text-sm rounded-md focus:ring-red-500 focus:border-red-500 block w-full dark:bg-gray-800 dark:border-red-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-red-500 dark:focus:border-red-500',
   checkbox: '',
   checkboxInput: 'w-4 h-4 bg-gray-100 rounded-md',
   radioboxLabel: 'text-sm text-gray-900 dark:text-gray-300',
   radiobox: 'inline-block pr-2',
-  radioboxInput: 'text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-800 dark:border-gray-600',
+  radioboxInput: 'text-blue-600 bg-gray-100 border-gray-200 focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-800 dark:border-gray-600',
   buttonGroup: '',
   title: 'block text-sm font-medium text-gray-900 dark:text-gray-300 text-left flex mb-1',
   label: 'block text-sm font-medium text-gray-900 dark:text-gray-300 text-left whitespace-nowrap px-1',
@@ -197,28 +203,29 @@ export const largeTheme = {
 
 export const smallTheme = {
   card: 'w-full',
-  row: 'block pb-0.5',
-  img: 'p-1 mt-1 w-full bg-white rounded-md border shadow-sm dark:bg-gray-900 border-gray-200 dark:border-gray-800',
+  row: 'block pb-1',
+  rowContainer: '',
+  img: 'p-1 mt-1 w-full bg-white rounded-md border shadow-sm dark:bg-gray-900 border-gray-200 dark:border-gray-700',
   errorRow: 'border-red-500',
-  button: 'px-2 py-1.5 cursor-pointer text-xs leading-4 font-medium rounded-md text-sky-700 bg-sky-100 enabled:hover:bg-sky-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 dark:bg-sky-600 enabled:dark:hover:bg-sky-500 dark:text-black disabled:opacity-50',
-  input: 'bg-gray-50 border mx-1 text-xs dark:text-gray-300 rounded-md block w-full p-1.5 dark:bg-gray-800 dark:placeholder-gray-400 disabled:shadow-none',
-  errorInput: 'bg-red-50 mx-1 border border-red-500 text-red-900 placeholder-red-700 text-xs rounded-md focus:ring-red-500 dark:bg-gray-800 focus:border-red-500 block w-full p-1.5 dark:text-red-500 dark:placeholder-red-500 dark:border-red-500',
-  textarea: 'bg-gray-50 mx-1 border text-xs dark:text-gray-300 rounded-md block w-full p-1.5 dark:bg-gray-800 dark:placeholder-gray-400 dark:focus:ring-blue-500',
-  codeEditor: 'bg-gray-50 p-1.5 border text-xs dark:border-gray-700 dark:text-gray-300 rounded-md block w-full dark:bg-gray-800 dark:placeholder-gray-400 dark:focus:ring-blue-500',
-  errorTextarea: 'bg-gray-50 border p-1.5 border-red-300 text-gray-900 text-xs rounded-md focus:ring-red-500 focus:border-red-500 block w-full dark:bg-gray-800 dark:border-red-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-red-500 dark:focus:border-red-500',
-  errorCodeEditor: 'bg-gray-50 border p-1 border-red-300 text-gray-900 text-xs rounded-md focus:ring-red-500 focus:border-red-500 block w-full dark:bg-gray-800 dark:border-red-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-red-500 dark:focus:border-red-500',
+  button: 'px-2 py-1.5 cursor-pointer text-xs leading-4 font-medium rounded-md text-sky-700 bg-sky-100 enabled:hover:bg-sky-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 dark:bg-sky-600 enabled:dark:hover:bg-sky-500 dark:text-white disabled:opacity-50',
+  input: 'bg-gray-50 border text-xs dark:text-gray-300 rounded-md block w-full p-1.5 dark:bg-gray-800 dark:placeholder-gray-400 disabled:shadow-none dark:border-gray-600 border-gray-200 focus:outline-none focus:ring-1 focus:ring-sky-500 focus:border-sky-500',
+  errorInput: 'bg-red-50 border border-red-500 text-red-900 placeholder-red-700 text-xs rounded-md focus:ring-red-500 dark:bg-gray-800 focus:border-red-500 block w-full p-1.5 dark:text-red-500 dark:placeholder-red-500 dark:border-red-500 focus:outline-none',
+  textarea: 'bg-gray-50 border text-xs dark:text-gray-300 rounded-md block w-full p-1.5 dark:bg-gray-800 dark:placeholder-gray-400 dark:focus:ring-blue-500 dark:border-gray-600 border-gray-200 focus:outline-none focus:ring-1 focus:ring-sky-500 focus:border-sky-500',
+  codeEditor: 'bg-gray-50 p-2 border text-xs dark:border-gray-700 dark:text-gray-300 rounded-md block w-full dark:bg-gray-800 dark:placeholder-gray-400 dark:focus:ring-blue-500 focus:outline-none',
+  errorTextarea: 'bg-gray-50 border p-1.5 border-red-300 text-gray-900 text-xs rounded-md focus:ring-red-500 focus:border-red-500 block w-full dark:bg-gray-800 dark:border-red-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-red-500 dark:focus:border-red-500 focus:outline-none',
+  errorCodeEditor: 'bg-gray-50 border p-1 border-red-300 text-gray-900 text-xs rounded-md focus:ring-red-500 focus:border-red-500 block w-full dark:bg-gray-800 dark:border-red-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-red-500 dark:focus:border-red-500 focus:outline-none',
   checkbox: '',
-  checkboxInput: 'w-4 h-4 bg-gray-100 rounded-md',
+  checkboxInput: 'w-4 h-4 bg-gray-100 rounded-md focus:outline-none',
   radioboxLabel: 'text-xs text-gray-900 dark:text-gray-300',
   radiobox: 'inline-block pr-2',
-  radioboxInput: 'text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-800 dark:border-gray-600',
+  radioboxInput: 'text-blue-600 bg-gray-100 border-gray-200 focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-800 dark:border-gray-600 focus:outline-none',
   buttonGroup: '',
   title: 'block text-xs font-medium text-gray-900 dark:text-gray-300 text-left flex mb-0.5',
-  label: 'block text-xs font-medium text-gray-900 dark:text-gray-300 text-left whitespace-nowrap px-1',
-  description: 'block mb-1 px-1 text-xs font-thin font-light text-gray-900 dark:text-gray-300',
-  errorDescription: 'block mb-0.5 px-1 text-xs font-light text-red-900 dark:text-red-400',
-  select: 'bg-gray-50 border mx-1 text-xs rounded-md focus:ring-blue-500 block w-full p-1.5 dark:bg-gray-800 dark:placeholder-gray-400 dark:focus:ring-blue-500 dark:focus:border-blue-500',
-  selectError: 'bg-gray-50 border mx-1 text-xs rounded-md focus:ring-blue-500 block w-full p-1.5 dark:bg-gray-800 dark:placeholder-gray-400 dark:focus:ring-blue-500 dark:focus:border-blue-500',
+  label: 'block text-xs font-medium text-gray-900 dark:text-gray-300 text-left whitespace-nowrap',
+  description: 'block mb-1 text-xs font-thin font-light text-gray-500 dark:text-gray-400',
+  errorDescription: 'block mb-1 text-xs font-light text-red-900 dark:text-red-400',
+  select: 'appearance-none bg-gray-50 border text-xs rounded-md block w-full p-1.5 pr-8 dark:bg-gray-800 dark:placeholder-gray-400 dark:border-gray-600 border-gray-200 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-sky-500 focus:border-sky-500 bg-no-repeat bg-[length:16px_16px] bg-[position:right_0.5rem_center] bg-[url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 24 24\' stroke=\'%236b7280\'%3E%3Cpath stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'M19 9l-7 7-7-7\'/%3E%3C/svg%3E")]',
+  selectError: 'appearance-none bg-gray-50 border text-xs rounded-md block w-full p-1.5 pr-8 dark:bg-gray-800 dark:placeholder-gray-400 dark:border-gray-600 border-gray-200 focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500 bg-no-repeat bg-[length:16px_16px] bg-[position:right_0.5rem_center] bg-[url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 24 24\' stroke=\'%236b7280\'%3E%3Cpath stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'M19 9l-7 7-7-7\'/%3E%3C/svg%3E")]',
   expression: 'inline-block border-indigo-500 dark:border-indigo-900 text-xs focus:outline-none text-indigo-500 dark:text-indigo-500',
   staticText: 'border-gray-200 dark:focus:ring-blue-500 focus:ring-blue-500 focus:border-blue-500 dark:border-gray-600 dark:focus:border-blue-500 text-gray-900 dark:text-white'
 }
@@ -227,7 +234,10 @@ export const smallTheme = {
 export type Theme = typeof smallTheme
 
 export function getTheme(name: string | undefined | Theme): Theme {
-  if (name === 'lg') {
+  if (typeof name === 'object') {
+    return name
+  }
+  if (name === 'lg' || name === 'large') {
     return largeTheme as Theme
   }
   return smallTheme
@@ -538,6 +548,11 @@ export function isRequired(
   value: { [name: string]: ValueType } | undefined,
   schema: ObjectSchema,
   property: string) {
+  /**
+   * return true: required
+   * return undefined: optional
+   * return false: hidden
+   */
   if (required && required.some(r => r === property)) {
     return true
   }
@@ -549,7 +564,7 @@ export function isRequired(
       if (schema.properties[left]) {
         let valueLeft = value[left]
         // @ts-ignore
-        valueLeft = isObject(valueLeft) && valueLeft.hasOwnProperty("value") ?  valueLeft.value : valueLeft
+        valueLeft = isObject(valueLeft) && valueLeft.hasOwnProperty("value") ? valueLeft.value : valueLeft
 
         if (operator === '===' || operator === 'equal') {
           return valueLeft === right
@@ -570,7 +585,7 @@ export function isRequired(
       if (schema.properties[left]) {
         let valueLeft = value[left]
         // @ts-ignore
-        valueLeft = isObject(valueLeft) && valueLeft.hasOwnProperty("value") ?  valueLeft.value : valueLeft
+        valueLeft = isObject(valueLeft) && valueLeft.hasOwnProperty("value") ? valueLeft.value : valueLeft
 
         if (operator === '===' || operator === 'equal') {
           return valueLeft === right ? undefined : false
@@ -592,8 +607,8 @@ export function findTitle(value: { [name: string]: ValueType } | undefined, prop
     for (const { property, schema } of properties || []) {
       const title = value[property]
       if ((schema.type === 'number'
-          || schema.type === 'integer'
-          || schema.type === 'string')
+        || schema.type === 'integer'
+        || schema.type === 'string')
         && schema.enum && schema.enumTitles) {
         const index = (schema.enum as (string | number)[]).indexOf(title as string | number)
         if (index !== -1 && index < schema.enumTitles.length) {
@@ -639,7 +654,7 @@ function findTitleFromSchema(value: { [name: string]: ValueType } | undefined, s
  */
 export function getTitle(...titles: any[]) {
   for (const title of titles) {
-    if (title === undefined || title==null || title == "") {
+    if (title === undefined || title == null || title == "") {
       continue
     }
     return String(title)
@@ -649,7 +664,7 @@ export function getTitle(...titles: any[]) {
 
 export function compare(a: { property: string; schema: Schema }, b: { property: string; schema: Schema }) {
   //@ts-ignore
-  return a.schema.propertyOrder - b.schema.propertyOrder
+  return (a.schema.propertyOrder || 0) - (b.schema.propertyOrder || 0)
 }
 
 /**

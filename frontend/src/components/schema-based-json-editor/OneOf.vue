@@ -14,7 +14,8 @@
         :has-delete-button="hasDeleteButton"
         :disable-collapse="disableCollapse"
         :minItemCountIfNeedFilter="minItemCountIfNeedFilter"
-        @update-value="onChange">
+        @update-value="onChange"
+        @lookup="lookup">
       </editor>
     </div>
 </template>
@@ -24,7 +25,7 @@ import * as common from './common'
 import Editor from './Editor.vue'
 
 export default {
-  emits: ['update-value', 'delete'],
+  emits: ['update-value', 'delete', 'lookup'],
   components: {
     editor: Editor
   },
@@ -60,10 +61,23 @@ export default {
     disableCollapse: Boolean,
     minItemCountIfNeedFilter: Number
   },
+  data: () => {
+    return {
+    }
+  },
+  beforeMount() {
+  },
+  computed: {
+  },
   methods: {
+    lookup(data, schema, cb) {
+      this.$emit('lookup', data, schema, cb)
+    },
     onChange({ value, isValid }: common.ValidityValue<common.ValueType>) {
       this.$emit('update-value', { value, isValid})
     }
+  },
+  watch: {
   },
 }
 </script>
