@@ -1,18 +1,20 @@
 <script setup>
-import { ref, computed, watch, onMounted, nextTick } from 'vue'
+import { ref, nextTick } from 'vue'
 import { VueFlow, useVueFlow, MarkerType } from '@vue-flow/core'
 import { Background } from '@vue-flow/background'
-import { Controls } from '@vue-flow/controls'
+import { Controls, ControlButton } from '@vue-flow/controls'
 import { MiniMap } from '@vue-flow/minimap'
 import { useFlowStore } from '../../stores/flow'
+import { useLayout } from '../../composables/useLayout'
 import TinyNode from '../flow/TinyNode.vue'
 import TinyEdge from '../flow/TinyEdge.vue'
-import { PlusIcon } from '@heroicons/vue/24/outline'
+import { PlusIcon, ArrowPathIcon, Squares2X2Icon } from '@heroicons/vue/24/outline'
 import { debounce } from 'lodash'
 
 const emit = defineEmits(['error', 'add-node'])
 
 const flowStore = useFlowStore()
+const { layout } = useLayout()
 
 const {
   onConnect,
@@ -28,9 +30,50 @@ const {
 // Track dragged nodes for batch position update
 const draggedNodes = ref(new Map())
 
-// Computed elements from store
-const nodes = computed(() => flowStore.nodes)
-const edges = computed(() => flowStore.edges)
+// Handle keyboard deletion of nodes
+onNodesChange(async (changes) => {
+  const removals = changes.filter(c => c.type === 'remove')
+  for (const removal of removals) {
+    try {
+      await flowStore.deleteNode(removal.id)
+    } catch (err) {
+      emit('error', `Failed to delete node: ${err}`)
+    }
+  }
+})
+
+// Handle keyboard deletion of edges
+// Store edges before they're removed so we have source info for disconnection
+const edgeCache = ref(new Map())
+
+// Cache edges when selected (so we have info when they're deleted)
+const cacheSelectedEdges = () => {
+  flowStore.elements.filter(el => el.selected && el.source).forEach(edge => {
+    edgeCache.value.set(edge.id, { source: edge.source, id: edge.id })
+  })
+}
+
+onEdgesChange(async (changes) => {
+  // Cache current selected edges before processing removals
+  cacheSelectedEdges()
+
+  const removals = changes.filter(c => c.type === 'remove')
+  for (const removal of removals) {
+    try {
+      // Try to find edge in current elements first, then fall back to cache
+      let edge = flowStore.elements.find(el => el.id === removal.id)
+      if (!edge) {
+        edge = edgeCache.value.get(removal.id)
+      }
+      if (edge && edge.source) {
+        await flowStore.disconnectNodes(edge.source, edge.id || removal.id)
+        edgeCache.value.delete(removal.id)
+      }
+    } catch (err) {
+      emit('error', `Failed to delete edge: ${err}`)
+    }
+  }
+})
 
 // Default edge options - use very light gray to match preview
 const defaultEdgeOptions = {
@@ -111,7 +154,8 @@ onPaneReady(() => {
         zoom: flowStore.meta.zoom
       })
     } else {
-      fitView({ padding: 0.2 })
+      // Use lower default zoom (maxZoom limits how much fitView zooms in)
+      fitView({ padding: 0.3, maxZoom: 0.8 })
     }
   })
 })
@@ -167,6 +211,43 @@ const handleAddClick = () => {
   const y = (200 - viewport.y) / viewport.zoom
   emit('add-node', { x: Math.round(x), y: Math.round(y) })
 }
+
+// Handle rotate node
+const handleRotate = async () => {
+  if (!flowStore.selectedNode) return
+  try {
+    await flowStore.rotateNode(flowStore.selectedNode.id)
+  } catch (err) {
+    emit('error', `Failed to rotate node: ${err}`)
+  }
+}
+
+// Handle auto-layout
+const handleAutoLayout = async () => {
+  if (flowStore.nodes.length === 0) return
+
+  try {
+    // Apply dagre layout algorithm
+    const layoutedNodes = layout(flowStore.nodes, flowStore.edges, 'LR')
+
+    // Collect position updates
+    const positions = {}
+    layoutedNodes.forEach(node => {
+      positions[node.id] = { x: node.position.x, y: node.position.y }
+    })
+
+    // Batch update positions to backend
+    await flowStore.batchUpdateNodePositions(positions)
+
+    // Fit view after layout
+    nextTick(() => {
+      fitView({ padding: 0.3, maxZoom: 0.8 })
+    })
+  } catch (err) {
+    emit('error', `Failed to auto-layout: ${err}`)
+  }
+}
+
 </script>
 
 <template>
@@ -181,8 +262,7 @@ const handleAddClick = () => {
     </button>
 
     <VueFlow
-      :nodes="nodes"
-      :edges="edges"
+      v-model="flowStore.elements"
       :default-edge-options="defaultEdgeOptions"
       :connection-mode="'strict'"
       :snap-to-grid="true"
@@ -224,15 +304,29 @@ const handleAddClick = () => {
         :show-fit-view="true"
         :show-interactive="false"
         position="bottom-left"
-        class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg"
-      />
+      >
+        <template #top>
+          <ControlButton
+            title="Auto-arrange nodes"
+            @click="handleAutoLayout"
+          >
+            <Squares2X2Icon class="w-4 h-4" />
+          </ControlButton>
+          <ControlButton
+            v-if="flowStore.selectedNode"
+            title="Rotate node"
+            @click="handleRotate"
+          >
+            <ArrowPathIcon class="w-4 h-4" />
+          </ControlButton>
+        </template>
+      </Controls>
 
       <!-- MiniMap -->
       <MiniMap
         :pannable="true"
         :zoomable="true"
         position="bottom-right"
-        class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg"
       />
     </VueFlow>
   </div>
@@ -289,60 +383,76 @@ const handleAddClick = () => {
   stroke-width: 2px !important;
 }
 
-/* Dark mode overrides */
-.dark .vue-flow__minimap {
-  background-color: #333;
-}
+/* Dark mode overrides using prefers-color-scheme */
+@media (prefers-color-scheme: dark) {
+  /* MiniMap styles */
+  .vue-flow__minimap {
+    background-color: #333 !important;
+  }
 
-.dark .vue-flow__minimap rect {
-  fill: #222;
-}
+  .vue-flow__minimap svg {
+    background-color: #333 !important;
+  }
 
-.dark .vue-flow__minimap-mask {
-  fill: #111;
-}
+  .vue-flow__minimap-node {
+    fill: #666 !important;
+  }
 
-.dark .vue-flow__node {
-  background: #222;
-  border-color: #333;
-  border-width: 1px;
-  color: #aaa;
-}
+  .vue-flow__minimap-mask {
+    fill: #111 !important;
+  }
 
-.dark .vue-flow__node.selected {
-  background-color: #075985;
-  color: #fff;
-  border-color: #075985;
-}
+  /* Node styles */
+  .vue-flow__node {
+    background: #222 !important;
+    border-color: #333 !important;
+    border-width: 1px;
+    color: #aaa !important;
+  }
 
-.dark .vue-flow__background {
-  opacity: 0.3;
-}
+  .vue-flow__node.selected {
+    background-color: #075985 !important;
+    color: #fff !important;
+    border-color: #075985 !important;
+  }
 
-.dark .vue-flow__edge-path {
-  stroke: #4b5563 !important;
-}
+  /* Background */
+  .vue-flow__background {
+    opacity: 0.3;
+  }
 
-.dark .vue-flow__edge button {
-  color: #666;
-}
+  /* Edge styles */
+  .vue-flow__edge-path {
+    stroke: #555 !important;
+  }
 
-.dark .vue-flow__controls {
-  background: #1f2937;
-  border-color: #374151;
-}
+  .vue-flow__edge button {
+    color: #666 !important;
+  }
 
-.dark .vue-flow__controls-button {
-  background: #1f2937;
-  border-color: #374151;
-  color: #9ca3af;
-}
+  /* Controls styles */
+  .vue-flow__controls {
+    background-color: #333 !important;
+    border-color: #444 !important;
+  }
 
-.dark .vue-flow__controls-button:hover {
-  background: #374151;
-}
+  .vue-flow__controls-button {
+    background-color: #333 !important;
+    color: #ccc !important;
+    border-color: #444 !important;
+    fill: #ccc !important;
+  }
 
-.dark .vue-flow__controls-button:last-child {
-  border: none;
+  .vue-flow__controls-button svg {
+    fill: #ccc !important;
+  }
+
+  .vue-flow__controls-button:hover {
+    background-color: #555 !important;
+  }
+
+  .vue-flow__controls-button:hover svg {
+    fill: #fff !important;
+  }
 }
 </style>
