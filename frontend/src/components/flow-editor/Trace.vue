@@ -31,15 +31,6 @@ const traceData = ref(null)
 const error = ref('')
 const copied = ref(false)
 
-// Convert raw bytes string to hex
-const bytesToHex = (str) => {
-  if (!str) return ''
-  // If it's already hex-like (only hex chars), return as-is
-  if (/^[0-9a-fA-F]+$/.test(str)) return str
-  // Convert each character's code point to hex
-  return Array.from(str).map(c => c.charCodeAt(0).toString(16).padStart(2, '0')).join('')
-}
-
 const formattedTraceData = computed(() => {
   if (!traceData.value?.spans) return {}
 
@@ -47,7 +38,7 @@ const formattedTraceData = computed(() => {
     traceId: traceData.value.traceId,
     spans: traceData.value.spans.map((span) => ({
       name: span.name,
-      spanId: bytesToHex(span.span_id),
+      spanId: span.span_id,
       duration: span.end_time_unix_nano && span.start_time_unix_nano
         ? `${((span.end_time_unix_nano - span.start_time_unix_nano) / 1000000).toFixed(2)}ms`
         : null,
