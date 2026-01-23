@@ -65,6 +65,8 @@ export function InspectNodePort(arg1:string,arg2:string,arg3:string,arg4:string,
 
 export function OpenFile():Promise<string>;
 
+export function RefreshAuth():Promise<void>;
+
 export function RenameFlow(arg1:string,arg2:string,arg3:string,arg4:string):Promise<void>;
 
 export function RenameProject(arg1:string,arg2:string,arg3:string,arg4:string):Promise<void>;

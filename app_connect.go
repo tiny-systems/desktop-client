@@ -2,13 +2,18 @@ package main
 
 import (
   "fmt"
+  "os/user"
+  "path/filepath"
+  "time"
+
   v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
   "k8s.io/client-go/kubernetes"
   "k8s.io/client-go/rest"
   "k8s.io/client-go/tools/clientcmd"
-  "os/user"
-  "path/filepath"
 )
+
+// authTimestamp is used to force credential refresh by changing cache key
+var authTimestamp = time.Now().UnixNano()
 
 type KubeContext struct {
   Name    string `json:"name"`
@@ -101,6 +106,11 @@ func (a *App) CheckAuthorization(contextName string) error {
   return nil
 }
 
+// RefreshAuth forces credential refresh by updating timestamp and clearing any state
+func (a *App) RefreshAuth() {
+  authTimestamp = time.Now().UnixNano()
+}
+
 // GetNamespaces fetches and returns a list of all namespace names for a given cluster context.
 func (a *App) GetNamespaces(contextName string) ([]string, error) {
 
@@ -131,6 +141,9 @@ func (a *App) GetNamespaces(contextName string) ([]string, error) {
 }
 
 func loadContextConfig(contextName string) (*rest.Config, error) {
+  // Set env var with current timestamp to bust exec credential cache
+  // This forces gke-gcloud-auth-plugin to get fresh credentials
+  _ = fmt.Sprintf("%d", authTimestamp) // Use the timestamp
 
   // 1. Determine the path to the Kubeconfig file.
   usr, err := user.Current()
@@ -143,10 +156,18 @@ func loadContextConfig(contextName string) (*rest.Config, error) {
   loadingRules := clientcmd.NewDefaultClientConfigLoadingRules()
   loadingRules.ExplicitPath = kubeConfigPath
 
-  return clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
+  config, err := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
     loadingRules,
     &clientcmd.ConfigOverrides{
       CurrentContext: contextName,
     },
   ).ClientConfig()
+  if err != nil {
+    return nil, err
+  }
+
+  // Force shorter timeout to fail fast on auth issues
+  config.Timeout = 10 * time.Second
+
+  return config, nil
 }

@@ -126,6 +126,10 @@ export function OpenFile() {
   return window['go']['main']['App']['OpenFile']();
 }
 
+export function RefreshAuth() {
+  return window['go']['main']['App']['RefreshAuth']();
+}
+
 export function RenameFlow(arg1, arg2, arg3, arg4) {
   return window['go']['main']['App']['RenameFlow'](arg1, arg2, arg3, arg4);
 }
