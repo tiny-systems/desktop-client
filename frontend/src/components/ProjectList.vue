@@ -5,7 +5,7 @@
       <div class="px-4 py-3 flex items-center justify-between">
         <ContextSelector @select="onSelect" @contexts-loaded="onContextsLoaded" :ctx="ctx"/>
         <button
-          v-if="ctx"
+          v-if="ctx && statusClass !== 'error'"
           @click="showCreateDialog = true"
           class="flex items-center space-x-2 px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white rounded-lg text-sm font-medium transition-colors"
         >
@@ -226,11 +226,11 @@ const createProject = async () => {
     const newProject = await GoApp.CreateProject(ctx.value.name, ctx.value.ns, newProjectName.value.trim())
     // Add the new project to the list
     projects.value.push(newProject)
+    isCreating.value = false
     closeCreateDialog()
   } catch (error) {
     createError.value = `Failed to create project: ${error}`
     console.error('Error creating project:', error)
-  } finally {
     isCreating.value = false
   }
 }
