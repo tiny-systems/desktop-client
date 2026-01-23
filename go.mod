@@ -6,7 +6,7 @@ require (
 	github.com/evanphx/json-patch v5.9.11+incompatible
 	github.com/go-logr/logr v1.4.3
 	github.com/google/uuid v1.6.0
-	github.com/tiny-systems/module v0.1.252-0.20260123213111-a1b6512c8c85
+	github.com/tiny-systems/module v0.1.252
 	github.com/wailsapp/wails/v2 v2.11.0
 	gomodules.xyz/jsonpatch/v2 v2.5.0
 	k8s.io/apimachinery v0.34.1
