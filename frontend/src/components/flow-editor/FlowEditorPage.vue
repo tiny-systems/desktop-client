@@ -5,6 +5,7 @@ import ControlPanel from './ControlPanel.vue'
 import FlowCanvas from './FlowCanvas.vue'
 import FlowAddComponent from './FlowAddComponent.vue'
 import FlowImportModal from './FlowImportModal.vue'
+import FlowExportModal from './FlowExportModal.vue'
 import SidePanel from './SidePanel.vue'
 import Telemetry from './Telemetry.vue'
 import Trace from './Trace.vue'
@@ -26,8 +27,9 @@ const sidePanelOpen = ref(true)
 const showAddComponent = ref(false)
 const newNodePosition = ref({ x: 100, y: 100 })
 
-// Import modal state
+// Import/Export modal state
 const showImportModal = ref(false)
+const showExportModal = ref(false)
 
 // Auto-open side panel when something is selected
 const hasSelection = computed(() => flowStore.selectedNode || flowStore.selectedEdge)
@@ -160,18 +162,8 @@ const handleImport = () => {
 }
 
 // Handle export from ControlPanel
-const handleExport = async () => {
-  try {
-    const elements = flowStore.export()
-    const json = JSON.stringify(elements, null, 2)
-    const filename = `${flowStore.flowResourceName || 'flow'}.json`
-    const savedPath = await window.go.main.App.SaveFile(filename, json)
-    if (savedPath) {
-      console.log('Exported to:', savedPath)
-    }
-  } catch (err) {
-    handleError(`Failed to export: ${err}`)
-  }
+const handleExport = () => {
+  showExportModal.value = true
 }
 
 onMounted(() => {
@@ -251,6 +243,12 @@ watch(() => props.flowResourceName, () => {
           <!-- Import Modal -->
           <FlowImportModal
             v-model="showImportModal"
+            @error="handleError"
+          />
+
+          <!-- Export Modal -->
+          <FlowExportModal
+            v-model="showExportModal"
             @error="handleError"
           />
 
