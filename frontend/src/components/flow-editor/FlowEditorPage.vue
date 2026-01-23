@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useFlowStore } from '../../stores/flow'
+import { CreateTracker, DeleteTracker } from '../../../wailsjs/go/main/App'
 import ControlPanel from './ControlPanel.vue'
 import FlowCanvas from './FlowCanvas.vue'
 import FlowAddComponent from './FlowAddComponent.vue'
@@ -58,12 +59,24 @@ const loadFlow = async () => {
   try {
     await flowStore.load(props.ctx, props.ns, props.projectName, props.flowResourceName)
     await flowStore.startWatching()
+    // Create tracker for telemetry collection
+    try {
+      await CreateTracker(props.ctx, props.ns, props.projectName)
+    } catch (e) {
+      console.warn('Failed to create tracker:', e)
+    }
   } catch (err) {
     error.value = `Failed to load flow: ${err}`
   }
 }
 
-const handleClose = () => {
+const handleClose = async () => {
+  // Delete tracker when leaving flow
+  try {
+    await DeleteTracker(props.ctx, props.ns)
+  } catch (e) {
+    console.warn('Failed to delete tracker:', e)
+  }
   flowStore.stopWatching()
   flowStore.clean()
   emit('close')
@@ -171,12 +184,22 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  // Clean up tracker when component unmounts
+  DeleteTracker(props.ctx, props.ns).catch(e => {
+    console.warn('Failed to delete tracker on unmount:', e)
+  })
   flowStore.stopWatching()
   flowStore.clean()
 })
 
 // Reload when flow changes
-watch(() => props.flowResourceName, () => {
+watch(() => props.flowResourceName, async () => {
+  // Delete tracker for old flow
+  try {
+    await DeleteTracker(props.ctx, props.ns)
+  } catch (e) {
+    console.warn('Failed to delete tracker on flow change:', e)
+  }
   flowStore.clean()
   loadFlow()
 })

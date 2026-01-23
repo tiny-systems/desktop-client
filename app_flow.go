@@ -64,6 +64,10 @@ type NodePosition struct {
 var (
 	flowWatchMu     sync.Mutex
 	flowWatchCancel context.CancelFunc
+
+	// currentTracker stores the active tracker for cleanup
+	currentTrackerMu   sync.Mutex
+	currentTrackerName string
 )
 
 
@@ -1139,4 +1143,66 @@ func (a *App) ApplyTraceToFlow(contextName, namespace, projectName, flowResource
 	}
 
 	return response, nil
+}
+
+// CreateTracker creates a TinyTracker resource for the current project/flow session.
+// This enables telemetry collection while the user is viewing the flow.
+func (a *App) CreateTracker(contextName, namespace, projectName string) error {
+	currentTrackerMu.Lock()
+	defer currentTrackerMu.Unlock()
+
+	// Delete existing tracker first if any
+	if currentTrackerName != "" {
+		a.deleteTrackerInternal(contextName, namespace)
+	}
+
+	mgr, err := a.getManager(contextName, namespace)
+	if err != nil {
+		return err
+	}
+
+	tracker, err := mgr.PutTracker(a.ctx, namespace, projectName)
+	if err != nil {
+		return fmt.Errorf("create tracker: %w", err)
+	}
+
+	currentTrackerName = tracker.Name
+	a.logger.Info("Created tracker", "name", tracker.Name, "project", projectName)
+	return nil
+}
+
+// DeleteTracker removes the current TinyTracker resource when leaving a flow/project.
+func (a *App) DeleteTracker(contextName, namespace string) error {
+	currentTrackerMu.Lock()
+	defer currentTrackerMu.Unlock()
+
+	return a.deleteTrackerInternal(contextName, namespace)
+}
+
+// deleteTrackerInternal deletes the tracker without locking (caller must hold lock)
+func (a *App) deleteTrackerInternal(contextName, namespace string) error {
+	if currentTrackerName == "" {
+		return nil
+	}
+
+	mgr, err := a.getManager(contextName, namespace)
+	if err != nil {
+		return err
+	}
+
+	tracker := &v1alpha1.TinyTracker{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      currentTrackerName,
+			Namespace: namespace,
+		},
+	}
+
+	if err := mgr.DeleteTracker(a.ctx, tracker); err != nil {
+		a.logger.Error(err, "Failed to delete tracker", "name", currentTrackerName)
+		return fmt.Errorf("delete tracker: %w", err)
+	}
+
+	a.logger.Info("Deleted tracker", "name", currentTrackerName)
+	currentTrackerName = ""
+	return nil
 }

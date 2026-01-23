@@ -21,11 +21,15 @@ export function CreateFlow(arg1:string,arg2:string,arg3:string,arg4:string):Prom
 
 export function CreateProject(arg1:string,arg2:string,arg3:string):Promise<main.Project>;
 
+export function CreateTracker(arg1:string,arg2:string,arg3:string):Promise<void>;
+
 export function DeleteDashboardPage(arg1:string,arg2:string,arg3:string):Promise<void>;
 
 export function DeleteNode(arg1:string,arg2:string,arg3:string):Promise<void>;
 
 export function DeleteProject(arg1:string,arg2:string,arg3:string):Promise<void>;
+
+export function DeleteTracker(arg1:string,arg2:string):Promise<void>;
 
 export function DisconnectNodes(arg1:string,arg2:string,arg3:string,arg4:string):Promise<void>;
 
