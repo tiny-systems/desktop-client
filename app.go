@@ -163,3 +163,27 @@ func (a *App) SaveFile(defaultFilename, content string) (string, error) {
 
 	return filepath, nil
 }
+
+// OpenFile opens a file dialog and returns the file content
+func (a *App) OpenFile() (string, error) {
+	filepath, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
+		Filters: []runtime.FileFilter{
+			{DisplayName: "JSON Files", Pattern: "*.json"},
+			{DisplayName: "All Files", Pattern: "*"},
+		},
+	})
+	if err != nil {
+		return "", err
+	}
+	if filepath == "" {
+		// User cancelled
+		return "", nil
+	}
+
+	data, err := os.ReadFile(filepath)
+	if err != nil {
+		return "", err
+	}
+
+	return string(data), nil
+}

@@ -32,56 +32,81 @@ const importFlow = async () => {
     emit('error', parseError.value)
   }
 }
+
+const importFromFile = async () => {
+  parseError.value = ''
+  try {
+    const content = await window.go.main.App.OpenFile()
+    if (content) {
+      importFlowJSON.value = content
+    }
+  } catch (e) {
+    parseError.value = e.message || 'Failed to open file'
+  }
+}
 </script>
 
 <template>
   <div
     v-if="modelValue"
-    class="fixed inset-0 z-50 flex items-center justify-center p-4"
+    class="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 md:p-20"
     @keydown.escape="closeModal"
   >
     <!-- Backdrop -->
     <div
-      class="fixed inset-0 bg-gray-500/25 dark:bg-black/75 backdrop-blur-sm"
+      class="fixed inset-0 bg-gray-500 bg-opacity-25 dark:bg-black dark:bg-opacity-75 backdrop-blur-sm"
       @click="closeModal"
     ></div>
 
     <!-- Modal -->
-    <div class="relative bg-white dark:bg-gray-900 dark:border dark:border-gray-700 rounded-lg shadow-xl w-full max-w-3xl p-4">
-      <h3 class="text-base font-semibold text-gray-900 dark:text-gray-100 mb-3 text-center">
+    <div class="relative transform rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 p-1 w-full max-w-3xl mx-auto dark:bg-black dark:border dark:border-gray-800 dark:text-gray-300">
+      <h3 class="text-center sm:mt-3 font-medium text-gray-900 dark:text-gray-100">
         Import Flow JSON
       </h3>
 
       <!-- Textarea -->
-      <div class="mb-3">
+      <div class="h-full">
         <textarea
           v-model="importFlowJSON"
           placeholder="Paste flow JSON here..."
-          class="w-full h-56 px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:ring-1 focus:ring-sky-500 focus:border-sky-500 font-mono"
+          class="mt-1 border-sky-600 h-56 max-w-full placeholder-gray-400 focus:ring-sky-600 appearance-none border rounded w-full py-3 px-3 text-gray-700 leading-tight transition duration-150 ease-in-out sm:text-sm sm:leading-5 dark:bg-gray-900 dark:text-gray-300"
           autofocus
         ></textarea>
       </div>
 
       <!-- Error message -->
-      <div v-if="parseError" class="mb-3 text-sm text-red-500">
+      <div v-if="parseError" class="text-red-500 text-sm py-2 px-1">
         {{ parseError }}
       </div>
 
       <!-- Buttons -->
-      <div class="flex justify-end gap-2">
+      <div class="flex justify-between p-3">
+        <!-- Import from file button -->
         <button
-          @click="closeModal"
-          class="px-3 py-2 text-xs font-medium text-gray-700 dark:text-gray-300 border border-gray-600 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800"
+          @click="importFromFile"
+          type="button"
+          class="text-gray-500 bg-white hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-gray-200 rounded-md border border-gray-200 text-sm font-medium px-3 py-1 hover:text-gray-900 focus:z-10 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-500 dark:hover:text-white dark:hover:bg-gray-600 dark:focus:ring-gray-600"
         >
-          Cancel
+          Import File...
         </button>
-        <button
-          @click="importFlow"
-          :disabled="!importFlowJSON.trim() || flowStore.loading"
-          class="px-3 py-2 text-xs font-medium text-white bg-sky-600 rounded-md hover:bg-sky-700 disabled:opacity-50"
-        >
-          {{ flowStore.loading ? 'Importing...' : 'Import' }}
-        </button>
+
+        <div class="flex gap-2">
+          <button
+            @click="closeModal"
+            type="button"
+            class="text-gray-500 bg-white hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-gray-200 rounded-md border border-gray-200 text-sm font-medium px-3 py-1 hover:text-gray-900 focus:z-10 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-500 dark:hover:text-white dark:hover:bg-gray-600 dark:focus:ring-gray-600"
+          >
+            Cancel
+          </button>
+          <button
+            @click="importFlow"
+            type="button"
+            :disabled="!importFlowJSON.trim() || flowStore.loading"
+            class="text-gray-500 bg-white hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-gray-200 rounded-md border border-gray-200 text-sm font-medium px-3 py-1 hover:text-gray-900 focus:z-10 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-500 dark:hover:text-white dark:hover:bg-gray-600 dark:focus:ring-gray-600 disabled:opacity-50"
+          >
+            {{ flowStore.loading ? 'Importing...' : 'Import' }}
+          </button>
+        </div>
       </div>
     </div>
   </div>
