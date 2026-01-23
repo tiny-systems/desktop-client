@@ -1,9 +1,18 @@
 <script setup>
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
-import { useFlowStore } from '../../stores/flow'
-import { ChevronUpIcon, ChevronDownIcon } from '@heroicons/vue/24/outline'
+import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { ChevronUpIcon, ChevronDownIcon, ExclamationTriangleIcon, ArrowPathIcon } from '@heroicons/vue/24/outline'
+import { EventsOn } from '../../../wailsjs/runtime/runtime'
+import { GetTraces } from '../../../wailsjs/go/main/App'
 
 const props = defineProps({
+  ctx: {
+    type: String,
+    required: true
+  },
+  ns: {
+    type: String,
+    required: true
+  },
   flowName: {
     type: String,
     required: true
@@ -16,45 +25,111 @@ const props = defineProps({
 
 const emit = defineEmits(['trace'])
 
-const flowStore = useFlowStore()
 const collapsed = ref(false)
 const selectedTraceId = ref(null)
+const telemetryError = ref(null)
+const loading = ref(false)
+const initialLoadDone = ref(false)
+const traces = ref([])
 
-// Extract trace data from edges in the flow
-const traces = computed(() => {
-  const traceMap = new Map()
+// Store the callback reference so we can remove only our listener
+let errorEventCallback = null
+let refreshTimeout = null
 
-  // Collect trace data from edges
-  for (const element of flowStore.elements) {
-    if (element.type === 'tinyEdge' && element.data?.trace) {
-      const trace = element.data.trace
-      if (trace.traceID) {
-        if (!traceMap.has(trace.traceID)) {
-          traceMap.set(trace.traceID, {
-            id: trace.traceID,
-            start: trace.start || Date.now(),
-            end: trace.end || Date.now(),
-            duration: trace.latency || 0,
-            spans: 1,
-            errors: trace.error ? 1 : 0,
-            length: trace.dataSize || 0
-          })
-        } else {
-          const existing = traceMap.get(trace.traceID)
-          existing.spans++
-          existing.duration = Math.max(existing.duration, trace.latency || 0)
-          if (trace.error) existing.errors++
-          existing.length += trace.dataSize || 0
-        }
-      }
-    }
+// Load traces from the backend
+const loadTraces = async () => {
+  if (!props.ctx || !props.ns || !props.projectName || !props.flowName) {
+    return
   }
 
-  // Convert to array and sort by start time descending
-  return Array.from(traceMap.values()).sort((a, b) => b.start - a.start).slice(0, 50)
+  loading.value = true
+  try {
+    const response = await GetTraces(
+      props.ctx,
+      props.ns,
+      props.projectName,
+      props.flowName,
+      0, // start - 0 means use default (last 15 minutes)
+      0, // end - 0 means use default (now)
+      0  // offset
+    )
+
+    if (response && response.traces) {
+      traces.value = response.traces.map(t => ({
+        id: t.id,
+        spans: t.spans,
+        errors: t.errors,
+        data: t.data,
+        length: t.length,
+        duration: t.duration,
+        start: t.start,
+        end: t.end
+      }))
+    } else {
+      traces.value = []
+    }
+    telemetryError.value = null
+  } catch (err) {
+    console.error('Failed to load traces:', err)
+    telemetryError.value = `Failed to load traces: ${err}`
+  } finally {
+    loading.value = false
+    initialLoadDone.value = true
+  }
+}
+
+// Debounced reload to avoid too many API calls
+const scheduleReload = () => {
+  if (refreshTimeout) {
+    clearTimeout(refreshTimeout)
+  }
+  refreshTimeout = setTimeout(() => {
+    loadTraces()
+  }, 500) // Reload after 500ms of inactivity for responsive real-time updates
+}
+
+// Listen for flow events to trigger trace reload
+onMounted(() => {
+  errorEventCallback = (event) => {
+    if (event?.type === 'ERROR' && event?.id) {
+      telemetryError.value = event.id
+    }
+    // Schedule reload when we get stats updates (indicates flow activity)
+    if (event?.type === 'STATS' || event?.type === 'MODIFIED' || event?.type === 'ADDED') {
+      scheduleReload()
+    }
+  }
+  EventsOn('flowNodeUpdate', errorEventCallback)
+
+  // Initial load
+  loadTraces()
 })
 
-const hasData = computed(() => traces.value.length > 0)
+onUnmounted(() => {
+  errorEventCallback = null
+  if (refreshTimeout) {
+    clearTimeout(refreshTimeout)
+  }
+})
+
+// Reload when flow changes
+watch(
+  () => [props.ctx, props.ns, props.projectName, props.flowName],
+  () => {
+    initialLoadDone.value = false
+    traces.value = []
+    loadTraces()
+  }
+)
+
+const clearError = () => {
+  telemetryError.value = null
+}
+
+const hasData = ref(false)
+watch(traces, (newTraces) => {
+  hasData.value = newTraces.length > 0
+}, { immediate: true })
 
 // Format duration from nanoseconds to readable string
 const formatDuration = (ns) => {
@@ -65,10 +140,12 @@ const formatDuration = (ns) => {
   return `${(ms / 1000).toFixed(2)}s`
 }
 
-// Format time from timestamp
+// Format time from microseconds timestamp (proto uses microseconds)
 const formatTime = (timestamp) => {
   if (!timestamp) return '-'
-  const date = new Date(timestamp)
+  // Timestamp is in microseconds, convert to milliseconds
+  const ms = timestamp / 1000
+  const date = new Date(ms)
   const opts = {
     year: 'numeric',
     month: 'numeric',
@@ -81,11 +158,13 @@ const formatTime = (timestamp) => {
   return new Intl.DateTimeFormat('default', opts).format(date)
 }
 
-// Format relative time
+// Format relative time from microseconds
 const formatRelativeTime = (timestamp) => {
   if (!timestamp) return '-'
+  // Timestamp is in microseconds, convert to milliseconds
+  const ms = timestamp / 1000
   const now = Date.now()
-  const diff = now - timestamp
+  const diff = now - ms
 
   if (diff < 1000) return 'just now'
   if (diff < 60000) return `${Math.floor(diff / 1000)}s ago`
@@ -102,13 +181,17 @@ const selectTrace = (trace) => {
 const toggleCollapsed = () => {
   collapsed.value = !collapsed.value
 }
+
+const refresh = () => {
+  loadTraces()
+}
 </script>
 
 <template>
   <div
     :class="[
       'w-full border-t border-gray-200 dark:border-gray-700 text-sm relative bg-white dark:bg-gray-900',
-      hasData && !collapsed ? 'min-h-48 h-1/4' : ''
+      !collapsed ? 'min-h-64 h-1/4' : ''
     ]"
   >
     <!-- Header with collapse toggle -->
@@ -122,17 +205,49 @@ const toggleCollapsed = () => {
           ({{ traces.length }} traces)
         </span>
       </span>
-      <button class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
-        <ChevronDownIcon v-if="collapsed" class="w-4 h-4" />
-        <ChevronUpIcon v-else class="w-4 h-4" />
-      </button>
+      <div class="flex items-center gap-2">
+        <button
+          @click.stop="refresh"
+          class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-0.5"
+          :class="{ 'animate-spin': loading }"
+          title="Refresh traces"
+        >
+          <ArrowPathIcon class="w-4 h-4" />
+        </button>
+        <button class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+          <ChevronDownIcon v-if="collapsed" class="w-4 h-4" />
+          <ChevronUpIcon v-else class="w-4 h-4" />
+        </button>
+      </div>
     </div>
 
     <!-- Content -->
-    <div v-if="!collapsed" class="h-full overflow-hidden">
+    <div v-if="!collapsed" class="h-full overflow-hidden relative">
+      <!-- Error Overlay -->
+      <div
+        v-if="telemetryError"
+        class="absolute inset-0 z-10 flex items-center justify-center bg-gray-900/60 backdrop-blur-sm"
+      >
+        <div class="flex flex-col items-center gap-2 p-4 max-w-md text-center">
+          <ExclamationTriangleIcon class="w-8 h-8 text-amber-500" />
+          <p class="text-sm text-white font-medium">{{ telemetryError }}</p>
+          <button
+            @click="clearError"
+            class="mt-2 px-3 py-1 text-xs text-white bg-gray-700 hover:bg-gray-600 rounded transition-colors"
+          >
+            Dismiss
+          </button>
+        </div>
+      </div>
+
       <div class="h-full dark:text-gray-300">
-        <!-- No data message -->
-        <div v-if="!hasData" class="text-center p-4 text-xs font-mono text-gray-500 dark:text-gray-400">
+        <!-- Loading state - only show before initial load completes -->
+        <div v-if="!initialLoadDone && loading" class="text-center p-4 text-xs font-mono text-gray-500 dark:text-gray-400">
+          Loading traces...
+        </div>
+
+        <!-- No data message - only show after initial load -->
+        <div v-else-if="initialLoadDone && !hasData" class="text-center p-4 text-xs font-mono text-gray-500 dark:text-gray-400">
           No telemetry data available. Traces will appear here when flows are executed.
         </div>
 
@@ -161,8 +276,8 @@ const toggleCollapsed = () => {
                 @click="selectTrace(trace)"
               >
                 <td class="px-2 py-1">
-                  <span class="text-gray-700 dark:text-gray-300 truncate max-w-24 block" :title="trace.id">
-                    {{ trace.id.slice(0, 8) }}...
+                  <span class="text-gray-700 dark:text-gray-300">
+                    {{ trace.id }}
                   </span>
                 </td>
                 <td class="px-2 py-1 text-gray-600 dark:text-gray-400">

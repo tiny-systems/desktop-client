@@ -238,18 +238,24 @@ onMounted(() => {
       </div>
 
       <!-- Status message -->
-      <div v-if="!isAuthorized && (isConnecting || statusMessage)" class="flex items-center flex-shrink min-w-0">
-        <div v-if="isConnecting" class="flex items-center space-x-2 text-sm text-sky-600 dark:text-sky-400 whitespace-nowrap">
+      <div v-if="!isAuthorized && (isConnecting || statusMessage)" class="flex items-center gap-2 flex-1 min-w-0">
+        <div v-if="isConnecting" class="flex items-center space-x-2 text-sm text-sky-600 dark:text-sky-400">
           <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-sky-500 flex-shrink-0"></div>
-          <span class="truncate">{{ statusMessage }}</span>
+          <span>{{ statusMessage }}</span>
         </div>
-        <div v-else-if="statusClass === 'error'" class="flex items-center space-x-2 px-3 py-1.5 bg-red-50 dark:bg-red-900/20 rounded-lg whitespace-nowrap">
+        <div v-else-if="statusClass === 'error'" class="flex items-center gap-2 px-3 py-1.5 bg-red-50 dark:bg-red-900/20 rounded-lg">
           <svg class="w-4 h-4 text-red-500 dark:text-red-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
           </svg>
-          <span class="text-sm text-red-600 dark:text-red-400 truncate">{{ statusMessage }}</span>
+          <span class="text-sm text-red-600 dark:text-red-400">{{ statusMessage }}</span>
+          <button
+            @click="checkAuthorization(selectedContextName)"
+            class="flex-shrink-0 px-2 py-0.5 text-xs font-medium text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 border border-red-300 dark:border-red-600 rounded hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
+          >
+            Retry
+          </button>
         </div>
-        <div v-else-if="statusMessage" class="text-sm text-gray-500 dark:text-gray-400 truncate">
+        <div v-else-if="statusMessage" class="text-sm text-gray-500 dark:text-gray-400">
           {{ statusMessage }}
         </div>
       </div>

@@ -7,6 +7,7 @@ import {
   ComboboxOptions,
   ComboboxOption,
   Dialog,
+  DialogOverlay,
   TransitionChild,
   TransitionRoot,
 } from '@headlessui/vue'
@@ -122,8 +123,8 @@ const closeModal = () => {
 
 <template>
   <TransitionRoot :show="open" as="template" @after-leave="query = ''">
-    <Dialog as="div" class="relative z-50" @close="closeModal">
-      <!-- Backdrop - click to close -->
+    <Dialog as="div" class="fixed inset-0 z-50 overflow-y-auto p-4 sm:p-6 md:p-20" @close="open = false">
+      <!-- Backdrop overlay -->
       <TransitionChild
         as="template"
         enter="ease-out duration-300"
@@ -133,23 +134,23 @@ const closeModal = () => {
         leave-from="opacity-100"
         leave-to="opacity-0"
       >
-        <div class="fixed inset-0 bg-gray-500/25 dark:bg-black/75 backdrop-blur-sm" @click="closeModal" />
+        <DialogOverlay class="fixed inset-0 bg-gray-500/25 dark:bg-black/75 backdrop-blur-sm transition-opacity" />
       </TransitionChild>
 
-      <!-- Dialog container - click outside content to close -->
-      <div class="fixed inset-0 overflow-y-auto p-4 sm:p-6 md:p-20" @click.self="closeModal">
-        <TransitionChild
-          as="template"
-          enter="ease-out duration-300"
-          enter-from="opacity-0 scale-95"
-          enter-to="opacity-100 scale-100"
-          leave="ease-in duration-200"
-          leave-from="opacity-100 scale-100"
-          leave-to="opacity-0 scale-95"
-        >
-          <Combobox
+      <!-- Dialog content -->
+      <TransitionChild
+        v-if="open"
+        as="template"
+        enter="ease-out duration-300"
+        enter-from="opacity-0 scale-95"
+        enter-to="opacity-100 scale-100"
+        leave="ease-in duration-200"
+        leave-from="opacity-100 scale-100"
+        leave-to="opacity-0 scale-95"
+      >
+        <Combobox
           as="div"
-          class="mx-auto max-w-4xl transform overflow-hidden rounded-xl bg-white dark:bg-gray-900 shadow-2xl ring-1 ring-black/5 dark:ring-white/10 transition-all"
+          class="relative z-10 mx-auto max-w-4xl transform overflow-hidden rounded-xl bg-white dark:bg-gray-900 shadow-2xl ring-1 ring-black/5 dark:ring-white/10 transition-all"
           @update:model-value="createInstance"
         >
           <!-- Search input -->
@@ -274,8 +275,7 @@ const closeModal = () => {
             </div>
           </div>
         </Combobox>
-        </TransitionChild>
-      </div>
+      </TransitionChild>
     </Dialog>
   </TransitionRoot>
 </template>

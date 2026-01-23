@@ -90,6 +90,7 @@ import type {PropType} from 'vue'
 import * as common from './common'
 import Optional from './Optional.vue'
 import Description from './Description.vue'
+import JsonSchemaEditor from './JsonSchemaEditor.vue'
 import {
   XCircleIcon,
   XMarkIcon,
@@ -315,6 +316,7 @@ export default {
     Popover, PopoverPanel, PopoverButton,
     Optional,
     Description,
+    JsonSchemaEditor,
   }
 }
 </script>

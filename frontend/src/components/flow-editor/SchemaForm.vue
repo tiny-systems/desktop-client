@@ -23,13 +23,26 @@ const props = defineProps({
   noBorder: {
     type: Boolean,
     default: true
+  },
+  allowLookup: {
+    type: Boolean,
+    default: false
+  },
+  allowEditSchema: {
+    type: Boolean,
+    default: false
   }
 })
 
-const emit = defineEmits(['update:modelValue', 'action'])
+const emit = defineEmits(['update:modelValue', 'action', 'lookup'])
 
 // Get theme object
 const themeObj = computed(() => common.getTheme(props.theme))
+
+// Handle lookup event from editor
+const handleLookup = (...args) => {
+  emit('lookup', ...args)
+}
 
 // Get locale object
 const locale = computed(() => common.defaultLocale)
@@ -65,7 +78,10 @@ const handleUpdateValue = (event) => {
       :required="true"
       :no-border="noBorder"
       :plain-struct="true"
+      :allow-lookup="allowLookup"
+      :allow-edit-schema="allowEditSchema"
       @update-value="handleUpdateValue"
+      @lookup="handleLookup"
     />
     <div v-else class="text-center py-4 text-gray-500 dark:text-gray-400 text-sm">
       No configurable properties

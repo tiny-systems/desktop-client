@@ -201,17 +201,7 @@ func (a *App) getManager(contextName string, namespace string) (*resource.Manage
 		return nil, err
 	}
 
-	scheme := runtime.NewScheme()
-	if err := v1alpha1.AddToScheme(scheme); err != nil {
-		return nil, fmt.Errorf("failed to add scheme: %w", err)
-	}
-
-	kubeClient, err := client.NewWithWatch(config, client.Options{Scheme: scheme})
-	if err != nil {
-		return nil, fmt.Errorf("unable to create client: %w", err)
-	}
-
-	return resource.NewManagerFromClient(kubeClient, namespace)
+	return resource.NewManagerFromConfig(config, namespace)
 }
 
 // GetProjectDetails fetches complete project information
@@ -746,21 +736,7 @@ func (a *App) RenameProject(contextName string, namespace string, projectName st
 		return err
 	}
 
-	project, err := mgr.GetProject(a.ctx, projectName, namespace)
-	if err != nil {
-		return fmt.Errorf("failed to get project: %w", err)
-	}
-
-	if project.Annotations == nil {
-		project.Annotations = make(map[string]string)
-	}
-	project.Annotations[v1alpha1.ProjectNameAnnotation] = newName
-
-	if err := mgr.GetK8sClient().Update(a.ctx, project); err != nil {
-		return fmt.Errorf("failed to rename project: %w", err)
-	}
-
-	return nil
+	return mgr.RenameProject(a.ctx, projectName, namespace, newName)
 }
 
 // CreateDashboardPage creates a new dashboard page for a project

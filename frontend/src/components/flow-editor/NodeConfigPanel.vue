@@ -19,6 +19,9 @@ const settingsHandle = computed(() => {
   return handles.find(h => h.id === '_settings')
 })
 
+// Node error from status
+const nodeError = computed(() => props.node?.data?.error || null)
+
 // Configuration and schema
 const configuration = computed(() => {
   if (!settingsHandle.value) return '{}'
@@ -141,6 +144,21 @@ const formatJson = () => {
         @change="handleEditorChange"
         class="h-full"
       />
+    </div>
+
+    <!-- Validation errors -->
+    <div v-if="nodeError" class="px-4 py-3 border-t border-gray-200 dark:border-gray-700">
+      <div class="text-sm font-medium text-red-500 mb-2">Server validation errors:</div>
+      <div class="text-sm text-red-400">
+        {{ nodeError }}
+      </div>
+    </div>
+
+    <!-- Warning message -->
+    <div class="px-4 py-3 border-t border-gray-200 dark:border-gray-700">
+      <p class="text-sm text-orange-400">
+        Do not store sensitive information if you plan sharing your project as a solution.
+      </p>
     </div>
 
     <!-- Schema info -->

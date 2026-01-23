@@ -17,6 +17,18 @@ const edgeSource = computed(() => props.edge?.source || '')
 const edgeSourceHandle = computed(() => props.edge?.sourceHandle || '')
 const edgeTarget = computed(() => props.edge?.target || '')
 const edgeTargetHandle = computed(() => props.edge?.targetHandle || '')
+
+// Validation errors from edge data
+const validationError = computed(() => props.edge?.data?.error || null)
+const validationErrors = computed(() => {
+  const errors = props.edge?.data?.errors
+  if (!errors || typeof errors !== 'object') return []
+  return Object.entries(errors).map(([path, message]) => ({
+    path,
+    message
+  }))
+})
+const isValid = computed(() => props.edge?.data?.valid !== false)
 const targetTo = computed(() => `${edgeTarget.value}:${edgeTargetHandle.value}`)
 
 // Configuration from edge data or target handle
@@ -165,6 +177,26 @@ const formatJson = () => {
         @change="handleEditorChange"
         class="h-full"
       />
+    </div>
+
+    <!-- Validation errors -->
+    <div v-if="!isValid && (validationError || validationErrors.length > 0)" class="px-4 py-3 border-t border-gray-200 dark:border-gray-700">
+      <div class="text-sm font-medium text-red-500 mb-2">Server validation errors:</div>
+      <div v-if="validationErrors.length > 0" class="space-y-1">
+        <div v-for="err in validationErrors" :key="err.path" class="text-sm text-red-400">
+          <span class="font-mono">{{ err.path }}</span>&nbsp;&nbsp;{{ err.message }}
+        </div>
+      </div>
+      <div v-else-if="validationError" class="text-sm text-red-400">
+        {{ validationError }}
+      </div>
+    </div>
+
+    <!-- Warning message -->
+    <div class="px-4 py-3 border-t border-gray-200 dark:border-gray-700">
+      <p class="text-sm text-orange-400">
+        Do not store sensitive information if you plan sharing your project as a solution.
+      </p>
     </div>
 
     <!-- Schema info -->

@@ -41,7 +41,17 @@
       "Bash(GOROOT=/opt/homebrew/opt/go/libexec /opt/homebrew/bin/go version:*)",
       "Bash(GOROOT=/opt/homebrew/opt/go/libexec /opt/homebrew/bin/go build:*)",
       "Bash(for file in /Users/mtrofimenko/Work/Current/tiny-systems/platform/manager/services/grpc-api/flow/*.go)",
-      "Bash(done)"
+      "Bash(done)",
+      "Bash(export GOROOT=/opt/homebrew/opt/go/libexec)",
+      "Bash(export PATH=$GOROOT/bin:$PATH)",
+      "Bash(wails generate:*)",
+      "Bash(go generate:*)",
+      "Bash(GOROOT=/opt/homebrew/opt/go/libexec /opt/homebrew/bin/go generate:*)",
+      "Bash(export PATH=\"/opt/homebrew/bin:$PATH\":*)",
+      "Bash(export PATH=\"$GOROOT/bin:/opt/homebrew/bin:$PATH\")",
+      "Bash(npm run type-check:*)",
+      "Bash(npm run:*)",
+      "Bash(/opt/homebrew/bin/go version)"
     ]
   }
 }

@@ -26,13 +26,16 @@ import {
 import VueJsonPretty from 'vue-json-pretty'
 import 'vue-json-pretty/lib/styles.css'
 import SchemaForm from './SchemaForm.vue'
+import FlowDataLookupModal from './FlowDataLookupModal.vue'
+import ConfirmDialog from './ConfirmDialog.vue'
 
 const emit = defineEmits(['close', 'error', 'rename', 'settings', 'delete'])
 
-// Dynamic width class for side panel - half screen width
-const panelWidthClass = 'w-1/2'
-
 const flowStore = useFlowStore()
+
+// Dynamic width class for side panel
+const hasSelection = computed(() => flowStore.selectedNode || flowStore.selectedEdge || flowStore.selectedNodes.length > 0)
+const panelWidthClass = computed(() => hasSelection.value ? 'w-1/2' : 'w-1/5 min-w-[300px]')
 
 // Tab state
 const statusTab = ref({ id: 'status', name: '', current: true })
@@ -143,8 +146,8 @@ const settingsConfiguration = computed(() => {
   return typeof config === 'string' ? config : JSON.stringify(config, null, 2)
 })
 
-// Settings schema for the form
-const settingsSchema = computed(() => {
+// Helper to parse schema from handle
+const parseSchemaFromHandle = () => {
   if (!settingsHandle.value?.schema) return null
   const schema = settingsHandle.value.schema
   if (typeof schema === 'string') {
@@ -154,8 +157,20 @@ const settingsSchema = computed(() => {
       return null
     }
   }
-  return schema
-})
+  // Deep clone to avoid mutating the original
+  return JSON.parse(JSON.stringify(schema))
+}
+
+// Editable settings schema (local copy that can be mutated by the form)
+const editableSchema = ref(null)
+
+// Settings schema for the form - uses the editable local copy
+const settingsSchema = computed(() => editableSchema.value)
+
+// Watch for schema changes from the handle and update local copy
+watch(() => settingsHandle.value?.schema, () => {
+  editableSchema.value = parseSchemaFromHandle()
+}, { immediate: true, deep: true })
 
 // Parse settings configuration into object for form
 const settingsConfigObject = computed(() => {
@@ -204,18 +219,49 @@ watch(selectedHandle, async (handle) => {
   }
 }, { immediate: true })
 
-// Watch node change to reset tab
-watch(() => selectedNode.value?.id, () => {
-  setCurrentTab('status')
-  selectedHandleId.value = null
+// Watch node change to reset tab and selected handle
+// Note: controlFormValue is handled by the controlConfigObject watcher
+watch(() => selectedNode.value?.id, (newId, oldId) => {
+  if (newId !== oldId) {
+    setCurrentTab('status')
+    selectedHandleId.value = null
+    // Reset settings form
+    formValue.value = {}
+    editorValue.value = '{}'
+  }
 })
 
 // Node info expiring check
 const selectedNodeExpiring = computed(() => {
-  if (!selectedNode.value?.data?.lastUpdateTime) return false
-  const lastUpdate = new Date(selectedNode.value.data.lastUpdateTime).getTime()
+  if (!selectedNode.value?.data?.last_status_update) return false
+  // last_status_update is Unix timestamp in seconds
+  const lastUpdate = selectedNode.value.data.last_status_update * 1000
   return (Date.now() - lastUpdate) > 10 * 60 * 1000
 })
+
+// Time ago formatter
+const timeAgo = (timestamp) => {
+  if (!timestamp) return 'Never'
+  const seconds = Math.floor((Date.now() - timestamp * 1000) / 1000)
+
+  if (seconds < 5) return 'just now'
+  if (seconds < 60) return `${seconds} seconds ago`
+
+  const minutes = Math.floor(seconds / 60)
+  if (minutes < 60) return minutes === 1 ? '1 minute ago' : `${minutes} minutes ago`
+
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return hours === 1 ? '1 hour ago' : `${hours} hours ago`
+
+  const days = Math.floor(hours / 24)
+  if (days < 30) return days === 1 ? '1 day ago' : `${days} days ago`
+
+  const months = Math.floor(days / 30)
+  if (months < 12) return months === 1 ? '1 month ago' : `${months} months ago`
+
+  const years = Math.floor(months / 12)
+  return years === 1 ? '1 year ago' : `${years} years ago`
+}
 
 // Edge info
 const edgeSourceLabel = computed(() => {
@@ -231,16 +277,42 @@ const edgeTargetLabel = computed(() => {
   return targetNode?.data?.label || selectedEdge.value.target
 })
 
-// Edge configuration
+// Edge configuration - get from edge data or fall back to target handle
 const edgeConfiguration = computed(() => {
-  if (!selectedEdge.value?.data?.configuration) return '{}'
-  const config = selectedEdge.value.data.configuration
+  if (!selectedEdge.value) return '{}'
+
+  // First try edge data configuration
+  let config = selectedEdge.value.data?.configuration
+
+  // Fall back to target handle's configuration
+  if (!config) {
+    const targetNode = flowStore.getElement(selectedEdge.value.target)
+    if (targetNode?.data?.handles) {
+      const targetHandle = targetNode.data.handles.find(h => h.id === selectedEdge.value.targetHandle)
+      config = targetHandle?.configuration
+    }
+  }
+
+  if (!config) return '{}'
   return typeof config === 'string' ? config : JSON.stringify(config, null, 2)
 })
 
 // Edge configuration as object for form
 const edgeConfigObject = computed(() => {
-  const config = selectedEdge.value?.data?.configuration
+  if (!selectedEdge.value) return {}
+
+  // First try edge data configuration
+  let config = selectedEdge.value.data?.configuration
+
+  // Fall back to target handle's configuration
+  if (!config) {
+    const targetNode = flowStore.getElement(selectedEdge.value.target)
+    if (targetNode?.data?.handles) {
+      const targetHandle = targetNode.data.handles.find(h => h.id === selectedEdge.value.targetHandle)
+      config = targetHandle?.configuration
+    }
+  }
+
   if (!config) return {}
   if (typeof config === 'string') {
     try {
@@ -283,6 +355,18 @@ const edgeSchema = computed(() => {
   return schema
 })
 
+// Edge validation errors
+const edgeValidationError = computed(() => selectedEdge.value?.data?.error || null)
+const edgeValidationErrors = computed(() => {
+  const errors = selectedEdge.value?.data?.errors
+  if (!errors || typeof errors !== 'object') return []
+  return Object.entries(errors).map(([path, message]) => ({
+    path,
+    message
+  }))
+})
+const edgeIsValid = computed(() => selectedEdge.value?.data?.valid !== false)
+
 const edgeEditorValue = ref('{}')
 const edgeFormValue = ref({})
 
@@ -300,18 +384,124 @@ const updateEdgeFormValue = (newValue) => {
   edgeEditorValue.value = JSON.stringify(newValue, null, 2)
 }
 
+// Lookup modal state
+const showLookupModal = ref(false)
+const lookupCallback = ref(null)
+const lookupTargetSchema = ref({})
+const lookupFullSchema = ref({})
+const lookupInitialExpression = ref('')
+const lookupPortName = ref('')
+const lookupSourceData = ref({})
+const lookupSourceSchema = ref({})
+const lookupLoading = ref(false)
+const lookupFieldTitle = ref('')
+
+// Handle lookup event from schema editor
+const handleEdgeLookup = async (currentValue, schema, callback) => {
+  if (!selectedEdge.value) return
+
+  lookupTargetSchema.value = schema || {}
+  lookupFullSchema.value = edgeSchema.value || {}
+  lookupCallback.value = callback
+  lookupLoading.value = true
+  lookupFieldTitle.value = schema?.title || 'Context'
+
+  // Extract existing expression if present
+  if (typeof currentValue === 'string' && currentValue.startsWith('{{') && currentValue.endsWith('}}')) {
+    lookupInitialExpression.value = currentValue.slice(2, -2)
+  } else {
+    lookupInitialExpression.value = '$'
+  }
+  lookupPortName.value = selectedEdge.value?.sourceHandle || ''
+
+  // Get source node and port info
+  const sourceNode = flowStore.getElement(selectedEdge.value.source)
+  const sourceHandleId = selectedEdge.value.sourceHandle
+
+  // Get source schema from handle
+  if (sourceNode?.data?.handles) {
+    const sourceHandle = sourceNode.data.handles.find(h => h.id === sourceHandleId)
+    if (sourceHandle?.schema) {
+      try {
+        lookupSourceSchema.value = typeof sourceHandle.schema === 'string'
+          ? JSON.parse(sourceHandle.schema)
+          : sourceHandle.schema
+      } catch {
+        lookupSourceSchema.value = {}
+      }
+    }
+  }
+
+  // Fetch actual port data via inspection
+  try {
+    const inspectData = await flowStore.inspectNodePort(selectedEdge.value.source, sourceHandleId)
+    if (inspectData?.data) {
+      lookupSourceData.value = inspectData.data
+    } else {
+      // Fallback to schema default or empty object
+      lookupSourceData.value = lookupSourceSchema.value?.default || {}
+    }
+  } catch (err) {
+    console.error('Failed to inspect port:', err)
+    lookupSourceData.value = lookupSourceSchema.value?.default || {}
+  }
+
+  lookupLoading.value = false
+  showLookupModal.value = true
+}
+
+// Apply expression from lookup modal
+const applyLookupExpression = (expression, portName) => {
+  if (lookupCallback.value && typeof lookupCallback.value === 'function') {
+    lookupCallback.value(expression, portName)
+  }
+  closeLookupModal()
+}
+
+// Close lookup modal
+const closeLookupModal = () => {
+  showLookupModal.value = false
+  lookupCallback.value = null
+  lookupTargetSchema.value = {}
+  lookupFullSchema.value = {}
+  lookupInitialExpression.value = ''
+  lookupPortName.value = ''
+  lookupSourceData.value = {}
+  lookupSourceSchema.value = {}
+  lookupFieldTitle.value = ''
+}
+
 // Actions
 const handleDeselect = () => {
   flowStore.selectElement(null)
 }
 
-const handleDeleteEdge = async () => {
+// Edge delete confirmation dialog
+const showDeleteEdgeConfirm = ref(false)
+
+const deleteEdgeDetail = computed(() => {
+  if (!selectedEdge.value) return ''
+  const targetHandle = selectedEdge.value.targetHandle?.toUpperCase() || ''
+  return `${edgeSourceLabel.value} → ${edgeTargetLabel.value} ${targetHandle}`.trim()
+})
+
+const handleDeleteEdgeClick = () => {
   if (!selectedEdge.value) return
+  showDeleteEdgeConfirm.value = true
+}
+
+const handleDeleteEdgeConfirm = async () => {
+  if (!selectedEdge.value) return
+  showDeleteEdgeConfirm.value = false
   try {
     await flowStore.disconnectNodes(selectedEdge.value.source, selectedEdge.value.id)
   } catch (err) {
     emit('error', `Failed to delete edge: ${err}`)
   }
+}
+
+const handleDeleteEdgeCancel = () => {
+  showDeleteEdgeConfirm.value = false
 }
 
 const handleDeleteNode = () => {
@@ -335,16 +525,18 @@ const handleRotateNode = async () => {
   }
 }
 
-// Save configuration
+// Save configuration and schema
 const saveConfiguration = async () => {
   if (!selectedNode.value || !settingsHandle.value) return
   saving.value = true
   try {
+    // Serialize the modified schema (includes any configurable changes made by the user)
+    const schemaStr = settingsSchema.value ? JSON.stringify(settingsSchema.value) : ''
     await flowStore.updateNodeConfiguration(
       selectedNode.value.id,
       '_settings',
       editorValue.value,
-      ''
+      schemaStr
     )
   } catch (err) {
     emit('error', `Failed to save: ${err}`)
@@ -396,7 +588,7 @@ const saveEdgeConfiguration = async () => {
       <div class="bg-white dark:bg-gray-900 shadow rounded-lg text-xs relative px-2 py-2 flex justify-start items-center">
         <button
           type="button"
-          @click="handleDeleteEdge"
+          @click="handleDeleteEdgeClick"
           class="text-red-400 border-red-400 border px-3 py-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20"
         >
           Delete Edge
@@ -409,14 +601,17 @@ const saveEdgeConfiguration = async () => {
 
       <!-- Configuration form or JSON editor -->
       <div class="flex-1 overflow-y-auto p-2">
-        <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Configuration</label>
         <!-- Schema-based form when schema is available -->
         <SchemaForm
           v-if="edgeSchema && (edgeSchema.properties || edgeSchema.type || edgeSchema.$ref)"
+          :key="'edge-form-' + selectedEdge?.id"
           :schema="edgeSchema"
           :model-value="edgeFormValue"
           @update:model-value="updateEdgeFormValue"
+          @lookup="handleEdgeLookup"
           :readonly="selectedEdge.data?.blocked"
+          :allow-lookup="true"
+          :no-border="false"
         />
         <!-- Fallback to raw JSON editor -->
         <textarea
@@ -425,6 +620,26 @@ const saveEdgeConfiguration = async () => {
           class="w-full h-48 p-2 text-xs font-mono bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded focus:ring-sky-500 focus:border-sky-500 dark:text-gray-300"
           placeholder="{}"
         />
+        <!-- Validation errors -->
+        <div v-if="!edgeIsValid && (edgeValidationError || edgeValidationErrors.length > 0)" class="pt-3">
+          <div class="text-xs font-medium text-red-500 mb-1">Server validation errors:</div>
+          <div v-if="edgeValidationErrors.length > 0" class="space-y-1">
+            <div v-for="err in edgeValidationErrors" :key="err.path" class="text-xs text-red-400">
+              <span class="font-mono">{{ err.path }}</span>&nbsp;&nbsp;{{ err.message }}
+            </div>
+          </div>
+          <div v-else-if="edgeValidationError" class="text-xs text-red-400">
+            {{ edgeValidationError }}
+          </div>
+        </div>
+
+        <!-- Warning message -->
+        <div class="pt-3">
+          <p class="text-xs text-orange-400">
+            Do not store sensitive information if you plan sharing your project as a solution.
+          </p>
+        </div>
+
         <!-- Save button -->
         <div class="pt-3 text-right">
           <button
@@ -500,6 +715,7 @@ const saveEdgeConfiguration = async () => {
             :model-value="formValue"
             @update:model-value="updateFormValue"
             :readonly="selectedNode.data?.blocked"
+            :allow-edit-schema="!selectedNode.data?.blocked"
           />
           <!-- Fallback to raw JSON editor -->
           <div v-else>
@@ -509,6 +725,12 @@ const saveEdgeConfiguration = async () => {
               class="w-full h-64 p-2 text-xs font-mono bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded focus:ring-sky-500 focus:border-sky-500 dark:text-gray-300"
               placeholder="{}"
             />
+          </div>
+          <!-- Warning message -->
+          <div class="pt-3">
+            <p class="text-xs text-orange-400">
+              Do not store sensitive information if you plan sharing your project as a solution.
+            </p>
           </div>
           <!-- Save button -->
           <div class="pt-3 text-right">
@@ -578,10 +800,9 @@ const saveEdgeConfiguration = async () => {
                 <p>Component: <span class="font-semibold">{{ selectedNode.data?.component }}</span></p>
                 <p :class="selectedNodeExpiring ? 'text-red-500' : ''">
                   Last update:
-                  <span v-if="selectedNode.data?.lastUpdateTime" class="font-semibold">
-                    {{ new Date(selectedNode.data.lastUpdateTime).toLocaleString() }}
+                  <span class="font-semibold" :class="{ 'text-red-500': !selectedNode.data?.last_status_update }">
+                    {{ timeAgo(selectedNode.data?.last_status_update) }}
                   </span>
-                  <span v-else class="font-semibold text-red-500">Never</span>
                 </p>
               </div>
             </div>
@@ -599,7 +820,7 @@ const saveEdgeConfiguration = async () => {
                 leave-from-class="transform opacity-100 scale-100"
                 leave-to-class="transform opacity-0 scale-95"
               >
-                <MenuItems class="origin-top-right absolute z-40 right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none dark:ring-gray-600 dark:bg-gray-900">
+                <MenuItems class="origin-top-right absolute z-40 right-0 mt-2 w-48 rounded-md shadow-lg bg-white border border-gray-200 focus:outline-none dark:border-gray-700 dark:bg-gray-900">
                   <div class="py-1">
                     <MenuItem v-slot="{ active }">
                       <button
@@ -649,9 +870,9 @@ const saveEdgeConfiguration = async () => {
         </div>
 
         <!-- Control port form -->
-        <div v-if="controlHandle && controlHandleSchema" class="bg-white dark:bg-gray-900 shadow rounded text-xs m-1 p-2">
-          <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">Control</label>
+        <div v-if="controlHandle && controlHandleSchema" :key="'control-' + selectedNode?.id" class="bg-white dark:bg-gray-900 shadow rounded text-xs m-1 p-2">
           <SchemaForm
+            :key="'control-form-' + selectedNode?.id"
             :schema="controlHandleSchema"
             :model-value="controlFormValue"
             @update:model-value="updateControlFormValue"
@@ -755,6 +976,30 @@ const saveEdgeConfiguration = async () => {
       </div>
     </div>
   </aside>
+
+  <!-- Expression lookup modal -->
+  <FlowDataLookupModal
+    :show="showLookupModal"
+    :source-data="lookupSourceData"
+    :source-schema="lookupSourceSchema"
+    :target-schema="lookupTargetSchema"
+    :full-schema="lookupFullSchema"
+    :initial-expression="lookupInitialExpression"
+    :port-name="lookupPortName"
+    :field-title="lookupFieldTitle"
+    @close="closeLookupModal"
+    @apply="applyLookupExpression"
+  />
+
+  <!-- Delete edge confirmation dialog -->
+  <ConfirmDialog
+    :show="showDeleteEdgeConfirm"
+    title="Confirmation."
+    message="Are you sure you want to delete this edge"
+    :detail="deleteEdgeDetail"
+    @confirm="handleDeleteEdgeConfirm"
+    @cancel="handleDeleteEdgeCancel"
+  />
 </template>
 
 <style scoped>
@@ -762,5 +1007,18 @@ const saveEdgeConfiguration = async () => {
 :deep(.vjs-tree) {
   font-size: 11px !important;
   line-height: 1.4 !important;
+}
+
+/* VueJsonPretty hover styles for dark mode */
+:deep(.vjs-tree-node:hover) {
+  background-color: rgba(59, 130, 246, 0.15) !important;
+}
+
+.dark :deep(.vjs-tree-node:hover) {
+  background-color: rgba(59, 130, 246, 0.25) !important;
+}
+
+.dark :deep(.vjs-tree-node.is-highlight) {
+  background-color: rgba(59, 130, 246, 0.35) !important;
 }
 </style>
