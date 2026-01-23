@@ -73,6 +73,8 @@ export function RunExpression(arg1:string,arg2:string,arg3:string):Promise<main.
 
 export function RunNodeAction(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string):Promise<void>;
 
+export function SaveFile(arg1:string,arg2:string):Promise<string>;
+
 export function SaveFlowMeta(arg1:string,arg2:string,arg3:string,arg4:number,arg5:number,arg6:number):Promise<void>;
 
 export function SavePreferences(arg1:string,arg2:string):Promise<void>;

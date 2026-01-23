@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	"github.com/go-logr/logr"
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 // App struct
@@ -137,4 +138,28 @@ func (a *App) SavePreferences(contextName, namespace string) error {
 	}
 
 	return os.WriteFile(path, data, 0644)
+}
+
+// SaveFile opens a save dialog and writes content to the selected file
+func (a *App) SaveFile(defaultFilename, content string) (string, error) {
+	filepath, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
+		DefaultFilename: defaultFilename,
+		Filters: []runtime.FileFilter{
+			{DisplayName: "JSON Files", Pattern: "*.json"},
+			{DisplayName: "All Files", Pattern: "*"},
+		},
+	})
+	if err != nil {
+		return "", err
+	}
+	if filepath == "" {
+		// User cancelled
+		return "", nil
+	}
+
+	if err := os.WriteFile(filepath, []byte(content), 0644); err != nil {
+		return "", err
+	}
+
+	return filepath, nil
 }

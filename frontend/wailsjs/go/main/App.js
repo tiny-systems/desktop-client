@@ -142,6 +142,10 @@ export function RunNodeAction(arg1, arg2, arg3, arg4, arg5) {
   return window['go']['main']['App']['RunNodeAction'](arg1, arg2, arg3, arg4, arg5);
 }
 
+export function SaveFile(arg1, arg2) {
+  return window['go']['main']['App']['SaveFile'](arg1, arg2);
+}
+
 export function SaveFlowMeta(arg1, arg2, arg3, arg4, arg5, arg6) {
   return window['go']['main']['App']['SaveFlowMeta'](arg1, arg2, arg3, arg4, arg5, arg6);
 }

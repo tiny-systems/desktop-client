@@ -160,19 +160,15 @@ const handleImport = () => {
 }
 
 // Handle export from ControlPanel
-const handleExport = () => {
+const handleExport = async () => {
   try {
     const elements = flowStore.export()
     const json = JSON.stringify(elements, null, 2)
-    const blob = new Blob([json], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `${flowStore.flowResourceName || 'flow'}.json`
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
+    const filename = `${flowStore.flowResourceName || 'flow'}.json`
+    const savedPath = await window.go.main.App.SaveFile(filename, json)
+    if (savedPath) {
+      console.log('Exported to:', savedPath)
+    }
   } catch (err) {
     handleError(`Failed to export: ${err}`)
   }
