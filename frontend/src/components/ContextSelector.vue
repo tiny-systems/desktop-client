@@ -94,6 +94,18 @@ const loadContexts = async () => {
 };
 
 /**
+ * Refresh auth and retry connection - clears credential cache
+ */
+const refreshAndRetry = async (contextName) => {
+  try {
+    await GoApp.RefreshAuth();
+  } catch (e) {
+    console.warn('RefreshAuth failed:', e);
+  }
+  await checkAuthorization(contextName);
+}
+
+/**
  * Executes the authorization check via a new Go backend call.
  * If successful, it proceeds to load namespaces.
  */
@@ -294,7 +306,7 @@ onMounted(() => {
           </svg>
           <span class="text-sm text-red-600 dark:text-red-400">{{ statusMessage }}</span>
           <button
-            @click="checkAuthorization(selectedContextName)"
+            @click="refreshAndRetry(selectedContextName)"
             class="flex-shrink-0 px-2 py-0.5 text-xs font-medium text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 border border-red-300 dark:border-red-600 rounded hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
           >
             Retry
