@@ -31,6 +31,15 @@ const traceData = ref(null)
 const error = ref('')
 const copied = ref(false)
 
+// Convert raw bytes string to hex
+const bytesToHex = (str) => {
+  if (!str) return ''
+  // If it's already hex-like (only hex chars), return as-is
+  if (/^[0-9a-fA-F]+$/.test(str)) return str
+  // Convert each character's code point to hex
+  return Array.from(str).map(c => c.charCodeAt(0).toString(16).padStart(2, '0')).join('')
+}
+
 const formattedTraceData = computed(() => {
   if (!traceData.value?.spans) return {}
 
@@ -38,7 +47,7 @@ const formattedTraceData = computed(() => {
     traceId: traceData.value.traceId,
     spans: traceData.value.spans.map((span) => ({
       name: span.name,
-      spanId: span.span_id,
+      spanId: bytesToHex(span.span_id),
       duration: span.end_time_unix_nano && span.start_time_unix_nano
         ? `${((span.end_time_unix_nano - span.start_time_unix_nano) / 1000000).toFixed(2)}ms`
         : null,
@@ -123,11 +132,11 @@ watch(() => props.trace, () => {
     </div>
 
     <!-- Expanded content -->
-    <div v-if="expanded" class="mt-1 bg-gray-900 border border-gray-700 rounded shadow-lg max-w-xl max-h-96 overflow-auto">
-      <div class="sticky top-0 z-10 bg-gray-800 px-3 py-2 border-b border-gray-700 flex justify-between items-center">
-        <span class="text-gray-300 font-mono text-xs">{{ traceData?.traceId || props.trace }}</span>
-        <div class="flex items-center gap-2">
-          <span class="text-gray-500 text-xs">{{ traceData?.spans?.length || 0 }} spans</span>
+    <div v-if="expanded" class="mt-1 bg-gray-900 border border-gray-700 rounded shadow-lg max-w-3xl max-h-[32rem] overflow-auto">
+      <div class="sticky top-0 z-10 bg-gray-800 px-3 py-2 border-b border-gray-700 flex justify-between items-center gap-4">
+        <span class="text-gray-300 font-mono text-xs truncate">{{ traceData?.traceId || props.trace }}</span>
+        <div class="flex items-center gap-3 flex-shrink-0">
+          <span class="text-gray-500 text-xs whitespace-nowrap">{{ traceData?.spans?.length || 0 }} spans</span>
           <button
             @click="copyTrace"
             class="text-gray-400 hover:text-gray-200 text-xs px-1.5 py-0.5 rounded border border-gray-600 hover:bg-gray-700 transition-colors"
