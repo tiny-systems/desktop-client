@@ -195,6 +195,56 @@ export namespace main {
 	        this.nodesCount = source["nodesCount"];
 	    }
 	}
+	export class RunExpressionResult {
+	    result: string;
+	    validSchema: boolean;
+	    validationError: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new RunExpressionResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.result = source["result"];
+	        this.validSchema = source["validSchema"];
+	        this.validationError = source["validationError"];
+	    }
+	}
+	export class TracesResponse {
+	    traces: utils.TraceInfo[];
+	    total: number;
+	    offset: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new TracesResponse(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.traces = this.convertValues(source["traces"], utils.TraceInfo);
+	        this.total = source["total"];
+	        this.offset = source["offset"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class Widget {
 	    id: string;
 	    title: string;
@@ -245,6 +295,37 @@ export namespace main {
 	        this.title = source["title"];
 	        this.resourceName = source["resourceName"];
 	        this.sortIdx = source["sortIdx"];
+	    }
+	}
+
+}
+
+export namespace utils {
+	
+	export class TraceInfo {
+	    id: string;
+	    spans: number;
+	    errors: number;
+	    data: number;
+	    length: number;
+	    duration: number;
+	    start: number;
+	    end: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new TraceInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.spans = source["spans"];
+	        this.errors = source["errors"];
+	        this.data = source["data"];
+	        this.length = source["length"];
+	        this.duration = source["duration"];
+	        this.start = source["start"];
+	        this.end = source["end"];
 	    }
 	}
 

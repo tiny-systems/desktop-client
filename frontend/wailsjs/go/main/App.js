@@ -94,6 +94,10 @@ export function GetProjects(arg1, arg2) {
   return window['go']['main']['App']['GetProjects'](arg1, arg2);
 }
 
+export function GetTraces(arg1, arg2, arg3, arg4, arg5, arg6, arg7) {
+  return window['go']['main']['App']['GetTraces'](arg1, arg2, arg3, arg4, arg5, arg6, arg7);
+}
+
 export function GetWidgetPages(arg1, arg2, arg3) {
   return window['go']['main']['App']['GetWidgetPages'](arg1, arg2, arg3);
 }
@@ -116,6 +120,10 @@ export function RenameProject(arg1, arg2, arg3, arg4) {
 
 export function RotateNode(arg1, arg2, arg3) {
   return window['go']['main']['App']['RotateNode'](arg1, arg2, arg3);
+}
+
+export function RunExpression(arg1, arg2, arg3) {
+  return window['go']['main']['App']['RunExpression'](arg1, arg2, arg3);
 }
 
 export function RunNodeAction(arg1, arg2, arg3, arg4, arg5) {

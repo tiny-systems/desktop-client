@@ -49,6 +49,8 @@ export function GetProjectStats(arg1:string,arg2:string,arg3:string):Promise<mai
 
 export function GetProjects(arg1:string,arg2:string):Promise<Array<main.Project>>;
 
+export function GetTraces(arg1:string,arg2:string,arg3:string,arg4:string,arg5:number,arg6:number,arg7:number):Promise<main.TracesResponse>;
+
 export function GetWidgetPages(arg1:string,arg2:string,arg3:string):Promise<Array<main.WidgetPage>>;
 
 export function GetWidgets(arg1:string,arg2:string,arg3:string,arg4:string):Promise<Array<main.Widget>>;
@@ -60,6 +62,8 @@ export function RenameFlow(arg1:string,arg2:string,arg3:string,arg4:string):Prom
 export function RenameProject(arg1:string,arg2:string,arg3:string,arg4:string):Promise<void>;
 
 export function RotateNode(arg1:string,arg2:string,arg3:string):Promise<void>;
+
+export function RunExpression(arg1:string,arg2:string,arg3:string):Promise<main.RunExpressionResult>;
 
 export function RunNodeAction(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string):Promise<void>;
 

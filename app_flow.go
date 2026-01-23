@@ -931,3 +931,71 @@ func (a *App) GetNodeHandles(contextName, namespace, nodeResourceName string) ([
 
 	return result, nil
 }
+
+// RunExpressionResult is the response from RunExpression.
+type RunExpressionResult struct {
+	Result          string `json:"result"`
+	ValidSchema     bool   `json:"validSchema"`
+	ValidationError string `json:"validationError"`
+}
+
+// RunExpression evaluates a JSONPath expression against JSON data and validates the result against a schema.
+func (a *App) RunExpression(expression, data, schema string) (*RunExpressionResult, error) {
+	resp, err := utils.RunExpression(&utils.RunExpressionRequest{
+		Expression: expression,
+		Data:       data,
+		Schema:     schema,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &RunExpressionResult{
+		Result:          resp.Result,
+		ValidSchema:     resp.ValidSchema,
+		ValidationError: resp.ValidationError,
+	}, nil
+}
+
+// TracesResponse is the response from GetTraces
+type TracesResponse struct {
+	Traces []utils.TraceInfo `json:"traces"`
+	Total  int64             `json:"total"`
+	Offset int64             `json:"offset"`
+}
+
+// GetTraces fetches traces for a specific flow
+func (a *App) GetTraces(contextName, namespace, projectName, flowName string, start, end, offset int64) (*TracesResponse, error) {
+	config, err := loadContextConfig(contextName)
+	if err != nil {
+		return nil, err
+	}
+
+	pfClient := NewPortForwardClient(config, namespace)
+	defer pfClient.Close()
+
+	traceService := utils.NewTraceService(utils.TraceServiceConfig{
+		Client: pfClient,
+	})
+	defer traceService.Close()
+
+	// Convert int64 timestamps to time.Time
+	var startTime, endTime time.Time
+	if start > 0 {
+		startTime = time.Unix(start, 0)
+	}
+	if end > 0 {
+		endTime = time.Unix(end, 0)
+	}
+
+	resp, err := traceService.GetTraces(a.ctx, namespace, projectName, flowName, startTime, endTime, offset)
+	if err != nil {
+		return nil, err
+	}
+
+	return &TracesResponse{
+		Traces: resp.Traces,
+		Total:  resp.Total,
+		Offset: resp.Offset,
+	}, nil
+}
