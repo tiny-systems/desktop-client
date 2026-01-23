@@ -20,11 +20,13 @@ const isLoading = ref(true);
 const isConnecting = ref(false); // Manages loading state for connection/auth checks
 const statusClass = ref('');
 
-
 const namespaces = ref([]); // New state for list of namespaces
 
 const selectedNamespace = ref(props.ctx ? props.ctx.ns : ''); // New state for the currently selected namespace
 const isAuthorized = ref(false); // New state to control visibility of namespace selector
+
+// Preferences - remembered context/namespace
+const savedPreferences = ref(null)
 
 
 const loadingText = computed(() => {
@@ -41,6 +43,13 @@ const loadContexts = async () => {
   statusMessage.value = 'Attempting to read kubeconfig...';
 
   try {
+    // Load saved preferences first
+    try {
+      savedPreferences.value = await GoApp.GetPreferences();
+    } catch (e) {
+      console.warn('Could not load preferences:', e);
+    }
+
     const fetchedContexts = await GoApp.GetKubeContexts();
 
     contexts.value = fetchedContexts;
@@ -52,12 +61,23 @@ const loadContexts = async () => {
       return;
     }
 
-    const currentContext = fetchedContexts.find(c => c.current);
-    if (currentContext) {
-      selectedContextName.value = currentContext.name;
-      statusMessage.value = `Current context loaded: ${currentContext.name}. Checking authorization...`;
+    // Check if saved context is available, otherwise fall back to current context
+    let contextToSelect = null;
+    if (savedPreferences.value?.lastContext) {
+      const savedContext = fetchedContexts.find(c => c.name === savedPreferences.value.lastContext);
+      if (savedContext) {
+        contextToSelect = savedContext;
+      }
+    }
+    if (!contextToSelect) {
+      contextToSelect = fetchedContexts.find(c => c.current);
+    }
+
+    if (contextToSelect) {
+      selectedContextName.value = contextToSelect.name;
+      statusMessage.value = `Context loaded: ${contextToSelect.name}. Checking authorization...`;
       // Trigger health check immediately for the default context
-      await checkAuthorization(currentContext.name);
+      await checkAuthorization(contextToSelect.name);
     } else {
       selectedContextName.value = '';
       statusMessage.value = 'Please select a context to connect.';
@@ -97,6 +117,13 @@ const checkAuthorization = async (contextName) => {
       return
     }
     emit('select', {name: selectedContextName.value, ns: selectedNamespace.value})
+
+    // Save preferences
+    try {
+      await GoApp.SavePreferences(selectedContextName.value, selectedNamespace.value);
+    } catch (e) {
+      console.warn('Could not save preferences:', e);
+    }
   } catch (error) {
     statusMessage.value = `Authorization Failed for ${contextName}: ${error}. Please check your credentials.`;
     statusClass.value = 'error';
@@ -118,7 +145,18 @@ const getNamespaces = async (contextName) => {
     namespaces.value = fetchedNamespaces.sort(); // Sort alphabetically
 
     if (fetchedNamespaces.length > 0) {
-      selectedNamespace.value = fetchedNamespaces.includes(selectedNamespace.value) ? selectedNamespace.value : fetchedNamespaces[0];
+      // Check if saved namespace is available (only for the saved context)
+      let nsToSelect = null;
+      if (savedPreferences.value?.lastNamespace &&
+          savedPreferences.value?.lastContext === contextName &&
+          fetchedNamespaces.includes(savedPreferences.value.lastNamespace)) {
+        nsToSelect = savedPreferences.value.lastNamespace;
+      } else if (fetchedNamespaces.includes(selectedNamespace.value)) {
+        nsToSelect = selectedNamespace.value;
+      } else {
+        nsToSelect = fetchedNamespaces[0];
+      }
+      selectedNamespace.value = nsToSelect;
     } else {
       selectedNamespace.value = '';
       statusMessage.value = `No namespaces found in context: ${contextName}`;
@@ -164,9 +202,16 @@ const handleContextChange = async () => {
  * Handles the user selecting a new namespace.
  * This function can be expanded later for actual resource fetching.
  */
-const handleNamespaceChange = () => {
+const handleNamespaceChange = async () => {
   statusMessage.value = '';
   emit('select', {name: selectedContextName.value, ns: selectedNamespace.value})
+
+  // Save preferences
+  try {
+    await GoApp.SavePreferences(selectedContextName.value, selectedNamespace.value);
+  } catch (e) {
+    console.warn('Could not save preferences:', e);
+  }
 };
 
 onMounted(() => {

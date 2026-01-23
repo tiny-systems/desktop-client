@@ -5,6 +5,8 @@ import {kubernetes} from '../models';
 
 export function AddNode(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string,arg6:string,arg7:string,arg8:number,arg9:number):Promise<Record<string, any>>;
 
+export function ApplyTraceToFlow(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string):Promise<main.ApplyTraceToFlowResponse>;
+
 export function BatchUpdateNodePositions(arg1:string,arg2:string,arg3:Record<string, main.NodePosition>):Promise<void>;
 
 export function CheckAuthorization(arg1:string):Promise<void>;
@@ -41,6 +43,8 @@ export function GetNamespaces(arg1:string):Promise<Array<string>>;
 
 export function GetNodeHandles(arg1:string,arg2:string,arg3:string):Promise<Array<Record<string, any>>>;
 
+export function GetPreferences():Promise<main.Preferences>;
+
 export function GetProject(arg1:string,arg2:string,arg3:string):Promise<main.Project>;
 
 export function GetProjectDetails(arg1:string,arg2:string,arg3:string):Promise<main.ProjectDetails>;
@@ -49,13 +53,15 @@ export function GetProjectStats(arg1:string,arg2:string,arg3:string):Promise<mai
 
 export function GetProjects(arg1:string,arg2:string):Promise<Array<main.Project>>;
 
+export function GetTraceByID(arg1:string,arg2:string,arg3:string,arg4:string):Promise<main.TraceDataResponse>;
+
 export function GetTraces(arg1:string,arg2:string,arg3:string,arg4:string,arg5:number,arg6:number,arg7:number):Promise<main.TracesResponse>;
 
 export function GetWidgetPages(arg1:string,arg2:string,arg3:string):Promise<Array<main.WidgetPage>>;
 
 export function GetWidgets(arg1:string,arg2:string,arg3:string,arg4:string):Promise<Array<main.Widget>>;
 
-export function InspectNodePort(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string):Promise<Record<string, any>>;
+export function InspectNodePort(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string,arg6:string):Promise<Record<string, any>>;
 
 export function RenameFlow(arg1:string,arg2:string,arg3:string,arg4:string):Promise<void>;
 
@@ -68,6 +74,8 @@ export function RunExpression(arg1:string,arg2:string,arg3:string):Promise<main.
 export function RunNodeAction(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string):Promise<void>;
 
 export function SaveFlowMeta(arg1:string,arg2:string,arg3:string,arg4:number,arg5:number,arg6:number):Promise<void>;
+
+export function SavePreferences(arg1:string,arg2:string):Promise<void>;
 
 export function SaveWidgets(arg1:string,arg2:string,arg3:string,arg4:string,arg5:Array<main.Widget>):Promise<void>;
 

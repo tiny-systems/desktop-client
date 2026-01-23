@@ -6,6 +6,10 @@ export function AddNode(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9) {
   return window['go']['main']['App']['AddNode'](arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9);
 }
 
+export function ApplyTraceToFlow(arg1, arg2, arg3, arg4, arg5) {
+  return window['go']['main']['App']['ApplyTraceToFlow'](arg1, arg2, arg3, arg4, arg5);
+}
+
 export function BatchUpdateNodePositions(arg1, arg2, arg3) {
   return window['go']['main']['App']['BatchUpdateNodePositions'](arg1, arg2, arg3);
 }
@@ -78,6 +82,10 @@ export function GetNodeHandles(arg1, arg2, arg3) {
   return window['go']['main']['App']['GetNodeHandles'](arg1, arg2, arg3);
 }
 
+export function GetPreferences() {
+  return window['go']['main']['App']['GetPreferences']();
+}
+
 export function GetProject(arg1, arg2, arg3) {
   return window['go']['main']['App']['GetProject'](arg1, arg2, arg3);
 }
@@ -94,6 +102,10 @@ export function GetProjects(arg1, arg2) {
   return window['go']['main']['App']['GetProjects'](arg1, arg2);
 }
 
+export function GetTraceByID(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['App']['GetTraceByID'](arg1, arg2, arg3, arg4);
+}
+
 export function GetTraces(arg1, arg2, arg3, arg4, arg5, arg6, arg7) {
   return window['go']['main']['App']['GetTraces'](arg1, arg2, arg3, arg4, arg5, arg6, arg7);
 }
@@ -106,8 +118,8 @@ export function GetWidgets(arg1, arg2, arg3, arg4) {
   return window['go']['main']['App']['GetWidgets'](arg1, arg2, arg3, arg4);
 }
 
-export function InspectNodePort(arg1, arg2, arg3, arg4, arg5) {
-  return window['go']['main']['App']['InspectNodePort'](arg1, arg2, arg3, arg4, arg5);
+export function InspectNodePort(arg1, arg2, arg3, arg4, arg5, arg6) {
+  return window['go']['main']['App']['InspectNodePort'](arg1, arg2, arg3, arg4, arg5, arg6);
 }
 
 export function RenameFlow(arg1, arg2, arg3, arg4) {
@@ -132,6 +144,10 @@ export function RunNodeAction(arg1, arg2, arg3, arg4, arg5) {
 
 export function SaveFlowMeta(arg1, arg2, arg3, arg4, arg5, arg6) {
   return window['go']['main']['App']['SaveFlowMeta'](arg1, arg2, arg3, arg4, arg5, arg6);
+}
+
+export function SavePreferences(arg1, arg2) {
+  return window['go']['main']['App']['SavePreferences'](arg1, arg2);
 }
 
 export function SaveWidgets(arg1, arg2, arg3, arg4, arg5) {

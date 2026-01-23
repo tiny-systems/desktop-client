@@ -29,7 +29,8 @@ export const useFlowStore = defineStore('flowStore', {
       meta: {},
       lastUpdate: null,
       animationCheckInterval: null,
-      watching: false
+      watching: false,
+      trace: null // Selected trace ID for using real runtime data
     }
   },
   getters: {
@@ -369,6 +370,7 @@ export const useFlowStore = defineStore('flowStore', {
     },
     clean() {
       this.elements = []
+      this.trace = null
       this.stopAnimationCheck()
       this.stopWatching()
       this.ready = false
@@ -604,10 +606,12 @@ export const useFlowStore = defineStore('flowStore', {
         this.loadingAlt = false
       }
     },
-    async inspectNodePort(nodeId, port, traceID = '') {
+    async inspectNodePort(nodeId, port, traceID = null) {
       if (!GoApp) throw new Error('Wails runtime not available')
 
-      return await GoApp.InspectNodePort(this.contextName, this.namespace, this.projectResourceName, nodeId, port, traceID)
+      // Use stored trace if no specific trace ID provided
+      const effectiveTraceID = traceID ?? this.trace ?? ''
+      return await GoApp.InspectNodePort(this.contextName, this.namespace, this.projectResourceName, nodeId, port, effectiveTraceID)
     },
     async getNodeHandles(nodeId) {
       if (!GoApp) throw new Error('Wails runtime not available')
@@ -691,6 +695,70 @@ export const useFlowStore = defineStore('flowStore', {
           el.selected = true
         }
       })
+    },
+    async setTrace(traceId) {
+      this.trace = traceId
+
+      if (!traceId || !GoApp) {
+        this.highlightTrace(traceId)
+        return
+      }
+
+      try {
+        // Fetch graph elements with trace stats applied
+        const result = await GoApp.ApplyTraceToFlow(
+          this.contextName,
+          this.namespace,
+          this.projectResourceName,
+          this.flowResourceName,
+          traceId
+        )
+
+        // Apply trace data to nodes
+        if (result.nodes) {
+          for (const nodeData of result.nodes) {
+            const existing = this.elements.find(el => el.id === nodeData.id)
+            if (existing && existing.data) {
+              existing.data.trace = nodeData.data?.trace
+            }
+          }
+        }
+
+        // Apply trace data and styles to edges
+        if (result.edges) {
+          for (const edgeData of result.edges) {
+            const existing = this.elements.find(el => el.id === edgeData.id)
+            if (existing) {
+              if (existing.data) {
+                existing.data.trace = edgeData.data?.trace
+              }
+              // Apply edge styling from trace
+              if (edgeData.style) {
+                existing.style = { ...existing.style, ...edgeData.style }
+              }
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Failed to apply trace to flow:', err)
+      }
+
+      this.highlightTrace(traceId)
+    },
+    clearTrace() {
+      // Clear trace data from all elements
+      for (const el of this.elements) {
+        if (el.data?.trace) {
+          delete el.data.trace
+        }
+        // Reset edge styles
+        if (isEdge(el) && el.style) {
+          delete el.style.stroke
+          delete el.style.strokeWidth
+        }
+      }
+      this.trace = null
+      this.highlightTrace(null)
     },
     async runExpression(expression, data, schema) {
       if (!GoApp) throw new Error('Wails runtime not available')

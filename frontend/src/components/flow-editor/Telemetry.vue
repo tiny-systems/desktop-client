@@ -1,8 +1,9 @@
 <script setup>
-import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { ChevronUpIcon, ChevronDownIcon, ExclamationTriangleIcon, ArrowPathIcon } from '@heroicons/vue/24/outline'
 import { EventsOn } from '../../../wailsjs/runtime/runtime'
 import { GetTraces } from '../../../wailsjs/go/main/App'
+import { useFlowStore } from '../../stores/flow'
 
 const props = defineProps({
   ctx: {
@@ -24,9 +25,9 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['trace'])
+const flowStore = useFlowStore()
 
 const collapsed = ref(false)
-const selectedTraceId = ref(null)
 const telemetryError = ref(null)
 const loading = ref(false)
 const initialLoadDone = ref(false)
@@ -35,6 +36,23 @@ const traces = ref([])
 // Store the callback reference so we can remove only our listener
 let errorEventCallback = null
 let refreshTimeout = null
+
+// Computed metrics from traces
+const metrics = computed(() => {
+  if (traces.value.length === 0) {
+    return { total: 0, errors: 0, avgDuration: 0 }
+  }
+
+  const total = traces.value.length
+  const errors = traces.value.reduce((sum, t) => sum + (t.errors || 0), 0)
+  const totalDuration = traces.value.reduce((sum, t) => sum + (t.duration || 0), 0)
+  const avgDuration = total > 0 ? totalDuration / total : 0
+
+  return { total, errors, avgDuration }
+})
+
+// Selected trace ID from flow store
+const selectedTraceId = computed(() => flowStore.trace)
 
 // Load traces from the backend
 const loadTraces = async () => {
@@ -85,7 +103,7 @@ const scheduleReload = () => {
   }
   refreshTimeout = setTimeout(() => {
     loadTraces()
-  }, 500) // Reload after 500ms of inactivity for responsive real-time updates
+  }, 500)
 }
 
 // Listen for flow events to trigger trace reload
@@ -118,6 +136,7 @@ watch(
   () => {
     initialLoadDone.value = false
     traces.value = []
+    flowStore.clearTrace()
     loadTraces()
   }
 )
@@ -147,9 +166,6 @@ const formatTime = (timestamp) => {
   const ms = timestamp / 1000
   const date = new Date(ms)
   const opts = {
-    year: 'numeric',
-    month: 'numeric',
-    day: 'numeric',
     hour: 'numeric',
     minute: 'numeric',
     second: 'numeric',
@@ -174,7 +190,7 @@ const formatRelativeTime = (timestamp) => {
 }
 
 const selectTrace = (trace) => {
-  selectedTraceId.value = trace.id
+  flowStore.setTrace(trace.id)
   emit('trace', trace.id)
 }
 
@@ -190,31 +206,45 @@ const refresh = () => {
 <template>
   <div
     :class="[
-      'w-full border-t border-gray-200 dark:border-gray-700 text-sm relative bg-white dark:bg-gray-900',
+      'w-full border-t border-gray-700 text-sm relative bg-gray-900',
       !collapsed ? 'min-h-64 h-1/4' : ''
     ]"
   >
     <!-- Header with collapse toggle -->
     <div
-      class="flex items-center justify-between px-3 py-1.5 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 cursor-pointer"
+      class="flex items-center justify-between px-3 py-1.5 bg-gray-800 border-b border-gray-700 cursor-pointer"
       @click="toggleCollapsed"
     >
-      <span class="text-xs font-medium text-gray-600 dark:text-gray-400">
-        Telemetry
-        <span v-if="traces.length > 0" class="ml-1 text-gray-400 dark:text-gray-500">
-          ({{ traces.length }} traces)
+      <div class="flex items-center gap-4">
+        <span class="text-xs font-medium text-gray-400">
+          Telemetry
         </span>
-      </span>
+        <!-- Metrics summary -->
+        <div v-if="hasData && !collapsed" class="flex items-center gap-3 text-xs">
+          <span class="px-2 py-0.5 bg-sky-900/50 text-sky-300 rounded">
+            {{ metrics.total }} traces
+          </span>
+          <span v-if="metrics.errors > 0" class="px-2 py-0.5 bg-red-900/50 text-red-300 rounded">
+            {{ metrics.errors }} errors
+          </span>
+          <span class="text-gray-500">
+            avg: {{ formatDuration(metrics.avgDuration) }}
+          </span>
+        </div>
+        <span v-else-if="traces.length > 0" class="text-gray-500 text-xs">
+          ({{ traces.length }})
+        </span>
+      </div>
       <div class="flex items-center gap-2">
         <button
           @click.stop="refresh"
-          class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-0.5"
+          class="text-gray-400 hover:text-gray-300 p-0.5"
           :class="{ 'animate-spin': loading }"
           title="Refresh traces"
         >
           <ArrowPathIcon class="w-4 h-4" />
         </button>
-        <button class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+        <button class="text-gray-400 hover:text-gray-300">
           <ChevronDownIcon v-if="collapsed" class="w-4 h-4" />
           <ChevronUpIcon v-else class="w-4 h-4" />
         </button>
@@ -240,29 +270,29 @@ const refresh = () => {
         </div>
       </div>
 
-      <div class="h-full dark:text-gray-300">
+      <div class="h-full text-gray-300">
         <!-- Loading state - only show before initial load completes -->
-        <div v-if="!initialLoadDone && loading" class="text-center p-4 text-xs font-mono text-gray-500 dark:text-gray-400">
+        <div v-if="!initialLoadDone && loading" class="text-center p-4 text-xs font-mono text-gray-500">
           Loading traces...
         </div>
 
         <!-- No data message - only show after initial load -->
-        <div v-else-if="initialLoadDone && !hasData" class="text-center p-4 text-xs font-mono text-gray-500 dark:text-gray-400">
+        <div v-else-if="initialLoadDone && !hasData" class="text-center p-4 text-xs font-mono text-gray-500">
           No telemetry data available. Traces will appear here when flows are executed.
         </div>
 
         <!-- Trace list -->
-        <div v-else class="flex flex-col h-full max-h-48 overflow-y-auto bg-gray-50/50 dark:bg-gray-800/50 font-mono">
+        <div v-else class="flex flex-col h-full max-h-48 overflow-y-auto bg-gray-800/50 font-mono">
           <table class="w-full">
-            <thead class="sticky top-0 bg-gray-100 dark:bg-gray-700 text-xs">
+            <thead class="sticky top-0 bg-gray-700 text-xs">
               <tr>
-                <th class="px-2 py-1 text-left font-medium text-gray-600 dark:text-gray-300">ID</th>
-                <th class="px-2 py-1 text-left font-medium text-gray-600 dark:text-gray-300">Start</th>
-                <th class="px-2 py-1 text-left font-medium text-gray-600 dark:text-gray-300">End</th>
-                <th class="px-2 py-1 text-left font-medium text-gray-600 dark:text-gray-300">Duration</th>
-                <th class="px-2 py-1 text-left font-medium text-gray-600 dark:text-gray-300">Spans</th>
-                <th class="px-2 py-1 text-left font-medium text-gray-600 dark:text-gray-300">Errors</th>
-                <th class="px-2 py-1 text-left font-medium text-gray-600 dark:text-gray-300">Size</th>
+                <th class="px-2 py-1 text-left font-medium text-gray-300">Trace ID</th>
+                <th class="px-2 py-1 text-left font-medium text-gray-300">Time</th>
+                <th class="px-2 py-1 text-left font-medium text-gray-300">Age</th>
+                <th class="px-2 py-1 text-left font-medium text-gray-300">Duration</th>
+                <th class="px-2 py-1 text-left font-medium text-gray-300">Spans</th>
+                <th class="px-2 py-1 text-left font-medium text-gray-300">Errors</th>
+                <th class="px-2 py-1 text-left font-medium text-gray-300">Size</th>
               </tr>
             </thead>
             <tbody>
@@ -270,40 +300,43 @@ const refresh = () => {
                 v-for="trace in traces"
                 :key="trace.id"
                 :class="[
-                  'text-left text-xs hover:bg-gray-200 dark:hover:bg-gray-700 cursor-pointer transition-colors',
-                  selectedTraceId === trace.id ? 'bg-gray-300 dark:bg-gray-600' : ''
+                  'text-left text-xs hover:bg-gray-700 cursor-pointer transition-colors',
+                  selectedTraceId === trace.id ? 'bg-sky-900/50' : ''
                 ]"
                 @click="selectTrace(trace)"
               >
                 <td class="px-2 py-1">
-                  <span class="text-gray-700 dark:text-gray-300">
-                    {{ trace.id }}
+                  <span :class="[
+                    'font-mono',
+                    selectedTraceId === trace.id ? 'text-sky-300' : 'text-gray-300'
+                  ]">
+                    {{ trace.id.substring(0, 16) }}...
                   </span>
                 </td>
-                <td class="px-2 py-1 text-gray-600 dark:text-gray-400">
+                <td class="px-2 py-1 text-gray-400">
                   {{ formatTime(trace.start) }}
                 </td>
-                <td class="px-2 py-1 text-gray-600 dark:text-gray-400">
+                <td class="px-2 py-1 text-gray-400">
                   {{ formatRelativeTime(trace.end) }}
                 </td>
-                <td class="px-2 py-1 text-gray-700 dark:text-gray-300">
+                <td class="px-2 py-1 text-gray-300">
                   {{ formatDuration(trace.duration) }}
                 </td>
                 <td class="px-2 py-1">
-                  <span class="px-1.5 py-0.5 bg-sky-200 dark:bg-sky-700 text-sky-800 dark:text-sky-100 rounded text-xs">
+                  <span class="px-1.5 py-0.5 bg-sky-700 text-sky-100 rounded text-xs">
                     {{ trace.spans }}
                   </span>
                 </td>
                 <td class="px-2 py-1">
                   <span
                     v-if="trace.errors > 0"
-                    class="px-1.5 py-0.5 bg-red-200 dark:bg-red-700 text-red-800 dark:text-red-100 rounded text-xs"
+                    class="px-1.5 py-0.5 bg-red-700 text-red-100 rounded text-xs"
                   >
                     {{ trace.errors }}
                   </span>
-                  <span v-else class="text-gray-400">-</span>
+                  <span v-else class="text-gray-500">-</span>
                 </td>
-                <td class="px-2 py-1 text-gray-600 dark:text-gray-400">
+                <td class="px-2 py-1 text-gray-400">
                   {{ trace.length }} B
                 </td>
               </tr>

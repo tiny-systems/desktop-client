@@ -7,6 +7,7 @@ import FlowAddComponent from './FlowAddComponent.vue'
 import FlowImportModal from './FlowImportModal.vue'
 import SidePanel from './SidePanel.vue'
 import Telemetry from './Telemetry.vue'
+import Trace from './Trace.vue'
 
 const props = defineProps({
   ctx: String,
@@ -225,6 +226,16 @@ watch(() => props.flowResourceName, () => {
       <div class="flex-1 flex flex-col overflow-hidden">
         <!-- Canvas and Side Panel -->
         <div class="flex-1 flex overflow-hidden relative">
+          <!-- Trace overlay -->
+          <Trace
+            v-if="flowStore.trace"
+            :trace="flowStore.trace"
+            :ctx="ctx"
+            :ns="ns"
+            :project-name="projectName"
+            @close="flowStore.clearTrace()"
+          />
+
           <!-- Canvas -->
           <div class="flex-1">
             <FlowCanvas
@@ -264,7 +275,6 @@ watch(() => props.flowResourceName, () => {
           :ns="ns"
           :flow-name="flowStore.flowResourceName"
           :project-name="projectName"
-          @trace="(traceId) => flowStore.highlightTrace(traceId)"
         />
       </div>
     </template>

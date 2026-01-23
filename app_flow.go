@@ -66,51 +66,46 @@ var (
 	flowWatchCancel context.CancelFunc
 )
 
-const (
-	otelCollectorService = "tinysystems-otel-collector"
-	otelCollectorPort    = 18080
-)
 
 // startStatsStreaming starts streaming stats from the otel-collector for edge animations.
-func (a *App) startStatsStreaming(ctx context.Context, namespace, projectName, flowResourceName string) {
-	// Connect directly to otel-collector service within the namespace
-	serviceAddr := fmt.Sprintf("%s.%s.svc.cluster.local:%d", otelCollectorService, namespace, otelCollectorPort)
-
-	statsClient, err := utils.NewStatsClient(serviceAddr)
+func (a *App) startStatsStreaming(ctx context.Context, contextName, namespace, projectName, flowResourceName string) {
+	config, err := loadContextConfig(contextName)
 	if err != nil {
-		a.logger.Error(err, "failed to create stats client", "address", serviceAddr)
+		a.logger.Error(err, "failed to load context config for stats streaming")
 		return
 	}
 
+	pfClient := NewPortForwardClient(config, namespace)
+
+	traceService := utils.NewTraceService(utils.TraceServiceConfig{
+		Client: pfClient,
+	})
+
 	go func() {
-		defer statsClient.Close()
+		defer pfClient.Close()
+		defer traceService.Close()
 
-		err := statsClient.Subscribe(ctx, utils.StatsSubscription{
-			ProjectID: projectName,
-			FlowID:    flowResourceName,
-			Metrics:   []string{utils.EdgeBusyStatKey},
-			Handler: func(events []utils.StatsEvent) {
-				statsBatch := make(map[string]interface{})
-				for _, event := range events {
-					if !strings.HasPrefix(event.Metric, "tiny_edge_") || event.Element == "" {
-						continue
-					}
-
-					stats, ok := statsBatch[event.Element].(map[string]interface{})
-					if !ok {
-						stats = make(map[string]interface{})
-					}
-					stats[event.Metric] = event.Value
-					statsBatch[event.Element] = stats
+		err := traceService.SubscribeToStats(ctx, namespace, projectName, flowResourceName, func(events []utils.StatsEvent) {
+			statsBatch := make(map[string]interface{})
+			for _, event := range events {
+				if !strings.HasPrefix(event.Metric, "tiny_edge_") || event.Element == "" {
+					continue
 				}
 
-				if len(statsBatch) > 0 {
-					wailsruntime.EventsEmit(a.ctx, "flowNodeUpdate", FlowNodeEvent{
-						Type:  "STATS",
-						Graph: statsBatch,
-					})
+				stats, ok := statsBatch[event.Element].(map[string]interface{})
+				if !ok {
+					stats = make(map[string]interface{})
 				}
-			},
+				stats[event.Metric] = event.Value
+				statsBatch[event.Element] = stats
+			}
+
+			if len(statsBatch) > 0 {
+				wailsruntime.EventsEmit(a.ctx, "flowNodeUpdate", FlowNodeEvent{
+					Type:  "STATS",
+					Graph: statsBatch,
+				})
+			}
 		})
 		if err != nil && ctx.Err() == nil {
 			a.logger.Error(err, "stats subscription failed")
@@ -268,7 +263,7 @@ func (a *App) WatchFlowNodes(contextName, namespace, projectName, flowResourceNa
 		return fmt.Errorf("start watch: %w", err)
 	}
 
-	go a.startStatsStreaming(watchCtx, namespace, projectName, flowResourceName)
+	go a.startStatsStreaming(watchCtx, contextName, namespace, projectName, flowResourceName)
 
 	heartbeatTicker := time.NewTicker(2 * time.Second)
 
@@ -779,7 +774,8 @@ func (a *App) BatchUpdateNodePositions(contextName, namespace string, positions 
 }
 
 // InspectNodePort returns the simulated data for a specific port.
-func (a *App) InspectNodePort(contextName, namespace, projectName, nodeResourceName, portName string) (map[string]interface{}, error) {
+// If traceID is provided, it uses real runtime data from the trace instead of simulated data.
+func (a *App) InspectNodePort(contextName, namespace, projectName, nodeResourceName, portName, traceID string) (map[string]interface{}, error) {
 	mgr, err := a.getManager(contextName, namespace)
 	if err != nil {
 		return nil, err
@@ -842,7 +838,36 @@ func (a *App) InspectNodePort(contextName, namespace, projectName, nodeResourceN
 	defer cancel()
 
 	portFullName := utils.GetPortFullName(nodeResourceName, portName)
-	simulatedData, err := utils.SimulatePortDataSimple(ctx, nodesMap, portFullName)
+
+	// Load runtime data from trace if traceID is provided
+	var runtimeData map[string][]byte
+	if traceID != "" {
+		config, err := loadContextConfig(contextName)
+		if err == nil {
+			pfClient := NewPortForwardClient(config, namespace)
+			defer pfClient.Close()
+
+			traceService := utils.NewTraceService(utils.TraceServiceConfig{
+				Client: pfClient,
+			})
+			defer traceService.Close()
+
+			// Fetch trace and extract runtime data using SDK functions (same as platform)
+			trace, err := traceService.GetTraceByID(ctx, namespace, projectName, traceID)
+			if err == nil && trace != nil {
+				_, runtimeData = utils.ExtractTraceStatistics(trace)
+				result["dataSource"] = "trace"
+			}
+		}
+	}
+
+	if runtimeData == nil {
+		result["dataSource"] = "simulated"
+	}
+
+	// Use SimulatePortData with runtime data (same as platform)
+	// If runtimeData is nil, it behaves like SimulatePortDataSimple
+	simulatedData, err := utils.SimulatePortData(ctx, nodesMap, portFullName, runtimeData)
 	if err != nil {
 		result["data"] = nil
 		result["dataError"] = err.Error()
@@ -998,4 +1023,120 @@ func (a *App) GetTraces(contextName, namespace, projectName, flowName string, st
 		Total:  resp.Total,
 		Offset: resp.Offset,
 	}, nil
+}
+
+// TraceDataResponse is the response from GetTraceByID
+type TraceDataResponse struct {
+	TraceID string       `json:"traceId"`
+	Spans   []utils.Span `json:"spans"`
+}
+
+// GetTraceByID fetches a trace by its ID
+func (a *App) GetTraceByID(contextName, namespace, projectName, traceID string) (*TraceDataResponse, error) {
+	config, err := loadContextConfig(contextName)
+	if err != nil {
+		return nil, err
+	}
+
+	pfClient := NewPortForwardClient(config, namespace)
+	defer pfClient.Close()
+
+	traceService := utils.NewTraceService(utils.TraceServiceConfig{
+		Client: pfClient,
+	})
+	defer traceService.Close()
+
+	trace, err := traceService.GetTraceByID(a.ctx, namespace, projectName, traceID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &TraceDataResponse{
+		TraceID: trace.TraceID,
+		Spans:   trace.Spans,
+	}, nil
+}
+
+// ApplyTraceToFlowResponse contains graph elements with trace stats applied
+type ApplyTraceToFlowResponse struct {
+	Nodes []map[string]interface{} `json:"nodes"`
+	Edges []map[string]interface{} `json:"edges"`
+}
+
+// ApplyTraceToFlow fetches trace stats and applies them to graph elements
+func (a *App) ApplyTraceToFlow(contextName, namespace, projectName, flowResourceName, traceID string) (*ApplyTraceToFlowResponse, error) {
+	mgr, err := a.getManager(contextName, namespace)
+	if err != nil {
+		return nil, err
+	}
+
+	// Get all nodes for the flow
+	nodes, err := mgr.GetProjectFlowNodes(a.ctx, projectName, flowResourceName)
+	if err != nil {
+		return nil, fmt.Errorf("get flow nodes: %w", err)
+	}
+
+	nodesMap := make(map[string]v1alpha1.TinyNode, len(nodes))
+	for _, node := range nodes {
+		nodesMap[node.Name] = node
+	}
+
+	// Fetch trace data and extract statistics
+	var traceStats *utils.TraceStatistics
+	if traceID != "" {
+		config, err := loadContextConfig(contextName)
+		if err != nil {
+			return nil, err
+		}
+
+		pfClient := NewPortForwardClient(config, namespace)
+		defer pfClient.Close()
+
+		traceService := utils.NewTraceService(utils.TraceServiceConfig{
+			Client: pfClient,
+		})
+		defer traceService.Close()
+
+		trace, err := traceService.GetTraceByID(a.ctx, namespace, projectName, traceID)
+		if err != nil {
+			return nil, fmt.Errorf("get trace: %w", err)
+		}
+
+		traceStats, _ = utils.ExtractTraceStatistics(trace)
+	}
+
+	// Build response with trace stats applied
+	response := &ApplyTraceToFlowResponse{
+		Nodes: make([]map[string]interface{}, 0),
+		Edges: make([]map[string]interface{}, 0),
+	}
+
+	for _, node := range nodes {
+		nodeAsMap := utils.ApiNodeToMap(node, map[string]interface{}{}, false)
+
+		if traceStats != nil {
+			utils.ApplyTraceStatToNode(nodeAsMap, traceStats)
+		}
+
+		response.Nodes = append(response.Nodes, nodeAsMap)
+
+		// Process edges
+		for i := range node.Spec.Edges {
+			edge := &node.Spec.Edges[i]
+			edgeAsMap, err := utils.ApiEdgeToProtoMap(&node, edge, map[string]interface{}{
+				"valid": true,
+			})
+			if err != nil {
+				continue
+			}
+
+			if traceStats != nil {
+				utils.ApplyTraceStatToEdge(edgeAsMap, traceStats)
+			}
+
+			response.Edges = append(response.Edges, edgeAsMap)
+		}
+	}
+
+	return response, nil
 }

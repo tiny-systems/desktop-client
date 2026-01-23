@@ -19,6 +19,20 @@ export namespace kubernetes {
 
 export namespace main {
 	
+	export class ApplyTraceToFlowResponse {
+	    nodes: any[];
+	    edges: any[];
+	
+	    static createFrom(source: any = {}) {
+	        return new ApplyTraceToFlowResponse(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.nodes = source["nodes"];
+	        this.edges = source["edges"];
+	    }
+	}
 	export class ComponentInfo {
 	    name: string;
 	    module: string;
@@ -144,6 +158,20 @@ export namespace main {
 	        this.current = source["current"];
 	    }
 	}
+	export class Preferences {
+	    lastContext: string;
+	    lastNamespace: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new Preferences(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.lastContext = source["lastContext"];
+	        this.lastNamespace = source["lastNamespace"];
+	    }
+	}
 	export class Project {
 	    name: string;
 	    title: string;
@@ -210,6 +238,38 @@ export namespace main {
 	        this.validSchema = source["validSchema"];
 	        this.validationError = source["validationError"];
 	    }
+	}
+	export class TraceDataResponse {
+	    traceId: string;
+	    spans: utils.Span[];
+	
+	    static createFrom(source: any = {}) {
+	        return new TraceDataResponse(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.traceId = source["traceId"];
+	        this.spans = this.convertValues(source["spans"], utils.Span);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
 	}
 	export class TracesResponse {
 	    traces: utils.TraceInfo[];
@@ -301,6 +361,96 @@ export namespace main {
 }
 
 export namespace utils {
+	
+	export class SpanEvent {
+	    name: string;
+	    attributes: SpanAttribute[];
+	
+	    static createFrom(source: any = {}) {
+	        return new SpanEvent(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.attributes = this.convertValues(source["attributes"], SpanAttribute);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class SpanAttribute {
+	    key: string;
+	    value: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new SpanAttribute(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.key = source["key"];
+	        this.value = source["value"];
+	    }
+	}
+	export class Span {
+	    trace_id: string;
+	    span_id: string;
+	    name: string;
+	    start_time_unix_nano: number;
+	    end_time_unix_nano: number;
+	    attributes: SpanAttribute[];
+	    events: SpanEvent[];
+	
+	    static createFrom(source: any = {}) {
+	        return new Span(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.trace_id = source["trace_id"];
+	        this.span_id = source["span_id"];
+	        this.name = source["name"];
+	        this.start_time_unix_nano = source["start_time_unix_nano"];
+	        this.end_time_unix_nano = source["end_time_unix_nano"];
+	        this.attributes = this.convertValues(source["attributes"], SpanAttribute);
+	        this.events = this.convertValues(source["events"], SpanEvent);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
 	
 	export class TraceInfo {
 	    id: string;

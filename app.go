@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -18,6 +19,27 @@ type App struct {
 	// watchMu protects watchCancel
 	watchMu     sync.Mutex
 	watchCancel context.CancelFunc
+}
+
+// Preferences stores user preferences
+type Preferences struct {
+	LastContext   string `json:"lastContext"`
+	LastNamespace string `json:"lastNamespace"`
+}
+
+// getPreferencesPath returns the path to the preferences file
+func getPreferencesPath() (string, error) {
+	usr, err := user.Current()
+	if err != nil {
+		return "", err
+	}
+
+	configDir := filepath.Join(usr.HomeDir, ".config", "tinysystems")
+	if err := os.MkdirAll(configDir, 0755); err != nil {
+		return "", err
+	}
+
+	return filepath.Join(configDir, "preferences.json"), nil
 }
 
 // NewApp creates a new App application struct
@@ -74,4 +96,45 @@ func setupPATH() error {
 }
 
 func (a *App) shutdown(ctx context.Context) {
+}
+
+// GetPreferences returns saved user preferences
+func (a *App) GetPreferences() (*Preferences, error) {
+	path, err := getPreferencesPath()
+	if err != nil {
+		return &Preferences{}, nil
+	}
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		// File doesn't exist yet - return empty preferences
+		return &Preferences{}, nil
+	}
+
+	var prefs Preferences
+	if err := json.Unmarshal(data, &prefs); err != nil {
+		return &Preferences{}, nil
+	}
+
+	return &prefs, nil
+}
+
+// SavePreferences saves user preferences
+func (a *App) SavePreferences(contextName, namespace string) error {
+	path, err := getPreferencesPath()
+	if err != nil {
+		return err
+	}
+
+	prefs := Preferences{
+		LastContext:   contextName,
+		LastNamespace: namespace,
+	}
+
+	data, err := json.MarshalIndent(prefs, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(path, data, 0644)
 }
