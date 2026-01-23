@@ -1,4 +1,6 @@
 <script setup>
+import { ArrowDownTrayIcon, ArrowUpTrayIcon } from '@heroicons/vue/24/outline'
+
 const props = defineProps({
   flowName: String,
   flowResourceName: String,
@@ -6,7 +8,7 @@ const props = defineProps({
   loading: Boolean,
 })
 
-const emit = defineEmits(['close', 'error'])
+const emit = defineEmits(['close', 'error', 'import', 'export'])
 </script>
 
 <template>
@@ -48,6 +50,31 @@ const emit = defineEmits(['close', 'error'])
         <div v-if="loading" class="inline-flex items-center">
           <span class="text-sky-600 ml-3 text-sm">saving...</span>
         </div>
+      </div>
+
+      <!-- Import/Export buttons -->
+      <div class="flex items-center gap-2">
+        <!-- Import button -->
+        <button
+          type="button"
+          @click="emit('import')"
+          title="Import flow JSON"
+          class="text-sky-600 border border-sky-600 hover:bg-sky-600 hover:text-white focus:ring-4 focus:outline-none focus:ring-sky-300 font-medium rounded-lg text-sm p-2 text-center inline-flex items-center dark:border-sky-500 dark:text-sky-500 dark:hover:text-white dark:focus:ring-sky-800 dark:hover:bg-sky-600"
+        >
+          <ArrowUpTrayIcon class="w-4 h-4" />
+          <span class="sr-only">Import</span>
+        </button>
+
+        <!-- Export button -->
+        <button
+          type="button"
+          @click="emit('export')"
+          title="Export flow JSON"
+          class="text-sky-600 border border-sky-600 hover:bg-sky-600 hover:text-white focus:ring-4 focus:outline-none focus:ring-sky-300 font-medium rounded-lg text-sm p-2 text-center inline-flex items-center dark:border-sky-500 dark:text-sky-500 dark:hover:text-white dark:focus:ring-sky-800 dark:hover:bg-sky-600"
+        >
+          <ArrowDownTrayIcon class="w-4 h-4" />
+          <span class="sr-only">Export</span>
+        </button>
       </div>
     </div>
   </div>

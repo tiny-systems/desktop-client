@@ -4,6 +4,7 @@ import { useFlowStore } from '../../stores/flow'
 import ControlPanel from './ControlPanel.vue'
 import FlowCanvas from './FlowCanvas.vue'
 import FlowAddComponent from './FlowAddComponent.vue'
+import FlowImportModal from './FlowImportModal.vue'
 import SidePanel from './SidePanel.vue'
 import Telemetry from './Telemetry.vue'
 
@@ -23,6 +24,9 @@ const sidePanelOpen = ref(true)
 // Add component modal state
 const showAddComponent = ref(false)
 const newNodePosition = ref({ x: 100, y: 100 })
+
+// Import modal state
+const showImportModal = ref(false)
 
 // Auto-open side panel when something is selected
 const hasSelection = computed(() => flowStore.selectedNode || flowStore.selectedEdge)
@@ -149,6 +153,30 @@ const handleAddNode = (position) => {
   showAddComponent.value = true
 }
 
+// Handle import from ControlPanel
+const handleImport = () => {
+  showImportModal.value = true
+}
+
+// Handle export from ControlPanel
+const handleExport = () => {
+  try {
+    const elements = flowStore.export()
+    const json = JSON.stringify(elements, null, 2)
+    const blob = new Blob([json], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${flowStore.flowResourceName || 'flow'}.json`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  } catch (err) {
+    handleError(`Failed to export: ${err}`)
+  }
+}
+
 onMounted(() => {
   loadFlow()
 })
@@ -184,6 +212,8 @@ watch(() => props.flowResourceName, () => {
         :loading="flowStore.loadingAlt"
         @close="handleClose"
         @error="handleError"
+        @import="handleImport"
+        @export="handleExport"
       />
 
       <!-- Error banner -->
@@ -209,6 +239,12 @@ watch(() => props.flowResourceName, () => {
           <FlowAddComponent
             v-model="showAddComponent"
             :position="newNodePosition"
+          />
+
+          <!-- Import Modal -->
+          <FlowImportModal
+            v-model="showImportModal"
+            @error="handleError"
           />
 
           <!-- Side Panel -->

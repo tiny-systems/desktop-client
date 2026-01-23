@@ -174,20 +174,29 @@ export const useFlowStore = defineStore('flowStore', {
       const existingIndex = this.elements.findIndex(el => el.id === element.graph.id)
       if (existingIndex !== -1) {
         // Update existing element instead of adding duplicate
+        // Preserve existing stats before merging
+        const existingStats = this.elements[existingIndex].data?.stats
         Object.assign(this.elements[existingIndex].data || {}, element.graph.data || {})
+        // Merge stats: preserve existing stats and layer new stats on top
+        if (existingStats || element.graph.data?.stats) {
+          this.elements[existingIndex].data.stats = Object.assign({}, existingStats, element.graph.data?.stats)
+        }
         if (element.graph.position) {
           this.elements[existingIndex].position = element.graph.position
         }
         return
       }
 
-      // Ensure edges have valid: true by default if not set
+      // Ensure edges have valid: true and stats initialized by default
       if (isEdge(element.graph)) {
         if (!element.graph.data) {
           element.graph.data = {}
         }
         if (element.graph.data.valid === undefined) {
           element.graph.data.valid = true
+        }
+        if (!element.graph.data.stats) {
+          element.graph.data.stats = {}
         }
       }
 
@@ -202,8 +211,13 @@ export const useFlowStore = defineStore('flowStore', {
     updateElement(event) {
       for (let i = 0; i < this.elements.length; i++) {
         if (this.elements[i].id === event.id) {
-          this.elements[i].data = {}
-          Object.assign(this.elements[i].data, event.graph.data)
+          // Preserve existing stats before updating data
+          const existingStats = this.elements[i].data?.stats
+          this.elements[i].data = { ...event.graph.data }
+          // Merge stats: preserve existing stats and layer new stats on top
+          if (existingStats || event.graph.data?.stats) {
+            this.elements[i].data.stats = Object.assign({}, existingStats, event.graph.data?.stats)
+          }
           // Update position if provided
           if (event.graph.position) {
             this.elements[i].position = event.graph.position
@@ -240,7 +254,13 @@ export const useFlowStore = defineStore('flowStore', {
           if (this.elements[i].id !== key) continue
           if (!Object.hasOwn(event.graph, key)) continue
           const newStats = event.graph[key]
-          this.elements[i].data.stats = Object.assign(this.elements[i].data.stats || {}, newStats)
+          if (!this.elements[i].data) {
+            this.elements[i].data = {}
+          }
+          if (!this.elements[i].data.stats) {
+            this.elements[i].data.stats = {}
+          }
+          Object.assign(this.elements[i].data.stats, newStats)
         }
       }
       this.checkStaleAnimations()
@@ -584,10 +604,10 @@ export const useFlowStore = defineStore('flowStore', {
         this.loadingAlt = false
       }
     },
-    async inspectNodePort(nodeId, port) {
+    async inspectNodePort(nodeId, port, traceID = '') {
       if (!GoApp) throw new Error('Wails runtime not available')
 
-      return await GoApp.InspectNodePort(this.contextName, this.namespace, this.projectResourceName, nodeId, port)
+      return await GoApp.InspectNodePort(this.contextName, this.namespace, this.projectResourceName, nodeId, port, traceID)
     },
     async getNodeHandles(nodeId) {
       if (!GoApp) throw new Error('Wails runtime not available')
@@ -641,12 +661,15 @@ export const useFlowStore = defineStore('flowStore', {
     },
     async import(elements) {
       this.loading = true
-      // For import, we'd need to save these to the backend
-      // For now, just add them locally with hidden flag
       elements.forEach((el) => {
         el.hidden = true
         this.addElement({ id: el.id, graph: el })
       })
+      try {
+        await this.save()
+      } catch (e) {
+        console.error('Import error:', e)
+      }
       this.loading = false
     },
     up() {
@@ -668,6 +691,40 @@ export const useFlowStore = defineStore('flowStore', {
           el.selected = true
         }
       })
+    },
+    async runExpression(expression, data, schema) {
+      if (!GoApp) throw new Error('Wails runtime not available')
+
+      const dataStr = typeof data === 'string' ? data : JSON.stringify(data)
+      const schemaStr = typeof schema === 'string' ? schema : JSON.stringify(schema || {})
+
+      return await GoApp.RunExpression(expression, dataStr, schemaStr)
+    },
+    // Get source data for an edge (data from the source node's output port)
+    getEdgeSourceData(edge) {
+      if (!edge) return null
+
+      const sourceNode = this.getElement(edge.source)
+      if (!sourceNode?.data?.handles) return null
+
+      const sourceHandle = sourceNode.data.handles.find(h => h.id === edge.sourceHandle)
+      if (!sourceHandle) return null
+
+      // Try to get the sample data from the handle
+      // This might be available from port inspection or default data
+      try {
+        if (sourceHandle.data) {
+          return typeof sourceHandle.data === 'string' ? JSON.parse(sourceHandle.data) : sourceHandle.data
+        }
+        // Fallback to default from schema
+        if (sourceHandle.schema) {
+          const schema = typeof sourceHandle.schema === 'string' ? JSON.parse(sourceHandle.schema) : sourceHandle.schema
+          return schema.default || {}
+        }
+      } catch {
+        return {}
+      }
+      return {}
     }
   }
 })
