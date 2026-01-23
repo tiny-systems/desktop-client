@@ -1,5 +1,5 @@
 <script setup>
-import { ref, nextTick } from 'vue'
+import { ref, nextTick, onMounted, onUnmounted } from 'vue'
 import { VueFlow, useVueFlow, MarkerType } from '@vue-flow/core'
 import { Background } from '@vue-flow/background'
 import { Controls, ControlButton } from '@vue-flow/controls'
@@ -11,7 +11,7 @@ import TinyEdge from '../flow/TinyEdge.vue'
 import { PlusIcon, ArrowPathIcon, Squares2X2Icon } from '@heroicons/vue/24/outline'
 import { debounce } from 'lodash'
 
-const emit = defineEmits(['error', 'add-node'])
+const emit = defineEmits(['error', 'add-node', 'delete-node', 'delete-edge'])
 
 const flowStore = useFlowStore()
 const { layout } = useLayout()
@@ -30,49 +30,36 @@ const {
 // Track dragged nodes for batch position update
 const draggedNodes = ref(new Map())
 
-// Handle keyboard deletion of nodes
-onNodesChange(async (changes) => {
-  const removals = changes.filter(c => c.type === 'remove')
-  for (const removal of removals) {
-    try {
-      await flowStore.deleteNode(removal.id)
-    } catch (err) {
-      emit('error', `Failed to delete node: ${err}`)
+// Handle Delete key press - show confirmation dialog instead of deleting directly
+const handleKeyDown = (event) => {
+  if (event.key === 'Delete' || event.key === 'Backspace') {
+    // Prevent default behavior
+    event.preventDefault()
+
+    // Check if a node is selected
+    const selectedNode = flowStore.selectedNode
+    if (selectedNode) {
+      emit('delete-node', selectedNode)
+      return
+    }
+
+    // Check if an edge is selected
+    const selectedEdge = flowStore.selectedEdge
+    if (selectedEdge) {
+      emit('delete-edge', selectedEdge)
+      return
     }
   }
-})
-
-// Handle keyboard deletion of edges
-// Store edges before they're removed so we have source info for disconnection
-const edgeCache = ref(new Map())
-
-// Cache edges when selected (so we have info when they're deleted)
-const cacheSelectedEdges = () => {
-  flowStore.elements.filter(el => el.selected && el.source).forEach(edge => {
-    edgeCache.value.set(edge.id, { source: edge.source, id: edge.id })
-  })
 }
 
-onEdgesChange(async (changes) => {
-  // Cache current selected edges before processing removals
-  cacheSelectedEdges()
+// Add keyboard listener on mount
+onMounted(() => {
+  window.addEventListener('keydown', handleKeyDown)
+})
 
-  const removals = changes.filter(c => c.type === 'remove')
-  for (const removal of removals) {
-    try {
-      // Try to find edge in current elements first, then fall back to cache
-      let edge = flowStore.elements.find(el => el.id === removal.id)
-      if (!edge) {
-        edge = edgeCache.value.get(removal.id)
-      }
-      if (edge && edge.source) {
-        await flowStore.disconnectNodes(edge.source, edge.id || removal.id)
-        edgeCache.value.delete(removal.id)
-      }
-    } catch (err) {
-      emit('error', `Failed to delete edge: ${err}`)
-    }
-  }
+// Remove keyboard listener on unmount
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleKeyDown)
 })
 
 // Default edge options - use very light gray to match preview
@@ -267,6 +254,7 @@ const handleAutoLayout = async () => {
       :connection-mode="'strict'"
       :snap-to-grid="true"
       :snap-grid="[15, 15]"
+      :delete-key-code="null"
       @node-click="handleNodeClick"
       @edge-click="handleEdgeClick"
       @pane-click="handlePaneClick"

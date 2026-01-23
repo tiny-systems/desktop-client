@@ -37,6 +37,16 @@ const showRenameDialog = ref(false)
 const renameNode = ref(null)
 const newNodeLabel = ref('')
 
+// Delete node dialog state
+const showDeleteDialog = ref(false)
+const deleteNode = ref(null)
+const deleting = ref(false)
+
+// Delete edge dialog state
+const showDeleteEdgeDialog = ref(false)
+const deleteEdge = ref(null)
+const deletingEdge = ref(false)
+
 const loadFlow = async () => {
   try {
     await flowStore.load(props.ctx, props.ns, props.projectName, props.flowResourceName)
@@ -77,15 +87,55 @@ const submitRename = async () => {
 }
 
 // Handle delete from SidePanel
-const handleDelete = async (node) => {
+const handleDelete = (node) => {
   if (!node) return
-  if (confirm(`Delete node "${node.data?.label || node.id}"?`)) {
-    try {
-      await flowStore.deleteNode(node.id)
-    } catch (err) {
-      handleError(`Failed to delete: ${err}`)
-    }
+  deleteNode.value = node
+  showDeleteDialog.value = true
+}
+
+const submitDelete = async () => {
+  if (!deleteNode.value) return
+  deleting.value = true
+  try {
+    await flowStore.deleteNode(deleteNode.value.id)
+    showDeleteDialog.value = false
+    deleteNode.value = null
+  } catch (err) {
+    handleError(`Failed to delete: ${err}`)
+  } finally {
+    deleting.value = false
   }
+}
+
+const cancelDelete = () => {
+  showDeleteDialog.value = false
+  deleteNode.value = null
+}
+
+// Handle delete edge from FlowCanvas (keyboard Delete key)
+const handleDeleteEdge = (edge) => {
+  if (!edge) return
+  deleteEdge.value = edge
+  showDeleteEdgeDialog.value = true
+}
+
+const submitDeleteEdge = async () => {
+  if (!deleteEdge.value) return
+  deletingEdge.value = true
+  try {
+    await flowStore.disconnectNodes(deleteEdge.value.source, deleteEdge.value.id)
+    showDeleteEdgeDialog.value = false
+    deleteEdge.value = null
+  } catch (err) {
+    handleError(`Failed to delete edge: ${err}`)
+  } finally {
+    deletingEdge.value = false
+  }
+}
+
+const cancelDeleteEdge = () => {
+  showDeleteEdgeDialog.value = false
+  deleteEdge.value = null
 }
 
 // Handle settings from SidePanel (not implemented yet)
@@ -147,7 +197,12 @@ watch(() => props.flowResourceName, () => {
         <div class="flex-1 flex overflow-hidden relative">
           <!-- Canvas -->
           <div class="flex-1">
-            <FlowCanvas @error="handleError" @add-node="handleAddNode" />
+            <FlowCanvas
+              @error="handleError"
+              @add-node="handleAddNode"
+              @delete-node="handleDelete"
+              @delete-edge="handleDeleteEdge"
+            />
           </div>
 
           <!-- Add Component Modal -->
@@ -169,6 +224,8 @@ watch(() => props.flowResourceName, () => {
 
         <!-- Telemetry section at the bottom -->
         <Telemetry
+          :ctx="ctx"
+          :ns="ns"
           :flow-name="flowStore.flowResourceName"
           :project-name="projectName"
           @trace="(traceId) => flowStore.highlightTrace(traceId)"
@@ -179,38 +236,115 @@ watch(() => props.flowResourceName, () => {
     <!-- Rename Node Dialog -->
     <div
       v-if="showRenameDialog"
-      class="fixed inset-0 z-50 overflow-y-auto"
+      class="fixed inset-0 z-50 flex items-center justify-center p-4"
       @keydown.enter.prevent="submitRename"
       @keydown.escape="showRenameDialog = false"
     >
-      <div class="fixed inset-0 bg-black/40 backdrop-blur-md" @click="showRenameDialog = false"></div>
-      <div class="flex min-h-full items-center justify-center p-4">
-        <div class="relative bg-white dark:bg-gray-900 rounded-lg shadow-xl w-full max-w-md p-6">
-          <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Rename Node</h3>
-          <div class="mb-4">
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Node Name</label>
-            <input
-              v-model="newNodeLabel"
-              type="text"
-              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-sky-500 focus:border-transparent"
-              autofocus
-            />
-          </div>
-          <div class="flex justify-end gap-2">
-            <button
-              @click="showRenameDialog = false"
-              class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700"
-            >
-              Cancel
-            </button>
-            <button
-              @click="submitRename"
-              :disabled="!newNodeLabel.trim()"
-              class="px-4 py-2 text-sm font-medium text-white bg-sky-600 rounded-md hover:bg-sky-700 disabled:opacity-50"
-            >
-              Rename
-            </button>
-          </div>
+      <div class="fixed inset-0 bg-gray-500/25 dark:bg-black/75 backdrop-blur-sm" @click="showRenameDialog = false"></div>
+      <div class="relative bg-white dark:bg-gray-900 dark:border dark:border-gray-700 rounded-lg shadow-xl w-full max-w-sm p-4">
+        <h3 class="text-base font-semibold text-gray-900 dark:text-gray-100 mb-3">Rename Node</h3>
+        <div class="mb-3">
+          <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Node Name</label>
+          <input
+            v-model="newNodeLabel"
+            type="text"
+            class="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-1 focus:ring-sky-500 focus:border-sky-500"
+            autofocus
+          />
+        </div>
+        <div class="flex gap-2">
+          <button
+            @click="showRenameDialog = false"
+            class="flex-1 px-3 py-2 text-xs font-medium text-gray-700 dark:text-gray-300 border border-gray-600 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800"
+          >
+            Cancel
+          </button>
+          <button
+            @click="submitRename"
+            :disabled="!newNodeLabel.trim()"
+            class="flex-1 px-3 py-2 text-xs font-medium text-white bg-sky-600 rounded-md hover:bg-sky-700 disabled:opacity-50"
+          >
+            Rename
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Delete Node Confirmation Dialog -->
+    <div
+      v-if="showDeleteDialog"
+      class="fixed inset-0 z-50 flex items-center justify-center p-4"
+      @keydown.enter.prevent="submitDelete"
+      @keydown.escape="cancelDelete"
+    >
+      <div class="fixed inset-0 bg-gray-500/25 dark:bg-black/75 backdrop-blur-sm" @click="cancelDelete"></div>
+      <div class="relative bg-white dark:bg-gray-900 dark:border dark:border-gray-700 rounded-lg shadow-xl w-full max-w-sm p-4 text-center">
+        <!-- Warning icon -->
+        <div class="mx-auto w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center mb-3">
+          <svg class="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+          </svg>
+        </div>
+        <h3 class="text-base font-semibold text-gray-900 dark:text-gray-100 mb-1">Delete Node</h3>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mb-1">
+          Are you sure you want to delete this node?
+        </p>
+        <p class="text-sm text-gray-900 dark:text-white font-medium mb-4">
+          {{ deleteNode?.data?.label || deleteNode?.id }}
+        </p>
+        <div class="flex gap-2">
+          <button
+            @click="cancelDelete"
+            :disabled="deleting"
+            class="flex-1 px-3 py-2 text-xs font-medium text-gray-700 dark:text-gray-300 border border-gray-600 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            @click="submitDelete"
+            :disabled="deleting"
+            class="flex-1 px-3 py-2 text-xs font-medium text-white bg-red-500 rounded-md hover:bg-red-600 disabled:opacity-50"
+          >
+            {{ deleting ? 'Deleting...' : 'Delete' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Delete Edge Confirmation Dialog -->
+    <div
+      v-if="showDeleteEdgeDialog"
+      class="fixed inset-0 z-50 flex items-center justify-center p-4"
+      @keydown.enter.prevent="submitDeleteEdge"
+      @keydown.escape="cancelDeleteEdge"
+    >
+      <div class="fixed inset-0 bg-gray-500/25 dark:bg-black/75 backdrop-blur-sm" @click="cancelDeleteEdge"></div>
+      <div class="relative bg-white dark:bg-gray-900 dark:border dark:border-gray-700 rounded-lg shadow-xl w-full max-w-sm p-4 text-center">
+        <!-- Warning icon -->
+        <div class="mx-auto w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center mb-3">
+          <svg class="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+          </svg>
+        </div>
+        <h3 class="text-base font-semibold text-gray-900 dark:text-gray-100 mb-1">Delete Connection</h3>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
+          Are you sure you want to delete this connection?
+        </p>
+        <div class="flex gap-2">
+          <button
+            @click="cancelDeleteEdge"
+            :disabled="deletingEdge"
+            class="flex-1 px-3 py-2 text-xs font-medium text-gray-700 dark:text-gray-300 border border-gray-600 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            @click="submitDeleteEdge"
+            :disabled="deletingEdge"
+            class="flex-1 px-3 py-2 text-xs font-medium text-white bg-red-500 rounded-md hover:bg-red-600 disabled:opacity-50"
+          >
+            {{ deletingEdge ? 'Deleting...' : 'Delete' }}
+          </button>
         </div>
       </div>
     </div>
