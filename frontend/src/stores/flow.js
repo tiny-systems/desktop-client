@@ -708,14 +708,17 @@ export const useFlowStore = defineStore('flowStore', {
 
       this.loadingAlt = true
       try {
-        // Fetch graph elements with trace stats applied
-        const result = await GoApp.ApplyTraceToFlow(
-          this.contextName,
-          this.namespace,
-          this.projectResourceName,
-          this.flowResourceName,
-          traceId
-        )
+        // Fetch graph elements with trace stats applied (with minimum delay for overlay visibility)
+        const [result] = await Promise.all([
+          GoApp.ApplyTraceToFlow(
+            this.contextName,
+            this.namespace,
+            this.projectResourceName,
+            this.flowResourceName,
+            traceId
+          ),
+          new Promise(resolve => setTimeout(resolve, 300))
+        ])
 
         // Apply trace data to nodes
         if (result.nodes) {
