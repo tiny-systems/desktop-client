@@ -227,15 +227,18 @@ const updateFormValue = (newValue) => {
   editorValue.value = JSON.stringify(newValue, null, 2)
 }
 
-// Watch selected handle for port inspection
-watch(selectedHandle, async (handle) => {
-  if (!handle || !selectedNode.value) {
+// Watch selected handle for port inspection (watch ID only to avoid re-fetch on node data updates)
+watch(() => selectedHandle.value?.id, async (handleId, oldHandleId) => {
+  if (!handleId || !selectedNode.value) {
     inspect.value = null
     return
   }
+  // Only re-fetch if handle actually changed
+  if (handleId === oldHandleId && inspect.value) return
+
   inspectReady.value = false
   try {
-    const data = await flowStore.inspectNodePort(selectedNode.value.id, handle.id)
+    const data = await flowStore.inspectNodePort(selectedNode.value.id, handleId)
     inspect.value = data
   } catch (e) {
     inspect.value = { error: e.message || String(e) }
