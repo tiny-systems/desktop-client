@@ -328,9 +328,11 @@ const handleAutoLayout = async () => {
 @import '@vue-flow/controls/dist/style.css';
 @import '@vue-flow/minimap/dist/style.css';
 
-/* Handle label styling - critical for proper label display */
+/* Handle styling */
 .vue-flow__handle {
   font-size: small;
+  background-color: #d1d5db !important; /* gray-300 - light gray like website */
+  border-color: #9ca3af !important; /* gray-400 */
 }
 
 /* Node styling */
@@ -389,6 +391,12 @@ const handleAutoLayout = async () => {
 
   .vue-flow__minimap-mask {
     fill: #111 !important;
+  }
+
+  /* Handle styles */
+  .vue-flow__handle {
+    background-color: #4b5563 !important; /* gray-600 */
+    border-color: #6b7280 !important; /* gray-500 */
   }
 
   /* Node styles */
