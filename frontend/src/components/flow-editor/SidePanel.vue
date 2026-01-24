@@ -20,6 +20,7 @@ import {
 import {
   PencilIcon,
   TrashIcon,
+  XMarkIcon,
   Cog6ToothIcon,
   ArrowPathIcon
 } from '@heroicons/vue/24/outline'
@@ -50,6 +51,19 @@ const setCurrentTab = (tabId) => {
 const selectedNode = computed(() => flowStore.selectedNode)
 const selectedEdge = computed(() => flowStore.selectedEdge)
 const selectedNodes = computed(() => flowStore.selectedNodes)
+
+// Multi-node selection actions
+const showDeleteMultipleModal = ref(false)
+
+const deleteMultipleNodes = async () => {
+  flowStore.deleteSelected()
+  await flowStore.save()
+  showDeleteMultipleModal.value = false
+}
+
+const clearSelection = () => {
+  flowStore.selectElement(null)
+}
 
 // Port inspection
 const inspect = ref(null)
@@ -659,7 +673,50 @@ const saveEdgeConfiguration = async () => {
     v-else-if="selectedNodes.length > 1"
     :class="['relative text-sm flex flex-col flex-shrink-0 bg-gray-50 dark:bg-black border-l border-gray-200 dark:border-gray-700 h-full', panelWidthClass]"
   >
-    <div class="p-4 dark:text-gray-300">Multiple nodes selected: {{ selectedNodes.length }}</div>
+    <div class="bg-white dark:bg-gray-900 shadow rounded-lg p-4">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-sm font-medium text-gray-900 dark:text-gray-100">
+          {{ selectedNodes.length }} nodes selected
+        </h3>
+      </div>
+      <div class="space-y-2">
+        <button
+          @click="showDeleteMultipleModal = true"
+          type="button"
+          class="w-full flex items-center justify-center px-4 py-2 border border-red-300 dark:border-red-700 text-sm font-medium rounded-md text-red-700 dark:text-red-400 bg-white dark:bg-gray-800 hover:bg-red-50 dark:hover:bg-red-900/20 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+        >
+          <TrashIcon class="h-4 w-4 mr-2" />
+          Delete selected nodes
+        </button>
+        <button
+          @click="clearSelection"
+          type="button"
+          class="w-full flex items-center justify-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500"
+        >
+          <XMarkIcon class="h-4 w-4 mr-2" />
+          Cancel selection
+        </button>
+      </div>
+      <div class="mt-4 text-xs text-gray-500 dark:text-gray-400">
+        <p class="font-medium mb-1">Selected:</p>
+        <ul class="list-disc list-inside space-y-0.5">
+          <li v-for="node in selectedNodes" :key="node.id" class="truncate">
+            {{ node.data?.label || node.id }}
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Delete multiple nodes confirmation dialog -->
+    <ConfirmDialog
+      :show="showDeleteMultipleModal"
+      :title="`Delete ${selectedNodes.length} nodes?`"
+      message="Are you sure you want to delete these nodes? This action cannot be undone."
+      confirm-text="Delete all"
+      cancel-text="Cancel"
+      @confirm="deleteMultipleNodes"
+      @cancel="showDeleteMultipleModal = false"
+    />
   </aside>
 
   <!-- Single node selected -->
