@@ -65,6 +65,13 @@ const clearSelection = () => {
   flowStore.selectElement(null)
 }
 
+const deselectNode = (nodeId) => {
+  const node = flowStore.getElement(nodeId)
+  if (node) {
+    node.selected = false
+  }
+}
+
 // Port inspection
 const inspect = ref(null)
 const inspectReady = ref(false)
@@ -697,8 +704,16 @@ const saveEdgeConfiguration = async () => {
     <!-- Selected nodes list -->
     <div class="p-3 text-xs text-gray-500 dark:text-gray-400 overflow-y-auto">
       <ul class="space-y-1">
-        <li v-for="node in selectedNodes" :key="node.id" class="truncate">
-          {{ node.data?.label || node.id }}
+        <li v-for="node in selectedNodes" :key="node.id" class="flex items-center justify-between group">
+          <span class="truncate">{{ node.data?.label || node.id }}</span>
+          <button
+            @click="deselectNode(node.id)"
+            type="button"
+            title="Remove from selection"
+            class="p-0.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 opacity-0 group-hover:opacity-100 transition-opacity"
+          >
+            <XMarkIcon class="h-3.5 w-3.5" />
+          </button>
         </li>
       </ul>
     </div>
