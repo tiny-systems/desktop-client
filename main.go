@@ -2,9 +2,11 @@ package main
 
 import (
 	"embed"
+	"runtime"
 
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/logger"
+	"github.com/wailsapp/wails/v2/pkg/menu"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 	ctrlog "sigs.k8s.io/controller-runtime/pkg/log"
@@ -21,6 +23,15 @@ func main() {
 
 	ctrlog.SetLogger(l)
 
+	// Create application menu (required for Cmd shortcuts on macOS)
+	var appMenu *menu.Menu
+	if runtime.GOOS == "darwin" {
+		appMenu = menu.NewMenuFromItems(
+			menu.AppMenu(),
+			menu.EditMenu(), // Enables Cmd+C/V/X/A and other Cmd key events
+		)
+	}
+
 	// Create application with options
 	err := wails.Run(&options.App{
 		Title:  "TinySystems",
@@ -35,6 +46,7 @@ func main() {
 		Bind: []interface{}{
 			app,
 		},
+		Menu: appMenu, // Enable Cmd shortcuts on macOS
 
 		Logger:             nil, // Uses default logger
 		LogLevel:           logger.INFO,
