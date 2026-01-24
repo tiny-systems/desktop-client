@@ -206,25 +206,25 @@ const refresh = () => {
 <template>
   <div
     :class="[
-      'w-full border-t border-gray-700 text-sm relative bg-gray-900',
+      'w-full border-t border-gray-200 dark:border-gray-700 text-sm relative bg-gray-50 dark:bg-gray-900',
       !collapsed ? 'min-h-64 h-1/4' : ''
     ]"
   >
     <!-- Header with collapse toggle -->
     <div
-      class="flex items-center justify-between px-3 py-1.5 bg-gray-800 border-b border-gray-700 cursor-pointer"
+      class="flex items-center justify-between px-3 py-1.5 bg-gray-100 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 cursor-pointer"
       @click="toggleCollapsed"
     >
       <div class="flex items-center gap-4">
-        <span class="text-xs font-medium text-gray-400">
+        <span class="text-xs font-medium text-gray-600 dark:text-gray-400">
           Telemetry
         </span>
         <!-- Metrics summary -->
         <div v-if="hasData && !collapsed" class="flex items-center gap-3 text-xs">
-          <span class="px-2 py-0.5 bg-sky-900/50 text-sky-300 rounded">
+          <span class="px-2 py-0.5 bg-sky-100 dark:bg-sky-900/50 text-sky-700 dark:text-sky-300 rounded">
             {{ metrics.total }} traces
           </span>
-          <span v-if="metrics.errors > 0" class="px-2 py-0.5 bg-red-900/50 text-red-300 rounded">
+          <span v-if="metrics.errors > 0" class="px-2 py-0.5 bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300 rounded">
             {{ metrics.errors }} errors
           </span>
           <span class="text-gray-500">
@@ -238,13 +238,13 @@ const refresh = () => {
       <div class="flex items-center gap-2">
         <button
           @click.stop="refresh"
-          class="text-gray-400 hover:text-gray-300 p-0.5"
+          class="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 p-0.5"
           :class="{ 'animate-spin': loading }"
           title="Refresh traces"
         >
           <ArrowPathIcon class="w-4 h-4" />
         </button>
-        <button class="text-gray-400 hover:text-gray-300">
+        <button class="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300">
           <ChevronDownIcon v-if="collapsed" class="w-4 h-4" />
           <ChevronUpIcon v-else class="w-4 h-4" />
         </button>
@@ -256,21 +256,21 @@ const refresh = () => {
       <!-- Error Overlay -->
       <div
         v-if="telemetryError"
-        class="absolute inset-0 z-10 flex items-center justify-center bg-gray-900/60 backdrop-blur-sm"
+        class="absolute inset-0 z-10 flex items-center justify-center bg-gray-100/60 dark:bg-gray-900/60 backdrop-blur-sm"
       >
         <div class="flex flex-col items-center gap-2 p-4 max-w-md text-center">
           <ExclamationTriangleIcon class="w-8 h-8 text-amber-500" />
-          <p class="text-sm text-white font-medium">{{ telemetryError }}</p>
+          <p class="text-sm text-gray-900 dark:text-white font-medium">{{ telemetryError }}</p>
           <button
             @click="clearError"
-            class="mt-2 px-3 py-1 text-xs text-white bg-gray-700 hover:bg-gray-600 rounded transition-colors"
+            class="mt-2 px-3 py-1 text-xs text-gray-700 dark:text-white bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded transition-colors"
           >
             Dismiss
           </button>
         </div>
       </div>
 
-      <div class="h-full text-gray-300">
+      <div class="h-full text-gray-700 dark:text-gray-300">
         <!-- Loading state - only show before initial load completes -->
         <div v-if="!initialLoadDone && loading" class="text-center p-4 text-xs font-mono text-gray-500">
           Loading traces...
@@ -282,17 +282,17 @@ const refresh = () => {
         </div>
 
         <!-- Trace list -->
-        <div v-else class="flex flex-col h-full max-h-48 overflow-y-auto bg-gray-800/50 font-mono">
+        <div v-else class="flex flex-col h-full max-h-48 overflow-y-auto bg-gray-100/50 dark:bg-gray-800/50 font-mono">
           <table class="w-full">
-            <thead class="sticky top-0 bg-gray-700 text-xs">
+            <thead class="sticky top-0 bg-gray-200 dark:bg-gray-700 text-xs">
               <tr>
-                <th class="px-2 py-1 text-left font-medium text-gray-300">Trace ID</th>
-                <th class="px-2 py-1 text-left font-medium text-gray-300">Time</th>
-                <th class="px-2 py-1 text-left font-medium text-gray-300">Age</th>
-                <th class="px-2 py-1 text-left font-medium text-gray-300">Duration</th>
-                <th class="px-2 py-1 text-left font-medium text-gray-300">Spans</th>
-                <th class="px-2 py-1 text-left font-medium text-gray-300">Errors</th>
-                <th class="px-2 py-1 text-left font-medium text-gray-300">Size</th>
+                <th class="px-2 py-1 text-left font-medium text-gray-700 dark:text-gray-300">Trace ID</th>
+                <th class="px-2 py-1 text-left font-medium text-gray-700 dark:text-gray-300">Time</th>
+                <th class="px-2 py-1 text-left font-medium text-gray-700 dark:text-gray-300">Age</th>
+                <th class="px-2 py-1 text-left font-medium text-gray-700 dark:text-gray-300">Duration</th>
+                <th class="px-2 py-1 text-left font-medium text-gray-700 dark:text-gray-300">Spans</th>
+                <th class="px-2 py-1 text-left font-medium text-gray-700 dark:text-gray-300">Errors</th>
+                <th class="px-2 py-1 text-left font-medium text-gray-700 dark:text-gray-300">Size</th>
               </tr>
             </thead>
             <tbody>
@@ -300,43 +300,43 @@ const refresh = () => {
                 v-for="trace in traces"
                 :key="trace.id"
                 :class="[
-                  'text-left text-xs hover:bg-gray-700 cursor-pointer transition-colors',
-                  selectedTraceId === trace.id ? 'bg-sky-900/50' : ''
+                  'text-left text-xs hover:bg-gray-200 dark:hover:bg-gray-700 cursor-pointer transition-colors',
+                  selectedTraceId === trace.id ? 'bg-sky-100 dark:bg-sky-900/50' : ''
                 ]"
                 @click="selectTrace(trace)"
               >
                 <td class="px-2 py-1">
                   <span :class="[
                     'font-mono',
-                    selectedTraceId === trace.id ? 'text-sky-300' : 'text-gray-300'
+                    selectedTraceId === trace.id ? 'text-sky-600 dark:text-sky-300' : 'text-gray-700 dark:text-gray-300'
                   ]">
                     {{ trace.id.substring(0, 16) }}...
                   </span>
                 </td>
-                <td class="px-2 py-1 text-gray-400">
+                <td class="px-2 py-1 text-gray-500 dark:text-gray-400">
                   {{ formatTime(trace.start) }}
                 </td>
-                <td class="px-2 py-1 text-gray-400">
+                <td class="px-2 py-1 text-gray-500 dark:text-gray-400">
                   {{ formatRelativeTime(trace.end) }}
                 </td>
-                <td class="px-2 py-1 text-gray-300">
+                <td class="px-2 py-1 text-gray-700 dark:text-gray-300">
                   {{ formatDuration(trace.duration) }}
                 </td>
                 <td class="px-2 py-1">
-                  <span class="px-1.5 py-0.5 bg-sky-700 text-sky-100 rounded text-xs">
+                  <span class="px-1.5 py-0.5 bg-sky-500 dark:bg-sky-700 text-white dark:text-sky-100 rounded text-xs">
                     {{ trace.spans }}
                   </span>
                 </td>
                 <td class="px-2 py-1">
                   <span
                     v-if="trace.errors > 0"
-                    class="px-1.5 py-0.5 bg-red-700 text-red-100 rounded text-xs"
+                    class="px-1.5 py-0.5 bg-red-500 dark:bg-red-700 text-white dark:text-red-100 rounded text-xs"
                   >
                     {{ trace.errors }}
                   </span>
-                  <span v-else class="text-gray-500">-</span>
+                  <span v-else class="text-gray-400 dark:text-gray-500">-</span>
                 </td>
-                <td class="px-2 py-1 text-gray-400">
+                <td class="px-2 py-1 text-gray-500 dark:text-gray-400">
                   {{ trace.length }} B
                 </td>
               </tr>
