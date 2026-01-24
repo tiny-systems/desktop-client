@@ -706,6 +706,7 @@ export const useFlowStore = defineStore('flowStore', {
         return
       }
 
+      this.loadingAlt = true
       try {
         // Fetch graph elements with trace stats applied
         const result = await GoApp.ApplyTraceToFlow(
@@ -743,6 +744,8 @@ export const useFlowStore = defineStore('flowStore', {
         }
       } catch (err) {
         console.error('Failed to apply trace to flow:', err)
+      } finally {
+        this.loadingAlt = false
       }
 
       this.highlightTrace(traceId)

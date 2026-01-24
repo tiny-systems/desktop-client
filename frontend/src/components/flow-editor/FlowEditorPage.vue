@@ -248,13 +248,17 @@ watch(() => props.flowResourceName, async () => {
           />
 
           <!-- Canvas -->
-          <div class="flex-1">
+          <div class="flex-1 relative">
             <FlowCanvas
               @error="handleError"
               @add-node="handleAddNode"
               @delete-node="handleDelete"
               @delete-edge="handleDeleteEdge"
             />
+            <!-- Loading overlay for trace/save operations -->
+            <div v-if="flowStore.loadingAlt" class="absolute inset-0 bg-white/50 dark:bg-gray-900/50 flex items-center justify-center z-40">
+              <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-sky-500"></div>
+            </div>
           </div>
 
           <!-- Add Component Modal -->
