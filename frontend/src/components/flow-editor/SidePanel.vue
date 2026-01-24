@@ -702,17 +702,17 @@ const saveEdgeConfiguration = async () => {
       </button>
     </div>
     <!-- Selected nodes list -->
-    <div class="p-3 text-xs text-gray-500 dark:text-gray-400 overflow-y-auto">
+    <div class="p-3 overflow-y-auto">
       <ul class="space-y-1">
-        <li v-for="node in selectedNodes" :key="node.id" class="flex items-center justify-between group">
-          <span class="truncate">{{ node.data?.label || node.id }}</span>
+        <li v-for="node in selectedNodes" :key="node.id" class="flex items-center gap-1 px-2 py-1.5 bg-sky-50 dark:bg-sky-900/30 rounded text-sm text-gray-700 dark:text-gray-200">
+          <span class="truncate flex-1">{{ node.data?.label || node.id }}</span>
           <button
             @click="deselectNode(node.id)"
             type="button"
             title="Remove from selection"
-            class="p-0.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 opacity-0 group-hover:opacity-100 transition-opacity"
+            class="p-0.5 text-gray-400 hover:text-red-500 dark:hover:text-red-400 flex-shrink-0"
           >
-            <XMarkIcon class="h-3.5 w-3.5" />
+            <XMarkIcon class="h-4 w-4" />
           </button>
         </li>
       </ul>

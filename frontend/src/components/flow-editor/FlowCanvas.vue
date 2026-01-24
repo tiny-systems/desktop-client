@@ -255,6 +255,7 @@ const handleAutoLayout = async () => {
       :min-zoom="0.5"
       :max-zoom="1"
       :delete-key-code="null"
+      :multi-selection-key-code="'Meta'"
       @node-click="handleNodeClick"
       @edge-click="handleEdgeClick"
       @pane-click="handlePaneClick"
