@@ -150,19 +150,7 @@ onPaneReady(() => {
 // Handle node/edge selection
 const handleNodeClick = (event) => {
   const nodeId = event.node?.id
-  if (!nodeId) return
-
-  // Check for multi-selection modifier (Shift or Cmd/Ctrl)
-  const isMultiSelect = event.event?.shiftKey || event.event?.metaKey || event.event?.ctrlKey
-
-  if (isMultiSelect) {
-    // Toggle selection on this node without clearing others
-    const node = flowStore.getElement(nodeId)
-    if (node) {
-      node.selected = !node.selected
-    }
-  } else {
-    // Single select - clear others
+  if (nodeId) {
     flowStore.select(nodeId)
   }
 }
