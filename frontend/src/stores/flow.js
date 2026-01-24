@@ -207,6 +207,8 @@ export const useFlowStore = defineStore('flowStore', {
           element.graph.selectable = false
         }
       }
+      // Ensure new elements from stream are not selected (selection is client-side only)
+      element.graph.selected = false
       this.elements.push(element.graph)
     },
     updateElement(event) {
