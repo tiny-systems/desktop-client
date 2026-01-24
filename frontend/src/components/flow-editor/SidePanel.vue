@@ -36,7 +36,11 @@ const flowStore = useFlowStore()
 
 // Dynamic width class for side panel
 const hasSelection = computed(() => flowStore.selectedNode || flowStore.selectedEdge || flowStore.selectedNodes.length > 0)
-const panelWidthClass = computed(() => hasSelection.value ? 'w-1/2' : 'w-1/5 min-w-[300px]')
+const panelWidthClass = computed(() => {
+  if (flowStore.selectedNodes.length > 1) return 'w-1/4' // Multi-node selection - smaller panel
+  if (hasSelection.value) return 'w-1/2'
+  return 'w-1/5 min-w-[300px]'
+})
 
 // Tab state
 const statusTab = ref({ id: 'status', name: '', current: true })
