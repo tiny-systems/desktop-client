@@ -181,7 +181,7 @@ const formatJson = () => {
 
     <!-- Validation errors -->
     <div v-if="!isValid && (validationError || validationErrors.length > 0)" class="px-4 py-3 border-t border-gray-200 dark:border-gray-700">
-      <div class="text-sm font-medium text-red-500 mb-2">Server validation errors:</div>
+      <div class="text-sm font-medium text-red-500 mb-2">Validation errors:</div>
       <div v-if="validationErrors.length > 0" class="space-y-1">
         <div v-for="err in validationErrors" :key="err.path" class="text-sm text-red-400">
           <span class="font-mono">{{ err.path }}</span>&nbsp;&nbsp;{{ err.message }}

@@ -650,7 +650,7 @@ const saveEdgeConfiguration = async () => {
         />
         <!-- Validation errors -->
         <div v-if="!edgeIsValid && (edgeValidationError || edgeValidationErrors.length > 0)" class="pt-3">
-          <div class="text-xs font-medium text-red-500 mb-1">Server validation errors:</div>
+          <div class="text-xs font-medium text-red-500 mb-1">Validation errors:</div>
           <div v-if="edgeValidationErrors.length > 0" class="space-y-1">
             <div v-for="err in edgeValidationErrors" :key="err.path" class="text-xs text-red-400">
               <span class="font-mono">{{ err.path }}</span>&nbsp;&nbsp;{{ err.message }}

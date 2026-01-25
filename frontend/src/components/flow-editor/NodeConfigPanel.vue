@@ -148,7 +148,7 @@ const formatJson = () => {
 
     <!-- Validation errors -->
     <div v-if="nodeError" class="px-4 py-3 border-t border-gray-200 dark:border-gray-700">
-      <div class="text-sm font-medium text-red-500 mb-2">Server validation errors:</div>
+      <div class="text-sm font-medium text-red-500 mb-2">Validation errors:</div>
       <div class="text-sm text-red-400">
         {{ nodeError }}
       </div>
