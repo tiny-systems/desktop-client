@@ -68,6 +68,10 @@ var (
 	// currentTracker stores the active tracker for cleanup
 	currentTrackerMu   sync.Mutex
 	currentTrackerName string
+
+	// flowNodesCache stores all nodes for the current flow (for edge validation)
+	flowNodesCacheMu sync.RWMutex
+	flowNodesCache   map[string]v1alpha1.TinyNode
 )
 
 
@@ -149,16 +153,15 @@ func (a *App) GetFlowForEditor(contextName, namespace, projectName, flowResource
 		nodesMap[node.Name] = node
 	}
 
-	allElements, err := utils.ExportNodes(nodesMap)
-	if err != nil {
-		return nil, fmt.Errorf("export nodes: %w", err)
-	}
+	// Cache nodes for edge validation during watch
+	flowNodesCacheMu.Lock()
+	flowNodesCache = nodesMap
+	flowNodesCacheMu.Unlock()
 
-	elements := make([]map[string]interface{}, 0, len(allElements))
-	for _, el := range allElements {
-		if m, ok := el.(map[string]interface{}); ok {
-			elements = append(elements, m)
-		}
+	// Build elements with edge validation
+	elements, err := buildFlowElementsWithValidation(a.ctx, nodesMap)
+	if err != nil {
+		return nil, fmt.Errorf("build flow elements: %w", err)
 	}
 
 	flowName := flow.Annotations[v1alpha1.FlowDescriptionAnnotation]
@@ -183,6 +186,26 @@ func (a *App) GetFlowForEditor(contextName, namespace, projectName, flowResource
 	}, nil
 }
 
+// buildFlowElementsWithValidation builds flow elements (nodes + edges) with edge validation
+func buildFlowElementsWithValidation(ctx context.Context, nodesMap map[string]v1alpha1.TinyNode) ([]map[string]interface{}, error) {
+	elements := make([]map[string]interface{}, 0)
+
+	// Add nodes first
+	for _, node := range nodesMap {
+		nodeElement := buildNodeElement(&node)
+		elements = append(elements, nodeElement)
+
+		// Add edges for this node with validation
+		for i := range node.Spec.Edges {
+			edge := &node.Spec.Edges[i]
+			edgeElement := buildEdgeElement(ctx, &node, edge, nodesMap)
+			elements = append(elements, edgeElement)
+		}
+	}
+
+	return elements, nil
+}
+
 func parseViewportMeta(annotations map[string]string) map[string]interface{} {
 	meta := make(map[string]interface{})
 
@@ -203,28 +226,51 @@ func buildNodeElement(node *v1alpha1.TinyNode) map[string]interface{} {
 	return utils.ApiNodeToMap(*node, map[string]interface{}{}, false)
 }
 
-func buildEdgeElement(sourceNode *v1alpha1.TinyNode, edge *v1alpha1.TinyNodeEdge) map[string]interface{} {
+func buildEdgeElement(ctx context.Context, sourceNode *v1alpha1.TinyNode, edge *v1alpha1.TinyNodeEdge, nodesMap map[string]v1alpha1.TinyNode) map[string]interface{} {
 	data := map[string]interface{}{
-		"valid":  true,
+		"valid":  false, // Prove me wrong - same pattern as platform
 		"flowID": edge.FlowID,
 	}
 
-	targetPort := utils.GetPortFullName(sourceNode.Name, edge.Port)
-	for _, portConfig := range sourceNode.Spec.Ports {
-		if portConfig.From == targetPort || (portConfig.Port == edge.Port && strings.Contains(edge.To, portConfig.From)) {
-			if len(portConfig.Configuration) > 0 {
-				data["configuration"] = json.RawMessage(portConfig.Configuration)
+	var edgeConfiguration []byte
+
+	// Find edge configuration from target node's Spec.Ports
+	toParts := strings.Split(edge.To, ":")
+	if len(toParts) == 2 {
+		targetNodeName, targetPort := toParts[0], toParts[1]
+		if targetNode, ok := nodesMap[targetNodeName]; ok {
+			sourcePortFullName := utils.GetPortFullName(sourceNode.Name, edge.Port)
+			for _, portConfig := range targetNode.Spec.Ports {
+				if portConfig.Port == targetPort && portConfig.From == sourcePortFullName {
+					edgeConfiguration = portConfig.Configuration
+					if len(portConfig.Configuration) > 0 {
+						data["configuration"] = json.RawMessage(portConfig.Configuration)
+					}
+					if len(portConfig.Schema) > 0 {
+						data["schema"] = json.RawMessage(portConfig.Schema)
+					}
+					break
+				}
 			}
-			if len(portConfig.Schema) > 0 {
-				data["schema"] = json.RawMessage(portConfig.Schema)
-			}
-			break
 		}
+	}
+
+	// Validate the edge
+	if nodesMap != nil && len(nodesMap) > 0 {
+		sourcePortFullName := utils.GetPortFullName(sourceNode.Name, edge.Port)
+		err := utils.ValidateEdge(ctx, nodesMap, sourcePortFullName, edge.To, edgeConfiguration)
+		if err != nil {
+			data["error"] = err.Error()
+		} else {
+			data["valid"] = true
+		}
+	} else {
+		// No nodesMap available, assume valid
+		data["valid"] = true
 	}
 
 	edgeMap, err := utils.ApiEdgeToProtoMap(sourceNode, edge, data)
 	if err != nil {
-		toParts := strings.Split(edge.To, ":")
 		targetNode := edge.To
 		targetHandle := ""
 		if len(toParts) == 2 {
@@ -311,6 +357,23 @@ func (a *App) WatchFlowNodes(contextName, namespace, projectName, flowResourceNa
 					continue
 				}
 
+				// Update nodes cache
+				flowNodesCacheMu.Lock()
+				if flowNodesCache == nil {
+					flowNodesCache = make(map[string]v1alpha1.TinyNode)
+				}
+				if event.Type == watch.Deleted {
+					delete(flowNodesCache, node.Name)
+				} else {
+					flowNodesCache[node.Name] = *node
+				}
+				// Get a copy of the cache for validation
+				nodesMapCopy := make(map[string]v1alpha1.TinyNode, len(flowNodesCache))
+				for k, v := range flowNodesCache {
+					nodesMapCopy[k] = v
+				}
+				flowNodesCacheMu.Unlock()
+
 				update := FlowNodeEvent{
 					Type: string(event.Type),
 					ID:   node.Name,
@@ -324,7 +387,7 @@ func (a *App) WatchFlowNodes(contextName, namespace, projectName, flowResourceNa
 						wailsruntime.EventsEmit(a.ctx, "flowNodeUpdate", FlowNodeEvent{
 							Type:  string(event.Type),
 							ID:    edge.ID,
-							Graph: buildEdgeElement(node, edge),
+							Graph: buildEdgeElement(watchCtx, node, edge, nodesMapCopy),
 						})
 					}
 				}
@@ -346,6 +409,12 @@ func (a *App) StopWatchFlowNodes() error {
 		flowWatchCancel()
 		flowWatchCancel = nil
 	}
+
+	// Clear nodes cache
+	flowNodesCacheMu.Lock()
+	flowNodesCache = nil
+	flowNodesCacheMu.Unlock()
+
 	return nil
 }
 
@@ -1124,15 +1193,10 @@ func (a *App) ApplyTraceToFlow(contextName, namespace, projectName, flowResource
 
 		response.Nodes = append(response.Nodes, nodeAsMap)
 
-		// Process edges
+		// Process edges with validation
 		for i := range node.Spec.Edges {
 			edge := &node.Spec.Edges[i]
-			edgeAsMap, err := utils.ApiEdgeToProtoMap(&node, edge, map[string]interface{}{
-				"valid": true,
-			})
-			if err != nil {
-				continue
-			}
+			edgeAsMap := buildEdgeElement(a.ctx, &node, edge, nodesMap)
 
 			if traceStats != nil {
 				utils.ApplyTraceStatToEdge(edgeAsMap, traceStats)
