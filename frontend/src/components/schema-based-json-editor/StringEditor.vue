@@ -131,7 +131,7 @@
       <button  v-if="hasDeleteButtonFunction" type="button" class="ml-1 w-4 text-indigo-500 inline-block cursor-pointer ml-1"  @click="$emit('delete')" title="Delete">
         <XCircleIcon></XCircleIcon>
       </button>
-      <button v-if="allowLookup && value !== undefined" @mouseover="hover = true" @mouseleave="hover = false" type="button" class="w-4 block text-indigo-500 cursor-pointer mx-1" @click="$emit('lookup', getAllValue(), schema, onChangeExpression)" :title="expression ? 'Edit expression' : 'Apply expression'">
+      <button v-if="allowLookup && value !== undefined && !isMixedExpression" @mouseover="hover = true" @mouseleave="hover = false" type="button" class="w-4 block text-indigo-500 cursor-pointer mx-1" @click="$emit('lookup', getAllValue(), schema, onChangeExpression)" :title="expression ? 'Edit expression' : 'Apply expression'">
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" >
           <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 7.5l3 2.25-3 2.25m4.5 0h3m-9 8.25h13.5A2.25 2.25 0 0021 18V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 6v12a2.25 2.25 0 002.25 2.25z" />
         </svg>
@@ -142,6 +142,19 @@
     </div>
     <description :theme="theme" :message="schema.description" ></description>
     <description :theme="theme" :message="errorMessage" :error="true"></description>
+    <!-- Expression chips for mixed expressions -->
+    <div v-if="allowLookup && embeddedExpressions.length > 0" class="flex flex-wrap gap-1 mt-1">
+      <button
+        v-for="(expr, idx) in embeddedExpressions"
+        :key="idx"
+        @click="editEmbeddedExpression(idx)"
+        type="button"
+        class="text-xs px-2 py-0.5 bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 rounded hover:bg-indigo-200 dark:hover:bg-indigo-800 font-mono"
+        :title="'Edit expression: ' + expr"
+      >
+        {{ expr.length > 30 ? expr.substring(0, 30) + '...' : expr }}
+      </button>
+    </div>
   </div>
 </template>
 <script lang="ts">
@@ -308,6 +321,35 @@ export default {
       this.validate()
       this.emitValue()
     },
+    editEmbeddedExpression(idx: number) {
+      const expressions = this.embeddedExpressions
+      if (idx < 0 || idx >= expressions.length) return
+
+      const exprToEdit = expressions[idx]
+      // Use simple string schema for embedded expressions
+      const stringSchema = { type: 'string' }
+
+      // Callback to replace this specific expression in the value
+      const onUpdate = (newExpr: string) => {
+        if (!newExpr) return
+        const currentValue = this.value || ''
+        // Find and replace the nth occurrence
+        let count = 0
+        const newValue = currentValue.replace(/\{\{(.+?)\}\}/g, (match, expr) => {
+          if (count === idx) {
+            count++
+            return `{{${newExpr}}}`
+          }
+          count++
+          return match
+        })
+        this.value = newValue
+        this.validate()
+        this.emitValue()
+      }
+
+      this.$emit('lookup', `{{${exprToEdit}}}`, stringSchema, onUpdate)
+    },
     validate() {
       if (!!this.expression || this.isReadOnly) {
         this.errorMessage = ''
@@ -462,6 +504,26 @@ export default {
     className(): string {
       const rowClass = this.errorMessage ? this.theme.errorRow : this.theme.row
       return this.schema.className ? rowClass + ' ' + this.schema.className : rowClass
+    },
+    isMixedExpression(): boolean {
+      // Mixed expression: value contains {{...}} but isn't a pure expression
+      // e.g., "Hello {{$.name}}" or '{"text": "{{$.error}}"}'
+      if (this.expression) return false // Pure expression, not mixed
+      const val = this.initialValue
+      if (typeof val !== 'string') return false
+      return val.includes('{{') && val.includes('}}')
+    },
+    embeddedExpressions(): string[] {
+      // Extract all {{...}} expressions from mixed content
+      if (!this.isMixedExpression) return []
+      const val = this.value || ''
+      const matches: string[] = []
+      const regex = /\{\{(.+?)\}\}/g
+      let match
+      while ((match = regex.exec(val)) !== null) {
+        matches.push(match[1])
+      }
+      return matches
     },
   }
 }
