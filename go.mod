@@ -6,7 +6,7 @@ require (
 	github.com/evanphx/json-patch v5.9.11+incompatible
 	github.com/go-logr/logr v1.4.3
 	github.com/google/uuid v1.6.0
-	github.com/tiny-systems/module v0.1.252
+	github.com/tiny-systems/module v0.1.266
 	github.com/wailsapp/wails/v2 v2.11.0
 	gomodules.xyz/jsonpatch/v2 v2.5.0
 	k8s.io/apimachinery v0.34.1
@@ -112,9 +112,9 @@ require (
 	github.com/spf13/cast v1.7.0 // indirect
 	github.com/spf13/cobra v1.10.1 // indirect
 	github.com/spf13/pflag v1.0.9 // indirect
-	github.com/spyzhov/ajson v0.9.4 // indirect
 	github.com/swaggest/jsonschema-go v0.3.70 // indirect
 	github.com/swaggest/refl v1.3.0 // indirect
+	github.com/tiny-systems/ajson v0.1.6 // indirect
 	github.com/tiny-systems/otel-collector v0.5.1 // indirect
 	github.com/tkrajina/go-reflector v0.5.8 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
