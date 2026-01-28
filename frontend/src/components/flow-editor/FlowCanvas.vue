@@ -62,18 +62,13 @@ onUnmounted(() => {
   window.removeEventListener('keydown', handleKeyDown)
 })
 
-// Default edge options - use very light gray to match preview
+// Default edge options - let CSS handle colors for proper dark mode support
 const defaultEdgeOptions = {
   type: 'tinyEdge',
   markerEnd: {
     type: MarkerType.ArrowClosed,
     width: 20,
     height: 20,
-    color: '#d1d5db',
-  },
-  style: {
-    stroke: '#d1d5db',
-    strokeWidth: 1,
   },
 }
 
@@ -296,12 +291,6 @@ const handleAutoLayout = async () => {
       >
         <template #top>
           <ControlButton
-            title="Auto-arrange nodes"
-            @click="handleAutoLayout"
-          >
-            <Squares2X2Icon class="w-4 h-4" />
-          </ControlButton>
-          <ControlButton
             v-if="flowStore.selectedNode"
             title="Rotate node"
             @click="handleRotate"
@@ -344,11 +333,15 @@ const handleAutoLayout = async () => {
   background-color: #0284c7;
 }
 
-/* Edge styling - light gray to match preview */
-.vue-flow__edge path,
-.vue-flow__edge-path {
-  stroke-width: 1px !important;
-  stroke: #d1d5db !important;
+/* Edge styling - match platform */
+.vue-flow__edge path {
+  stroke-width: 2px;
+  stroke: #ccc;
+}
+
+/* Marker (arrow) fill color */
+.vue-flow__marker {
+  fill: #ccc;
 }
 
 /* Animated edge styles - dashed stroke animation */
@@ -418,13 +411,19 @@ const handleAutoLayout = async () => {
     opacity: 0.3;
   }
 
-  /* Edge styles */
-  .vue-flow__edge-path {
+  /* Edge styles - match platform dark mode */
+  .vue-flow__edge-path,
+  .vue-flow__edge path {
     stroke: #555 !important;
   }
 
   .vue-flow__edge button {
     color: #666 !important;
+  }
+
+  /* Marker (arrow) fill color for dark mode */
+  .vue-flow__marker {
+    fill: #555 !important;
   }
 
   /* Controls styles */

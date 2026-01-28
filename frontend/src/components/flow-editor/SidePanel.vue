@@ -267,14 +267,16 @@ watch(() => selectedHandle.value?.id, async (handleId, oldHandleId) => {
 
 // Watch node change to reset tab and selected handle
 // Note: controlFormValue is handled by the controlConfigObject watcher
+// Note: editorValue is handled by the settingsConfiguration watcher - don't reset it here
 watch(() => selectedNode.value?.id, (newId, oldId) => {
   if (newId !== oldId) {
     setCurrentTab('status')
     selectedHandleId.value = null
-    // Reset settings form
-    configurationReady.value = false
-    formValue.value = {}
-    editorValue.value = '{}'
+    // Update form value from current config and mark as ready
+    // This handles cases where the settingsConfigObject watcher doesn't fire
+    // (e.g., when switching between nodes with identical configs)
+    formValue.value = { ...settingsConfigObject.value }
+    configurationReady.value = true
   }
 })
 
@@ -647,7 +649,7 @@ const saveEdgeConfiguration = async () => {
       </div>
 
       <!-- Configuration form or JSON editor -->
-      <div class="flex-1 overflow-y-auto p-2">
+      <div class="flex-1 overflow-y-auto">
         <!-- Schema-based form when schema is available -->
         <SchemaForm
           v-if="edgeSchema && (edgeSchema.properties || edgeSchema.type || edgeSchema.$ref)"
@@ -661,14 +663,15 @@ const saveEdgeConfiguration = async () => {
           :no-border="false"
         />
         <!-- Fallback to raw JSON editor -->
-        <textarea
-          v-else
-          v-model="edgeEditorValue"
-          class="w-full h-48 p-2 text-xs font-mono bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded focus:ring-sky-500 focus:border-sky-500 dark:text-gray-300"
-          placeholder="{}"
-        />
+        <div v-else class="p-2">
+          <textarea
+            v-model="edgeEditorValue"
+            class="w-full h-48 p-2 text-xs font-mono bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded focus:ring-sky-500 focus:border-sky-500 dark:text-gray-300"
+            placeholder="{}"
+          />
+        </div>
         <!-- Validation errors -->
-        <div v-if="!edgeIsValid && (edgeValidationError || edgeValidationErrors.length > 0)" class="pt-3">
+        <div v-if="!edgeIsValid && (edgeValidationError || edgeValidationErrors.length > 0)" class="px-2 pt-2">
           <div class="text-xs font-medium text-red-500 mb-1">Validation errors:</div>
           <div v-if="edgeValidationErrors.length > 0" class="space-y-1">
             <div v-for="err in edgeValidationErrors" :key="err.path" class="text-xs text-red-400">
@@ -679,24 +682,17 @@ const saveEdgeConfiguration = async () => {
             {{ edgeValidationError }}
           </div>
         </div>
-
-        <!-- Warning message -->
-        <div class="pt-3">
-          <p class="text-xs text-orange-400">
-            Do not store sensitive information if you plan sharing your project as a solution.
-          </p>
-        </div>
-
-        <!-- Save button -->
-        <div class="pt-3 text-right">
-          <button
-            type="submit"
-            :disabled="saving || selectedEdge.data?.blocked"
-            class="px-4 py-2 text-xs font-medium rounded-md text-sky-700 bg-sky-100 hover:bg-sky-200 focus:outline-none focus:ring-2 focus:ring-sky-500 dark:bg-sky-900 dark:hover:bg-sky-800 dark:text-sky-300 disabled:opacity-50"
-          >
-            {{ saving ? 'Saving...' : 'Save' }}
-          </button>
-        </div>
+      </div>
+      <!-- Warning message and Save button -->
+      <div class="text-right px-2 pt-2 pb-4">
+        <p class="text-xs text-orange-600 pb-2">Do not store sensitive information if you plan sharing your project as a solution.</p>
+        <button
+          type="submit"
+          :disabled="saving || selectedEdge.data?.blocked"
+          class="px-4 py-2 text-xs font-medium rounded-md text-sky-700 bg-sky-100 hover:bg-sky-200 focus:outline-none focus:ring-2 focus:ring-sky-500 dark:bg-gray-900 dark:hover:bg-gray-800 dark:text-sky-500 disabled:opacity-50"
+        >
+          {{ saving ? 'Saving...' : 'Save' }}
+        </button>
       </div>
     </form>
   </aside>
@@ -728,7 +724,7 @@ const saveEdgeConfiguration = async () => {
       </button>
     </div>
     <!-- Selected nodes list -->
-    <div class="p-3 overflow-y-auto">
+    <div class="p-2 overflow-y-auto">
       <ul class="space-y-1">
         <li v-for="node in selectedNodes" :key="node.id" class="flex items-center gap-1 px-2 py-1.5 bg-sky-50 dark:bg-sky-900/30 rounded text-sm text-gray-700 dark:text-gray-200">
           <span class="truncate flex-1">{{ node.data?.label || node.id }}</span>
@@ -800,8 +796,8 @@ const saveEdgeConfiguration = async () => {
       </p>
 
       <!-- Settings form -->
-      <form v-if="settingsHandle" @submit.prevent="saveConfiguration" class="flex-1 overflow-y-auto bg-white dark:bg-gray-900">
-        <div class="p-3">
+      <form v-if="settingsHandle" @submit.prevent="saveConfiguration" class="flex flex-col h-full bg-white dark:bg-gray-900">
+        <div class="flex-1 overflow-y-auto">
           <!-- Schema-based form when both schema and configuration are available -->
           <SchemaForm
             v-if="settingsSchema && (settingsSchema.properties || settingsSchema.type || settingsSchema.$ref) && configurationReady"
@@ -815,7 +811,7 @@ const saveEdgeConfiguration = async () => {
             Loading configuration...
           </div>
           <!-- Fallback to raw JSON editor -->
-          <div v-else>
+          <div v-else class="p-2">
             <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Settings (JSON)</label>
             <textarea
               v-model="editorValue"
@@ -823,22 +819,17 @@ const saveEdgeConfiguration = async () => {
               placeholder="{}"
             />
           </div>
-          <!-- Warning message -->
-          <div class="pt-3">
-            <p class="text-xs text-orange-400">
-              Do not store sensitive information if you plan sharing your project as a solution.
-            </p>
-          </div>
-          <!-- Save button -->
-          <div class="pt-3 text-right">
-            <button
-              type="submit"
-              :disabled="saving || selectedNode.data?.blocked"
-              class="px-4 py-2 text-xs font-medium rounded-md text-sky-700 bg-sky-100 hover:bg-sky-200 focus:outline-none focus:ring-2 focus:ring-sky-500 dark:bg-sky-900 dark:hover:bg-sky-800 dark:text-sky-300 disabled:opacity-50"
-            >
-              {{ saving ? 'Saving...' : 'Save' }}
-            </button>
-          </div>
+        </div>
+        <!-- Warning message and Save button -->
+        <div class="text-right px-2 pt-2 pb-4">
+          <p class="text-xs text-orange-600 pb-2">Do not store sensitive information if you plan sharing your project as a solution.</p>
+          <button
+            type="submit"
+            :disabled="saving || selectedNode.data?.blocked"
+            class="px-4 py-2 text-xs font-medium rounded-md text-sky-700 bg-sky-100 hover:bg-sky-200 focus:outline-none focus:ring-2 focus:ring-sky-500 dark:bg-gray-900 dark:hover:bg-gray-800 dark:text-sky-500 disabled:opacity-50"
+          >
+            {{ saving ? 'Saving...' : 'Save' }}
+          </button>
         </div>
       </form>
       <div v-else class="p-4 pt-5 text-center dark:text-gray-400">

@@ -84,12 +84,31 @@ const path = computed(() => getBezierPath({
   curvature: props.curvature,
 }))
 
-// Edge style - light gray stroke
-const edgeStyle = computed(() => ({
-  stroke: props.selected ? '#0ea5e9' : '#d1d5db',
-  strokeWidth: props.selected ? 2 : 1,
-  ...props.style
-}))
+// Compute edge style based on validation and trace state - matching platform
+const edgeStyle = computed(() => {
+  const baseStyle = { ...(props.style || {}) }
+
+  // Validation error - red
+  if (props.data?.valid === false) {
+    baseStyle.stroke = '#fca5a5'
+    return baseStyle
+  }
+
+  // Trace runtime error - red
+  if (props.data?.trace?.error) {
+    baseStyle.stroke = '#fca5a5'
+    return baseStyle
+  }
+
+  // Was part of trace execution (has sequence) - blue
+  if (props.data?.trace?.sequence !== undefined && props.data.trace.sequence >= 0) {
+    baseStyle.stroke = '#00bfff'
+    return baseStyle
+  }
+
+  // Default - no explicit stroke, let CSS theme handle it
+  return baseStyle
+})
 
 // Icon class based on state - matches platform implementation exactly
 const iconClass = computed(() => {

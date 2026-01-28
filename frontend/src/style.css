@@ -14,7 +14,7 @@ html, body {
 }
 
 body {
-  @apply bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100;
+  @apply bg-gray-50 dark:bg-black text-gray-900 dark:text-gray-100;
   transition: background-color 0.2s ease, color 0.2s ease;
 }
 
@@ -47,53 +47,22 @@ select {
 }
 
 ::-webkit-scrollbar-track {
-  @apply bg-gray-200;
+  @apply bg-transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  @apply bg-gray-400 rounded;
+  @apply bg-gray-400 rounded-full;
 }
 
 ::-webkit-scrollbar-thumb:hover {
   @apply bg-gray-500;
 }
 
-::-webkit-scrollbar-corner {
-  @apply bg-gray-200;
-}
-
 /* Dark mode scrollbar - class based */
-.dark ::-webkit-scrollbar-track {
-  @apply bg-gray-800;
-}
-
 .dark ::-webkit-scrollbar-thumb {
-  @apply bg-gray-600 rounded;
+  @apply bg-gray-600;
 }
 
 .dark ::-webkit-scrollbar-thumb:hover {
   @apply bg-gray-500;
-}
-
-.dark ::-webkit-scrollbar-corner {
-  @apply bg-gray-800;
-}
-
-/* Dark mode scrollbar - system preference fallback */
-@media (prefers-color-scheme: dark) {
-  ::-webkit-scrollbar-track {
-    @apply bg-gray-800;
-  }
-
-  ::-webkit-scrollbar-thumb {
-    @apply bg-gray-600 rounded;
-  }
-
-  ::-webkit-scrollbar-thumb:hover {
-    @apply bg-gray-500;
-  }
-
-  ::-webkit-scrollbar-corner {
-    @apply bg-gray-800;
-  }
 }

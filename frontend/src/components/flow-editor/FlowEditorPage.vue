@@ -193,7 +193,7 @@ watch(() => props.flowResourceName, async () => {
 </script>
 
 <template>
-  <div class="flow-editor-page h-full flex flex-col bg-white dark:bg-gray-900">
+  <div class="flow-editor-page h-full flex flex-col bg-white dark:bg-black">
     <!-- Loading state -->
     <div v-if="flowStore.loading" class="flex items-center justify-center h-full">
       <div class="text-center">
