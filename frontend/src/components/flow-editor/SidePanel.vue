@@ -180,6 +180,7 @@ const updateControlFormValue = (newValue) => {
 const editorValue = ref('{}')
 const formValue = ref({})
 const saving = ref(false)
+const configurationReady = ref(false)
 
 const settingsConfiguration = computed(() => {
   if (!settingsHandle.value?.configuration) return '{}'
@@ -235,6 +236,7 @@ watch(settingsConfiguration, (val) => {
 // Watch settings changes for form
 watch(settingsConfigObject, (val) => {
   formValue.value = { ...val }
+  configurationReady.value = true
 }, { immediate: true, deep: true })
 
 // Update form value handler
@@ -270,6 +272,7 @@ watch(() => selectedNode.value?.id, (newId, oldId) => {
     setCurrentTab('status')
     selectedHandleId.value = null
     // Reset settings form
+    configurationReady.value = false
     formValue.value = {}
     editorValue.value = '{}'
   }
@@ -799,15 +802,18 @@ const saveEdgeConfiguration = async () => {
       <!-- Settings form -->
       <form v-if="settingsHandle" @submit.prevent="saveConfiguration" class="flex-1 overflow-y-auto bg-white dark:bg-gray-900">
         <div class="p-3">
-          <!-- Schema-based form when schema is available (any valid schema, including $ref) -->
+          <!-- Schema-based form when both schema and configuration are available -->
           <SchemaForm
-            v-if="settingsSchema && (settingsSchema.properties || settingsSchema.type || settingsSchema.$ref)"
+            v-if="settingsSchema && (settingsSchema.properties || settingsSchema.type || settingsSchema.$ref) && configurationReady"
             :schema="settingsSchema"
             :model-value="formValue"
             @update:model-value="updateFormValue"
             :readonly="selectedNode.data?.blocked"
             :allow-edit-schema="!selectedNode.data?.blocked"
           />
+          <div v-else-if="settingsSchema && (settingsSchema.properties || settingsSchema.type || settingsSchema.$ref)" class="text-center text-gray-400 py-4">
+            Loading configuration...
+          </div>
           <!-- Fallback to raw JSON editor -->
           <div v-else>
             <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Settings (JSON)</label>
