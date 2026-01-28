@@ -22,7 +22,9 @@ import {
   TrashIcon,
   XMarkIcon,
   Cog6ToothIcon,
-  ArrowPathIcon
+  ArrowPathIcon,
+  ClipboardDocumentIcon,
+  ClipboardDocumentCheckIcon
 } from '@heroicons/vue/24/outline'
 import VueJsonPretty from 'vue-json-pretty'
 import 'vue-json-pretty/lib/styles.css'
@@ -80,6 +82,20 @@ const deselectNode = (nodeId) => {
 const inspect = ref(null)
 const inspectReady = ref(false)
 const selectedHandleId = ref(null)
+const inspectCopied = ref(false)
+
+const copyInspectToClipboard = async () => {
+  if (!inspect.value?.data) return
+  try {
+    await navigator.clipboard.writeText(JSON.stringify(inspect.value.data, null, 2))
+    inspectCopied.value = true
+    setTimeout(() => {
+      inspectCopied.value = false
+    }, 2000)
+  } catch (err) {
+    console.error('Failed to copy:', err)
+  }
+}
 
 // Get handles for port selector (include _settings, exclude only _control)
 const selectedNodeHandles = computed(() => {
@@ -1007,7 +1023,20 @@ const saveEdgeConfiguration = async () => {
         </Listbox>
 
         <!-- Port data display -->
-        <div class="bg-white dark:bg-gray-900 dark:text-gray-300 shadow rounded text-xs overflow-y-auto m-1 min-h-48">
+        <div class="relative bg-white dark:bg-gray-900 dark:text-gray-300 shadow rounded text-xs overflow-y-auto m-1 min-h-48">
+          <!-- Copy button -->
+          <button
+            v-if="inspectReady && inspect?.data !== undefined"
+            @click="copyInspectToClipboard"
+            class="absolute top-2 right-2 z-10 p-1.5 rounded-md transition-colors
+              bg-gray-100 hover:bg-gray-200 text-gray-600
+              dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-400
+              focus:outline-none focus:ring-2 focus:ring-sky-500"
+            :title="inspectCopied ? 'Copied!' : 'Copy to clipboard'"
+          >
+            <ClipboardDocumentCheckIcon v-if="inspectCopied" class="h-4 w-4 text-green-500" />
+            <ClipboardDocumentIcon v-else class="h-4 w-4" />
+          </button>
           <div class="p-2">
             <div v-if="!inspectReady" class="text-center text-gray-400 py-4">Loading...</div>
             <div v-else-if="inspect?.dataError" class="text-center text-red-400 py-4 text-xs">{{ inspect.dataError }}</div>

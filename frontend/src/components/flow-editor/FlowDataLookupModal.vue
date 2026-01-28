@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
-import { XMarkIcon } from '@heroicons/vue/24/outline'
+import { XMarkIcon, ArrowsPointingOutIcon, ArrowsPointingInIcon } from '@heroicons/vue/24/outline'
 import VueJsonPretty from 'vue-json-pretty'
 import 'vue-json-pretty/lib/styles.css'
 import { RunExpression } from '../../../wailsjs/go/main/App'
@@ -43,6 +43,12 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'apply'])
 const isDark = useDark()
+
+// Maximize state
+const isMaximized = ref(false)
+const toggleMaximize = () => {
+  isMaximized.value = !isMaximized.value
+}
 
 // Expression input
 const dataExpressionResult = ref('')
@@ -192,7 +198,7 @@ const buttonText = computed(() => {
   <Teleport to="body">
     <div
       v-if="show"
-      class="fixed inset-0 z-50 overflow-y-auto p-4 sm:p-6 md:p-20"
+      :class="['fixed inset-0 z-50', isMaximized ? 'overflow-hidden p-4' : 'overflow-y-auto p-4 sm:p-6 md:p-20']"
     >
       <!-- Backdrop -->
       <div
@@ -201,35 +207,45 @@ const buttonText = computed(() => {
       />
 
       <!-- Modal -->
-      <div class="relative rounded-lg bg-white dark:bg-black dark:border dark:border-gray-800 shadow-xl p-1 max-w-6xl mx-auto dark:text-gray-300">
-        <!-- Close button -->
-        <div class="absolute top-0 right-0 pt-2 pr-2">
+      <div :class="[
+        'relative rounded-lg bg-white dark:bg-black dark:border dark:border-gray-800 shadow-xl p-1 mx-auto dark:text-gray-300',
+        isMaximized ? 'w-full h-full max-w-none overflow-hidden' : 'max-w-6xl'
+      ]">
+        <!-- Maximize/Close buttons -->
+        <div class="absolute top-0 right-0 pt-2 pr-2 flex gap-1 z-10">
+          <button
+            @click="toggleMaximize"
+            type="button"
+            class="rounded-md text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 focus:outline-none focus:ring-2 focus:ring-sky-500"
+          >
+            <ArrowsPointingInIcon v-if="isMaximized" class="h-5 w-5" />
+            <ArrowsPointingOutIcon v-else class="h-5 w-5" />
+          </button>
           <button
             @click="close"
             type="button"
-            class="rounded-md text-gray-300 hover:text-gray-500 dark:bg-gray-600 dark:text-gray-800 focus:outline-none dark:hover:text-gray-400"
+            class="rounded-md text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 focus:outline-none focus:ring-2 focus:ring-sky-500"
           >
-            <XMarkIcon class="h-6 w-6" />
+            <XMarkIcon class="h-5 w-5" />
           </button>
         </div>
 
-        <form @submit.prevent="addExpression(false)">
-          <div class="sm:flex sm:items-start">
-            <div class="mt-3 text-center sm:mt-0 sm:text-left w-full">
+        <form @submit.prevent="addExpression(false)" :class="isMaximized ? 'h-full flex flex-col overflow-hidden' : ''">
+          <div :class="['sm:flex sm:items-start', isMaximized ? 'flex-1 min-h-0' : '']">
+            <div :class="['mt-3 text-center sm:mt-0 sm:text-left w-full', isMaximized ? 'h-full flex flex-col' : '']">
               <!-- Title -->
-              <h3 class="font-medium leading-6 text-gray-900 dark:text-gray-300">
+              <h3 class="font-medium leading-6 text-gray-900 dark:text-gray-300 flex-shrink-0">
                 {{ fieldTitle || 'Context' }}
               </h3>
 
               <!-- 3 columns -->
-              <div class="py-2 flex w-full">
+              <div :class="['py-2 flex w-full', isMaximized ? 'flex-1 min-h-0' : '']">
                 <!-- Source data -->
-                <div class="w-2/6 pr-2">
-                  <div class="json-panel pt-2">
-                    <div class="text-xs font-medium text-center">Source data</div>
+                <div class="w-2/6 pr-2 flex flex-col">
+                  <div class="text-xs font-medium text-center flex-shrink-0 pb-2">Source data</div>
+                  <div :class="['overflow-auto', isMaximized ? 'flex-1' : 'json-panel']">
                     <VueJsonPretty
                       v-if="sourceData"
-                      :height="300"
                       :highlight-selected-node="true"
                       :theme="isDark ? 'dark' : 'light'"
                       v-model:selectedValue="dataExpressionResult"
@@ -242,11 +258,10 @@ const buttonText = computed(() => {
                 </div>
 
                 <!-- Schema -->
-                <div class="w-2/6">
-                  <div class="text-xs font-medium text-center">Required JSON schema of the result</div>
-                  <div class="json-panel">
+                <div class="w-2/6 flex flex-col">
+                  <div class="text-xs font-medium text-center flex-shrink-0 pb-2">Required JSON schema of the result</div>
+                  <div :class="['overflow-auto', isMaximized ? 'flex-1' : 'json-panel']">
                     <VueJsonPretty
-                      :height="300"
                       :theme="isDark ? 'dark' : 'light'"
                       :data="cleanedTargetSchema"
                     />
@@ -254,12 +269,11 @@ const buttonText = computed(() => {
                 </div>
 
                 <!-- Result -->
-                <div class="w-2/6">
-                  <div class="text-xs font-medium text-center">The result of the expression</div>
-                  <div class="json-panel text-xs">
+                <div class="w-2/6 flex flex-col">
+                  <div class="text-xs font-medium text-center flex-shrink-0 pb-2">The result of the expression</div>
+                  <div :class="['overflow-auto text-xs', isMaximized ? 'flex-1' : 'json-panel']">
                     <VueJsonPretty
                       v-if="typeof expressionValidationResult === 'object' && expressionValidationResult !== null"
-                      :height="300"
                       :theme="isDark ? 'dark' : 'light'"
                       :data="expressionValidationResult"
                     />
@@ -271,19 +285,19 @@ const buttonText = computed(() => {
               <!-- Status -->
               <div
                 v-if="expressResultValidError"
-                class="bg-red-100 text-xs rounded-md py-2 px-3 mb-1 text-red-700 dark:bg-red-900 dark:text-gray-300"
+                class="bg-red-100 text-xs rounded-md py-2 px-3 mb-1 text-red-700 dark:bg-red-900 dark:text-gray-300 flex-shrink-0"
               >
                 {{ expressResultValidError }}
               </div>
               <div
                 v-else-if="expressResultValid"
-                class="bg-green-100 text-xs rounded-md py-2 px-3 mb-1 text-green-700 dark:bg-green-900 dark:text-gray-300"
+                class="bg-green-100 text-xs rounded-md py-2 px-3 mb-1 text-green-700 dark:bg-green-900 dark:text-gray-300 flex-shrink-0"
               >
                 The result of the expression returns data which is valid to the JSON schema
               </div>
 
               <!-- Expression + buttons -->
-              <div class="grid grid-cols-12">
+              <div class="grid grid-cols-12 flex-shrink-0">
                 <div class="col-span-9">
                   <textarea
                     v-model="dataExpressionResult"
