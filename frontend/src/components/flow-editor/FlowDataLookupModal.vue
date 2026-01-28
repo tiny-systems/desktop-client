@@ -297,20 +297,20 @@ const buttonText = computed(() => {
               </div>
 
               <!-- Expression + buttons -->
-              <div class="grid grid-cols-12 flex-shrink-0">
+              <div class="grid grid-cols-12 flex-shrink-0 items-stretch">
                 <div class="col-span-9">
                   <textarea
                     v-model="dataExpressionResult"
-                    class="placeholder-gray-400 py-3 border shadow-sm text-xs appearance-none rounded-md w-full py-2 px-2 text-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:border-gray-700 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+                    class="placeholder-gray-400 h-full border shadow-sm text-xs appearance-none rounded-md w-full py-2 px-2 text-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:border-gray-700 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 resize-none"
                     placeholder="Expression"
                     rows="1"
                   />
                 </div>
-                <div class="flex col-span-3 space-x-2 pl-1 justify-items-stretch">
+                <div class="flex col-span-3 space-x-2 pl-1">
                   <button
                     type="submit"
                     :disabled="testing"
-                    class="px-4 py-3 border w-full border-transparent text-xs font-medium rounded-md text-sky-700 bg-sky-100 hover:bg-sky-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 dark:bg-gray-900 dark:hover:bg-gray-800 dark:text-sky-500 disabled:opacity-50"
+                    class="px-4 py-2 border w-full border-transparent text-xs font-medium rounded-md text-sky-700 bg-sky-100 hover:bg-sky-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 dark:bg-gray-900 dark:hover:bg-gray-800 dark:text-sky-500 disabled:opacity-50"
                   >
                     {{ buttonText }}
                   </button>
@@ -318,7 +318,7 @@ const buttonText = computed(() => {
                     v-if="expressResultValidError"
                     type="button"
                     @click="addExpression(true)"
-                    class="px-4 py-3 border w-full border-transparent text-xs font-medium rounded-md text-sky-700 bg-sky-100 hover:bg-sky-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 dark:bg-gray-900 dark:hover:bg-gray-800 dark:text-sky-500"
+                    class="px-4 py-2 border w-full border-transparent text-xs font-medium rounded-md text-sky-700 bg-sky-100 hover:bg-sky-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 dark:bg-gray-900 dark:hover:bg-gray-800 dark:text-sky-500"
                   >
                     Inject anyway
                   </button>
