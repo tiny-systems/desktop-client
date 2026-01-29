@@ -24,12 +24,14 @@ import {
   Cog6ToothIcon,
   ArrowPathIcon,
   ClipboardDocumentIcon,
-  ClipboardDocumentCheckIcon
+  ClipboardDocumentCheckIcon,
+  Square3Stack3DIcon
 } from '@heroicons/vue/24/outline'
 import VueJsonPretty from 'vue-json-pretty'
 import 'vue-json-pretty/lib/styles.css'
 import SchemaForm from './SchemaForm.vue'
 import FlowDataLookupModal from './FlowDataLookupModal.vue'
+import FlowTransferModal from './FlowTransferModal.vue'
 import ConfirmDialog from './ConfirmDialog.vue'
 
 const emit = defineEmits(['close', 'error', 'rename', 'settings', 'delete'])
@@ -60,11 +62,22 @@ const selectedNodes = computed(() => flowStore.selectedNodes)
 
 // Multi-node selection actions
 const showDeleteMultipleModal = ref(false)
+const showTransferModal = ref(false)
 
 const deleteMultipleNodes = async () => {
   flowStore.deleteSelected()
   await flowStore.save()
   showDeleteMultipleModal.value = false
+}
+
+const onTransferNodes = () => {
+  // Check if any selected nodes are blocked (shared from other flows)
+  const hasBlockedNodes = flowStore.selectedNodes.some(n => n.data?.blocked)
+  if (hasBlockedNodes) {
+    emit('error', 'Some selected nodes are shared from other flows and cannot be transferred')
+    return
+  }
+  showTransferModal.value = true
 }
 
 const clearSelection = () => {
@@ -707,6 +720,14 @@ const saveEdgeConfiguration = async () => {
       <span class="text-sm text-gray-600 dark:text-gray-300">{{ selectedNodes.length }} selected</span>
       <div class="flex-1" />
       <button
+        @click="onTransferNodes"
+        type="button"
+        title="Transfer selected nodes to another flow"
+        class="p-1.5 text-sky-600 dark:text-sky-400 hover:bg-sky-50 dark:hover:bg-sky-900/20 rounded"
+      >
+        <Square3Stack3DIcon class="h-5 w-5" />
+      </button>
+      <button
         @click="showDeleteMultipleModal = true"
         type="button"
         title="Delete selected nodes"
@@ -749,6 +770,15 @@ const saveEdgeConfiguration = async () => {
       cancel-text="Cancel"
       @confirm="deleteMultipleNodes"
       @cancel="showDeleteMultipleModal = false"
+    />
+
+    <!-- Transfer nodes modal -->
+    <FlowTransferModal
+      v-model="showTransferModal"
+      :project-name="flowStore.projectResourceName"
+      :context-name="flowStore.contextName"
+      :namespace="flowStore.namespace"
+      @error="(msg) => emit('error', msg)"
     />
   </aside>
 

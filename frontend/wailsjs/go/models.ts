@@ -305,6 +305,24 @@ export namespace main {
 		    return a;
 		}
 	}
+	export class TransferNodesRequest {
+	    fromFlowResourceName: string;
+	    toFlowResourceName: string;
+	    projectResourceName: string;
+	    nodeIds: string[];
+	
+	    static createFrom(source: any = {}) {
+	        return new TransferNodesRequest(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.fromFlowResourceName = source["fromFlowResourceName"];
+	        this.toFlowResourceName = source["toFlowResourceName"];
+	        this.projectResourceName = source["projectResourceName"];
+	        this.nodeIds = source["nodeIds"];
+	    }
+	}
 	export class Widget {
 	    id: string;
 	    title: string;

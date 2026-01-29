@@ -1204,3 +1204,225 @@ func (a *App) ApplyTraceToFlow(contextName, namespace, projectName, flowResource
 
 	return response, nil
 }
+
+// TransferNodesRequest contains the request data for transferring nodes.
+type TransferNodesRequest struct {
+	FromFlowResourceName string   `json:"fromFlowResourceName"`
+	ToFlowResourceName   string   `json:"toFlowResourceName"`
+	ProjectResourceName  string   `json:"projectResourceName"`
+	NodeIDs              []string `json:"nodeIds"`
+}
+
+// TransferNodes transfers nodes from one flow to another.
+// Connected nodes are automatically shared with the destination flow.
+func (a *App) TransferNodes(contextName, namespace string, req TransferNodesRequest) error {
+	mgr, err := a.getManager(contextName, namespace)
+	if err != nil {
+		return err
+	}
+
+	if len(req.NodeIDs) == 0 {
+		return fmt.Errorf("no nodes provided")
+	}
+	if req.FromFlowResourceName == "" {
+		return fmt.Errorf("no source flow provided")
+	}
+	if req.ToFlowResourceName == "" {
+		return fmt.Errorf("no destination flow provided")
+	}
+
+	// Build a set of nodes being moved for quick lookup
+	movingNodesSet := make(map[string]bool)
+	for _, n := range req.NodeIDs {
+		movingNodesSet[n] = true
+	}
+
+	// Get all nodes in the project
+	allNodes, err := mgr.GetProjectNodes(a.ctx, req.ProjectResourceName)
+	if err != nil {
+		return fmt.Errorf("failed to list project nodes: %w", err)
+	}
+
+	// Build a map of all nodes for quick lookup
+	allNodesMap := make(map[string]*v1alpha1.TinyNode)
+	for i := range allNodes {
+		allNodesMap[allNodes[i].Name] = &allNodes[i]
+	}
+
+	// Find all connected nodes that need to be shared with the destination flow
+	nodesToShare := make(map[string]bool)
+
+	for _, movingNodeName := range req.NodeIDs {
+		movingNode, ok := allNodesMap[movingNodeName]
+		if !ok {
+			continue
+		}
+
+		// Find nodes that this moving node connects TO (via its edges)
+		for _, edge := range movingNode.Spec.Edges {
+			targetNodeName, _ := utils.ParseFullPortName(edge.To)
+			if targetNodeName == "" {
+				continue
+			}
+			// Don't share if target is also being moved
+			if movingNodesSet[targetNodeName] {
+				continue
+			}
+			// Don't share if target already belongs to destination flow
+			if targetNode, ok := allNodesMap[targetNodeName]; ok {
+				if targetNode.Labels[v1alpha1.FlowNameLabel] == req.ToFlowResourceName {
+					continue
+				}
+			}
+			nodesToShare[targetNodeName] = true
+		}
+
+		// Find nodes that connect TO this moving node (other nodes' edges pointing to moving node)
+		for _, otherNode := range allNodes {
+			if movingNodesSet[otherNode.Name] {
+				continue
+			}
+			for _, edge := range otherNode.Spec.Edges {
+				targetNodeName, _ := utils.ParseFullPortName(edge.To)
+				if targetNodeName == movingNodeName {
+					// This other node connects to the moving node
+					// Don't share if other node already belongs to destination flow
+					if otherNode.Labels[v1alpha1.FlowNameLabel] == req.ToFlowResourceName {
+						continue
+					}
+					nodesToShare[otherNode.Name] = true
+				}
+			}
+		}
+	}
+
+	// Update SharedWithFlowsAnnotation on connected nodes
+	for nodeName := range nodesToShare {
+		node, ok := allNodesMap[nodeName]
+		if !ok {
+			continue
+		}
+
+		// Get current shared flows
+		currentShared := node.Annotations[v1alpha1.SharedWithFlowsAnnotation]
+		sharedFlows := []string{}
+		if currentShared != "" {
+			sharedFlows = strings.Split(currentShared, ",")
+		}
+
+		// Check if already shared with destination flow
+		alreadyShared := false
+		for _, sf := range sharedFlows {
+			if sf == req.ToFlowResourceName {
+				alreadyShared = true
+				break
+			}
+		}
+
+		// Add destination flow to shared list if not already there
+		if !alreadyShared {
+			sharedFlows = append(sharedFlows, req.ToFlowResourceName)
+
+			if node.Annotations == nil {
+				node.Annotations = make(map[string]string)
+			}
+			node.Annotations[v1alpha1.SharedWithFlowsAnnotation] = strings.Join(sharedFlows, ",")
+
+			if err := mgr.UpdateNode(a.ctx, node); err != nil {
+				return fmt.Errorf("failed to update shared annotation on node %s: %w", nodeName, err)
+			}
+		}
+	}
+
+	// Map old node names to new node names for edge updates
+	nodeNameMapping := make(map[string]string)
+	nodesToCreate := make([]*v1alpha1.TinyNode, 0, len(req.NodeIDs))
+	nodesToDelete := make([]*v1alpha1.TinyNode, 0, len(req.NodeIDs))
+
+	for _, n := range req.NodeIDs {
+		node, err := mgr.GetNode(a.ctx, n, namespace)
+		if err != nil {
+			return fmt.Errorf("failed to get node %s: %w", n, err)
+		}
+
+		nodeCopy := node.DeepCopy()
+		nodeCopy.ResourceVersion = ""
+		nodeCopy.UID = ""
+		nodeCopy.OwnerReferences = nil
+
+		// Generate new node name for the destination flow
+		newNodeName := generateNodeName(req.ToFlowResourceName, node.Spec.Component)
+		nodeCopy.Name = newNodeName
+
+		nodeCopy.Labels[v1alpha1.FlowNameLabel] = req.ToFlowResourceName
+
+		// Clear shared annotation since the node is now owned by the destination flow
+		delete(nodeCopy.Annotations, v1alpha1.SharedWithFlowsAnnotation)
+
+		nodeNameMapping[node.Name] = newNodeName
+		nodesToCreate = append(nodesToCreate, nodeCopy)
+		nodesToDelete = append(nodesToDelete, node)
+	}
+
+	// Update edge targets in the new nodes to point to the new node names
+	for _, nodeCopy := range nodesToCreate {
+		for i, edge := range nodeCopy.Spec.Edges {
+			targetNodeName, targetPort := utils.ParseFullPortName(edge.To)
+			// If the target is also being moved, update the reference to new name
+			if newName, ok := nodeNameMapping[targetNodeName]; ok {
+				nodeCopy.Spec.Edges[i].To = utils.GetPortFullName(newName, targetPort)
+			}
+		}
+	}
+
+	// Create new nodes
+	for _, nodeCopy := range nodesToCreate {
+		if err := mgr.CreateNode(a.ctx, nodeCopy); err != nil {
+			return fmt.Errorf("failed to create node %s: %w", nodeCopy.Name, err)
+		}
+	}
+
+	// Delete old nodes
+	for _, node := range nodesToDelete {
+		if err := mgr.DeleteNode(a.ctx, node); err != nil {
+			return fmt.Errorf("failed to delete node %s: %w", node.Name, err)
+		}
+	}
+
+	// Update edges in connected nodes that pointed to old node names
+	for nodeName := range nodesToShare {
+		node, ok := allNodesMap[nodeName]
+		if !ok {
+			continue
+		}
+
+		updated := false
+		for i, edge := range node.Spec.Edges {
+			targetNodeName, targetPort := utils.ParseFullPortName(edge.To)
+			if newName, ok := nodeNameMapping[targetNodeName]; ok {
+				node.Spec.Edges[i].To = utils.GetPortFullName(newName, targetPort)
+				updated = true
+			}
+		}
+
+		if updated {
+			// Re-fetch to get latest version (we may have updated annotations earlier)
+			freshNode, err := mgr.GetNode(a.ctx, nodeName, namespace)
+			if err != nil {
+				return fmt.Errorf("failed to re-fetch node %s: %w", nodeName, err)
+			}
+			freshNode.Spec.Edges = node.Spec.Edges
+			if err := mgr.UpdateNode(a.ctx, freshNode); err != nil {
+				return fmt.Errorf("failed to update edges on node %s: %w", nodeName, err)
+			}
+		}
+	}
+
+	return nil
+}
+
+// generateNodeName creates a new node name for the destination flow
+func generateNodeName(flowResourceName, componentName string) string {
+	sanitized := utils.SanitizeResourceName(componentName)
+	return sanitized + "-" + uuid.New().String()[:8]
+}

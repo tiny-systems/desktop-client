@@ -38,10 +38,6 @@ export function CreateProject(arg1, arg2, arg3) {
   return window['go']['main']['App']['CreateProject'](arg1, arg2, arg3);
 }
 
-export function CreateTracker(arg1, arg2, arg3) {
-  return window['go']['main']['App']['CreateTracker'](arg1, arg2, arg3);
-}
-
 export function DeleteDashboardPage(arg1, arg2, arg3) {
   return window['go']['main']['App']['DeleteDashboardPage'](arg1, arg2, arg3);
 }
@@ -52,10 +48,6 @@ export function DeleteNode(arg1, arg2, arg3) {
 
 export function DeleteProject(arg1, arg2, arg3) {
   return window['go']['main']['App']['DeleteProject'](arg1, arg2, arg3);
-}
-
-export function DeleteTracker(arg1, arg2) {
-  return window['go']['main']['App']['DeleteTracker'](arg1, arg2);
 }
 
 export function DisconnectNodes(arg1, arg2, arg3, arg4) {
@@ -188,6 +180,10 @@ export function StopWatchProjectNodes() {
 
 export function ToggleNodeDashboard(arg1, arg2, arg3, arg4) {
   return window['go']['main']['App']['ToggleNodeDashboard'](arg1, arg2, arg3, arg4);
+}
+
+export function TransferNodes(arg1, arg2, arg3) {
+  return window['go']['main']['App']['TransferNodes'](arg1, arg2, arg3);
 }
 
 export function UndeployFlow(arg1, arg2, arg3) {

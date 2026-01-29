@@ -625,6 +625,21 @@ export const useFlowStore = defineStore('flowStore', {
 
       return await GoApp.GetAvailableComponents(this.contextName, this.namespace)
     },
+    async transferNodesToFlow(toFlowResourceName, nodeIds) {
+      if (!GoApp) throw new Error('Wails runtime not available')
+
+      this.loading = true
+      try {
+        await GoApp.TransferNodes(this.contextName, this.namespace, {
+          fromFlowResourceName: this.flowResourceName,
+          toFlowResourceName: toFlowResourceName,
+          projectResourceName: this.projectResourceName,
+          nodeIds: nodeIds
+        })
+      } finally {
+        this.loading = false
+      }
+    },
     export() {
       let copy = clone(this.elements)
       Object.keys(copy).forEach((key) => {
@@ -675,6 +690,8 @@ export const useFlowStore = defineStore('flowStore', {
         await this.save()
       } catch (e) {
         console.error('Import error:', e)
+        this.loading = false
+        throw e
       }
       this.loading = false
     },
