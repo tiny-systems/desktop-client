@@ -88,6 +88,15 @@ const onTransferNodes = () => {
   showTransferModal.value = true
 }
 
+const onTransferSingleNode = () => {
+  // For single node, check if it's blocked
+  if (selectedNode.value?.data?.blocked) {
+    emit('error', 'This node is shared from another flow and cannot be transferred')
+    return
+  }
+  showTransferModal.value = true
+}
+
 const clearSelection = () => {
   flowStore.selectElement(null)
 }
@@ -780,14 +789,6 @@ const saveEdgeConfiguration = async () => {
       @cancel="showDeleteMultipleModal = false"
     />
 
-    <!-- Transfer nodes modal -->
-    <FlowTransferModal
-      v-model="showTransferModal"
-      :project-name="flowStore.projectResourceName"
-      :context-name="flowStore.contextName"
-      :namespace="flowStore.namespace"
-      @error="(msg) => emit('error', msg)"
-    />
   </aside>
 
   <!-- Single node selected -->
@@ -949,6 +950,16 @@ const saveEdgeConfiguration = async () => {
               >
                 <MenuItems class="origin-top-right absolute z-40 right-0 mt-2 w-48 rounded-md shadow-lg bg-white border border-gray-200 focus:outline-none dark:border-gray-700 dark:bg-gray-900">
                   <div class="py-1">
+                    <MenuItem v-slot="{ active }" v-if="!selectedNode.data?.blocked">
+                      <button
+                        type="button"
+                        @click="onTransferSingleNode"
+                        :class="[active ? 'bg-gray-100 text-gray-900 dark:bg-gray-700' : 'text-gray-700 dark:text-gray-300', 'w-full flex px-4 py-2 text-sm']"
+                      >
+                        <Square3Stack3DIcon class="mr-2 h-4 w-4 text-gray-400" />
+                        <span>Transfer node</span>
+                      </button>
+                    </MenuItem>
                     <MenuItem v-slot="{ active }">
                       <button
                         type="button"
@@ -1139,6 +1150,15 @@ const saveEdgeConfiguration = async () => {
     :detail="deleteEdgeDetail"
     @confirm="handleDeleteEdgeConfirm"
     @cancel="handleDeleteEdgeCancel"
+  />
+
+  <!-- Transfer nodes modal (used for both single and multi-node transfer) -->
+  <FlowTransferModal
+    v-model="showTransferModal"
+    :project-name="flowStore.projectResourceName"
+    :context-name="flowStore.contextName"
+    :namespace="flowStore.namespace"
+    @error="(msg) => emit('error', msg)"
   />
 </template>
 
