@@ -159,7 +159,7 @@ const handleTitleChange = (event) => {
         {{ widget.title || widget.nodeName }}
       </h3>
     </div>
-    <div class="widget-content flex-1 overflow-auto px-3 py-2">
+    <div class="widget-content flex-1 overflow-hidden px-3 py-2">
       <JSONEditor
         v-if="schemaSnapshot && Object.keys(schemaSnapshot).length > 0"
         :key="editorKey"

@@ -38,6 +38,14 @@ const emit = defineEmits(['close', 'error', 'rename', 'settings', 'delete'])
 
 const flowStore = useFlowStore()
 
+// Helper to decode HTML entities
+const decodeHtmlEntities = (text) => {
+  if (!text) return ''
+  const textarea = document.createElement('textarea')
+  textarea.innerHTML = text
+  return textarea.value
+}
+
 // Dynamic width class for side panel
 const hasSelection = computed(() => flowStore.selectedNode || flowStore.selectedEdge || flowStore.selectedNodes.length > 0)
 const panelWidthClass = computed(() => {
@@ -914,7 +922,7 @@ const saveEdgeConfiguration = async () => {
               />
               <!-- Module/Component info -->
               <div class="font-light px-2 dark:text-gray-300 text-gray-600">
-                <p v-if="selectedNode.data?.description">{{ selectedNode.data.description }}</p>
+                <p v-if="selectedNode.data?.description">{{ decodeHtmlEntities(selectedNode.data.description) }}</p>
                 <p>Module: <span class="font-semibold">{{ selectedNode.data?.module }}</span></p>
                 <p>Component: <span class="font-semibold">{{ selectedNode.data?.component }}</span></p>
                 <p :class="selectedNodeExpiring ? 'text-red-500' : ''">

@@ -1,6 +1,7 @@
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, nextTick } from 'vue'
 import { useFlowStore } from '../../stores/flow'
+import { PlusIcon } from '@heroicons/vue/24/outline'
 
 const GoApp = window.go?.main?.App
 
@@ -18,6 +19,12 @@ const flows = ref([])
 const selectedFlowResourceName = ref('')
 const loading = ref(false)
 const error = ref('')
+
+// New flow creation state
+const showNewFlowInput = ref(false)
+const newFlowName = ref('')
+const creatingFlow = ref(false)
+const newFlowInputRef = ref(null)
 
 // Compute the node IDs to transfer
 const nodeIds = computed(() => flowStore.selectedNodes.map(n => n.id))
@@ -42,6 +49,8 @@ watch(() => props.modelValue, async (isOpen) => {
   if (isOpen) {
     error.value = ''
     selectedFlowResourceName.value = ''
+    showNewFlowInput.value = false
+    newFlowName.value = ''
     await loadFlows()
   }
 })
@@ -64,6 +73,43 @@ const closeModal = () => {
   emit('update:modelValue', false)
   selectedFlowResourceName.value = ''
   error.value = ''
+  showNewFlowInput.value = false
+  newFlowName.value = ''
+}
+
+const openNewFlowInput = () => {
+  showNewFlowInput.value = true
+  newFlowName.value = ''
+  nextTick(() => {
+    newFlowInputRef.value?.focus()
+  })
+}
+
+const cancelNewFlow = () => {
+  showNewFlowInput.value = false
+  newFlowName.value = ''
+}
+
+const createNewFlow = async () => {
+  if (!GoApp || !newFlowName.value.trim()) return
+
+  creatingFlow.value = true
+  error.value = ''
+
+  try {
+    const newFlow = await GoApp.CreateFlow(props.contextName, props.namespace, props.projectName, newFlowName.value.trim())
+    if (newFlow) {
+      flows.value.push(newFlow)
+      // Auto-select the newly created flow
+      selectedFlowResourceName.value = newFlow.resourceName
+    }
+    showNewFlowInput.value = false
+    newFlowName.value = ''
+  } catch (e) {
+    error.value = e.message || 'Failed to create flow'
+  } finally {
+    creatingFlow.value = false
+  }
 }
 
 const transferNodes = async () => {
@@ -118,9 +164,52 @@ const transferNodes = async () => {
 
       <!-- Flow selector -->
       <div class="mt-4">
-        <label for="targetFlow" class="block text-sm text-gray-500 dark:text-gray-400">
-          Destination Flow
-        </label>
+        <div class="flex items-center justify-between mb-1">
+          <label for="targetFlow" class="block text-sm text-gray-500 dark:text-gray-400">
+            Destination Flow
+          </label>
+          <button
+            v-if="!showNewFlowInput"
+            @click="openNewFlowInput"
+            type="button"
+            class="flex items-center space-x-1 text-xs text-sky-600 dark:text-sky-400 hover:text-sky-700 dark:hover:text-sky-300"
+          >
+            <PlusIcon class="w-3.5 h-3.5" />
+            <span>New Flow</span>
+          </button>
+        </div>
+
+        <!-- New flow input -->
+        <div v-if="showNewFlowInput" class="mb-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+          <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Flow Name</label>
+          <div class="flex gap-2">
+            <input
+              ref="newFlowInputRef"
+              v-model="newFlowName"
+              type="text"
+              placeholder="New flow name"
+              @keydown.enter.prevent="createNewFlow"
+              @keydown.escape="cancelNewFlow"
+              class="flex-1 border-gray-300 dark:border-gray-600 placeholder-gray-400 focus:ring-sky-600 focus:border-sky-600 appearance-none border rounded py-2 px-3 text-gray-700 leading-tight sm:text-sm dark:bg-gray-900 dark:text-gray-300"
+            />
+            <button
+              @click="createNewFlow"
+              :disabled="!newFlowName.trim() || creatingFlow"
+              type="button"
+              class="px-3 py-2 text-xs font-medium text-white bg-sky-600 rounded hover:bg-sky-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {{ creatingFlow ? '...' : 'Create' }}
+            </button>
+            <button
+              @click="cancelNewFlow"
+              type="button"
+              class="px-3 py-2 text-xs font-medium text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+
         <select
           id="targetFlow"
           v-model="selectedFlowResourceName"
@@ -144,8 +233,8 @@ const transferNodes = async () => {
       </div>
 
       <!-- No flows message -->
-      <div v-if="availableFlows.length === 0 && !loading" class="text-gray-500 text-sm py-2 mt-2 text-center">
-        No other flows available in this project.
+      <div v-if="availableFlows.length === 0 && !loading && !showNewFlowInput" class="text-gray-500 text-sm py-2 mt-2 text-center">
+        No other flows available in this project. Create a new one above.
       </div>
 
       <!-- Buttons -->
