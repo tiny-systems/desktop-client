@@ -618,7 +618,7 @@ const saveEdgeConfiguration = async () => {
   <!-- Edge selected -->
   <aside
     v-if="selectedEdge && selectedNodes.length === 0"
-    :class="['relative text-sm flex flex-col dark:text-gray-300 flex-shrink-0 bg-gray-50 dark:bg-black border-l border-gray-200 dark:border-gray-700 h-full', panelWidthClass]"
+    :class="['relative text-sm flex flex-col dark:text-gray-300 flex-shrink-0 bg-gray-50 dark:bg-black border-l border-gray-200 dark:border-gray-600 h-full', panelWidthClass]"
   >
     <form @submit.prevent="saveEdgeConfiguration" class="bg-white dark:bg-gray-900 shadow rounded-lg text-xs">
       <!-- Tab header -->
@@ -700,7 +700,7 @@ const saveEdgeConfiguration = async () => {
   <!-- Multiple nodes selected -->
   <aside
     v-else-if="selectedNodes.length > 1"
-    :class="['relative text-sm flex flex-col flex-shrink-0 bg-gray-50 dark:bg-black border-l border-gray-200 dark:border-gray-700 h-full', panelWidthClass]"
+    :class="['relative text-sm flex flex-col flex-shrink-0 bg-gray-50 dark:bg-black border-l border-gray-200 dark:border-gray-600 h-full', panelWidthClass]"
   >
     <!-- Toolbar -->
     <div class="flex items-center gap-2 px-3 py-2 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
@@ -755,7 +755,7 @@ const saveEdgeConfiguration = async () => {
   <!-- Single node selected -->
   <aside
     v-else-if="selectedNode"
-    :class="['relative text-sm flex flex-col flex-shrink-0 bg-gray-50 dark:bg-black border-l border-gray-200 dark:border-gray-700 h-full', panelWidthClass]"
+    :class="['relative text-sm flex flex-col flex-shrink-0 bg-gray-50 dark:bg-black border-l border-gray-200 dark:border-gray-600 h-full', panelWidthClass]"
   >
     <!-- Configuration tab active -->
     <div
@@ -1061,7 +1061,7 @@ const saveEdgeConfiguration = async () => {
   <!-- No selection - flow info -->
   <aside
     v-else
-    :class="['relative text-sm flex flex-col dark:text-gray-300 flex-shrink-0 bg-gray-50 dark:bg-black border-l border-gray-200 dark:border-gray-700 h-full', panelWidthClass]"
+    :class="['relative text-sm flex flex-col dark:text-gray-300 flex-shrink-0 bg-gray-50 dark:bg-black border-l border-gray-200 dark:border-gray-600 h-full', panelWidthClass]"
   >
     <div class="flex flex-col h-full">
       <div class="relative z-20 border-b border-gray-200 dark:border-gray-700 flex divide-x divide-gray-200 dark:divide-gray-700">
