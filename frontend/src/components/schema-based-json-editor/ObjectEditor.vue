@@ -51,7 +51,7 @@
     </div>
     <div :class="['flex justify-between', deleteHover ? 'bg-red-100 dark:bg-red-900/50 border-0 rounded' : (hover ? 'bg-indigo-100 dark:bg-indigo-800 border-0 rounded' : '')]">
       <div v-if="value !== undefined"
-           :class="[theme.card, noBorder ? '' : 'border border-gray-200 dark:border-gray-700', (!!expression ? 'mx-1 rounded-lg' : 'rounded-lg')]">
+           :class="[theme.card, noBorder ? '' : 'border', (!!expression ? 'mx-1 rounded-lg dark:border-indigo-800' : 'rounded-lg dark:border-gray-800')]">
         <div class="w-full">
           <nav v-if="tabs.length > 0" class="relative z-0 my-2 px-1 justify-between rounded-lg dark:border-gray-600 flex" aria-label="Tabs">
             <a v-for="(p, i) in tabs"  @click.prevent="currentTab = p" :key="i" href="#" :class="['text-gray-500 dark:text-gray-300 rounded-lg', current == p ? 'bg-gray-100 dark:bg-gray-800' : '', 'relative min-w-0 flex-1 overflow-hidden  py-2 px-2 mx-2 text-sm font-medium text-center focus:z-10 whitespace-nowrap']"
@@ -60,7 +60,7 @@
             </a>
           </nav>
         </div>
-        <div :class="['grid grid-flow-row-dense grid-cols-12 w-full p-1']">
+        <div :class="['grid grid-flow-row-dense grid-cols-12 w-full']">
           <div v-if="!!expression" class="text-indigo-500 text-xs pb-1 col-span-12">{{ expression }}</div>
           <p class="text-xs col-span-12 text-center p-2 dark:text-gray-500 flex justify-center"
              v-if="properties.length === 0 && !expression">Object is empty. <span v-if="schema.configurable">You can adapt it with your own properties by clicking</span><PencilIcon class="w-3 mx-2 h-3" v-if="schema.configurable"></PencilIcon>

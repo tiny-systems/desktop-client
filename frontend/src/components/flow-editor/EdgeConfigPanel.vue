@@ -194,7 +194,7 @@ const formatJson = () => {
 
     <!-- Warning message -->
     <div class="px-4 py-3 border-t border-gray-200 dark:border-gray-700">
-      <p class="text-sm text-orange-400">
+      <p class="text-sm text-orange-400 text-left">
         Do not store sensitive information if you plan sharing your project as a solution.
       </p>
     </div>

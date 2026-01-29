@@ -22,7 +22,7 @@ const props = defineProps({
   },
   noBorder: {
     type: Boolean,
-    default: true
+    default: false
   },
   allowLookup: {
     type: Boolean,
