@@ -796,7 +796,7 @@ const saveEdgeConfiguration = async () => {
       </p>
 
       <!-- Settings form -->
-      <form v-if="settingsHandle" @submit.prevent="saveConfiguration" class="bg-white dark:bg-gray-900">
+      <form v-if="settingsHandle" @submit.prevent="saveConfiguration">
         <div class="overflow-y-auto">
           <!-- Schema-based form when both schema and configuration are available -->
           <SchemaForm
