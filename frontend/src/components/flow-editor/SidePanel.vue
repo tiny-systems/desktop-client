@@ -620,7 +620,7 @@ const saveEdgeConfiguration = async () => {
     v-if="selectedEdge && selectedNodes.length === 0"
     :class="['relative text-sm flex flex-col dark:text-gray-300 flex-shrink-0 bg-gray-50 dark:bg-black border-l border-gray-200 dark:border-gray-700 h-full', panelWidthClass]"
   >
-    <form @submit.prevent="saveEdgeConfiguration" class="bg-white dark:bg-gray-900 shadow rounded-lg text-xs h-full flex flex-col">
+    <form @submit.prevent="saveEdgeConfiguration" class="bg-white dark:bg-gray-900 shadow rounded-lg text-xs">
       <!-- Tab header -->
       <nav class="relative border-b border-gray-200 dark:border-gray-700 flex divide-x divide-gray-200 dark:divide-gray-700">
         <a
@@ -649,7 +649,7 @@ const saveEdgeConfiguration = async () => {
       </div>
 
       <!-- Configuration form or JSON editor -->
-      <div class="flex-1 overflow-y-auto">
+      <div class="overflow-y-auto">
         <!-- Schema-based form when schema is available -->
         <SchemaForm
           v-if="edgeSchema && (edgeSchema.properties || edgeSchema.type || edgeSchema.$ref)"
@@ -796,8 +796,8 @@ const saveEdgeConfiguration = async () => {
       </p>
 
       <!-- Settings form -->
-      <form v-if="settingsHandle" @submit.prevent="saveConfiguration" class="flex flex-col h-full bg-white dark:bg-gray-900">
-        <div class="flex-1 overflow-y-auto">
+      <form v-if="settingsHandle" @submit.prevent="saveConfiguration" class="bg-white dark:bg-gray-900">
+        <div class="overflow-y-auto">
           <!-- Schema-based form when both schema and configuration are available -->
           <SchemaForm
             v-if="settingsSchema && (settingsSchema.properties || settingsSchema.type || settingsSchema.$ref) && configurationReady"
