@@ -66,7 +66,7 @@ const loadTraces = async () => {
       props.ctx,
       props.ns,
       props.projectName,
-      props.flowName,
+      '', // empty - fetch all project traces, not filtered by flow
       0, // start - 0 means use default (last 15 minutes)
       0, // end - 0 means use default (now)
       0  // offset
