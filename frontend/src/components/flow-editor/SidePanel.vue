@@ -275,40 +275,46 @@ const updateFormValue = (newValue) => {
   editorValue.value = JSON.stringify(newValue, null, 2)
 }
 
-// Watch selected handle for port inspection (watch ID only to avoid re-fetch on node data updates)
-watch(() => selectedHandle.value?.id, async (handleId, oldHandleId) => {
-  if (!handleId || !selectedNode.value) {
-    inspect.value = null
-    return
-  }
-  // Only re-fetch if handle actually changed
-  if (handleId === oldHandleId && inspect.value) return
+// Watch node and handle for port inspection
+watch(
+  [() => selectedNode.value?.id, () => selectedHandle.value?.id],
+  async ([nodeId, handleId]) => {
+    if (!handleId || !nodeId) {
+      inspect.value = null
+      inspectReady.value = true
+      return
+    }
 
-  inspectReady.value = false
-  try {
-    const data = await flowStore.inspectNodePort(selectedNode.value.id, handleId)
-    inspect.value = data
-  } catch (e) {
-    inspect.value = { error: e.message || String(e) }
-  } finally {
-    inspectReady.value = true
-  }
-}, { immediate: true })
+    inspectReady.value = false
+    try {
+      const data = await flowStore.inspectNodePort(nodeId, handleId)
+      // Only update if still on same selection
+      if (selectedNode.value?.id === nodeId && selectedHandle.value?.id === handleId) {
+        inspect.value = data
+      }
+    } catch (e) {
+      if (selectedNode.value?.id === nodeId && selectedHandle.value?.id === handleId) {
+        inspect.value = { error: e.message || String(e) }
+      }
+    } finally {
+      if (selectedNode.value?.id === nodeId && selectedHandle.value?.id === handleId) {
+        inspectReady.value = true
+      }
+    }
+  },
+  { immediate: true }
+)
 
-// Watch node change to reset tab and selected handle
-// Note: controlFormValue is handled by the controlConfigObject watcher
-// Note: editorValue is handled by the settingsConfiguration watcher - don't reset it here
+// Watch node change to reset tab, selected handle, and trigger re-fetch
 watch(() => selectedNode.value?.id, (newId, oldId) => {
   if (newId !== oldId) {
     setCurrentTab('status')
     selectedHandleId.value = null
     // Update form value from current config and mark as ready
-    // This handles cases where the settingsConfigObject watcher doesn't fire
-    // (e.g., when switching between nodes with identical configs)
     formValue.value = { ...settingsConfigObject.value }
     configurationReady.value = true
   }
-})
+}, { immediate: true })
 
 // Node info expiring check
 const selectedNodeExpiring = computed(() => {
@@ -835,6 +841,12 @@ const saveEdgeConfiguration = async () => {
         Error: {{ selectedNode.data?.status }}
       </p>
 
+      <!-- Blocked node notice -->
+      <div v-if="selectedNode.data?.blocked" class="mx-2 mt-2 p-3 bg-gray-100 dark:bg-gray-800 rounded-lg text-xs text-gray-600 dark:text-gray-400">
+        <p class="font-medium">This node is shared from flow: <span class="text-emerald-600 dark:text-emerald-400">{{ selectedNode.data?.flow_id }}</span></p>
+        <p class="mt-1">Configuration is read-only. Edit this node in its original flow.</p>
+      </div>
+
       <!-- Settings form -->
       <form v-if="settingsHandle" @submit.prevent="saveConfiguration">
         <div class="overflow-y-auto">
@@ -926,6 +938,10 @@ const saveEdgeConfiguration = async () => {
                 <p v-if="selectedNode.data?.description">{{ decodeHtmlEntities(selectedNode.data.description) }}</p>
                 <p>Module: <span class="font-semibold">{{ selectedNode.data?.module }}</span></p>
                 <p>Component: <span class="font-semibold">{{ selectedNode.data?.component }}</span></p>
+                <!-- Show source flow for blocked/shared nodes -->
+                <p v-if="selectedNode.data?.blocked && selectedNode.data?.flow_id" class="text-emerald-600 dark:text-emerald-400">
+                  Flow: <span class="font-semibold">{{ selectedNode.data?.flow_id }}</span>
+                </p>
                 <p :class="selectedNodeExpiring ? 'text-red-500' : ''">
                   Last update:
                   <span class="font-semibold" :class="{ 'text-red-500': !selectedNode.data?.last_status_update }">
@@ -950,6 +966,10 @@ const saveEdgeConfiguration = async () => {
               >
                 <MenuItems class="origin-top-right absolute z-40 right-0 mt-2 w-48 rounded-md shadow-lg bg-white border border-gray-200 focus:outline-none dark:border-gray-700 dark:bg-gray-900">
                   <div class="py-1">
+                    <!-- Blocked node message -->
+                    <div v-if="selectedNode.data?.blocked" class="px-4 py-2 text-xs text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700">
+                      This node is shared from another flow. Edit it in the original flow.
+                    </div>
                     <MenuItem v-slot="{ active }" v-if="!selectedNode.data?.blocked">
                       <button
                         type="button"
@@ -960,17 +980,7 @@ const saveEdgeConfiguration = async () => {
                         <span>Transfer node</span>
                       </button>
                     </MenuItem>
-                    <MenuItem v-slot="{ active }">
-                      <button
-                        type="button"
-                        @click="handleRotateNode"
-                        :class="[active ? 'bg-gray-100 text-gray-900 dark:bg-gray-700' : 'text-gray-700 dark:text-gray-300', 'w-full flex px-4 py-2 text-sm']"
-                      >
-                        <ArrowPathIcon class="mr-2 h-4 w-4 text-gray-400" />
-                        <span>Rotate</span>
-                      </button>
-                    </MenuItem>
-                    <MenuItem v-slot="{ active }">
+                    <MenuItem v-slot="{ active }" v-if="!selectedNode.data?.blocked">
                       <button
                         type="button"
                         @click="handleRenameNode"
@@ -980,7 +990,7 @@ const saveEdgeConfiguration = async () => {
                         <span>Rename</span>
                       </button>
                     </MenuItem>
-                    <MenuItem v-slot="{ active }">
+                    <MenuItem v-slot="{ active }" v-if="!selectedNode.data?.blocked">
                       <button
                         type="button"
                         @click="handleNodeSettings"
@@ -990,7 +1000,7 @@ const saveEdgeConfiguration = async () => {
                         <span>Settings</span>
                       </button>
                     </MenuItem>
-                    <MenuItem v-slot="{ active }">
+                    <MenuItem v-slot="{ active }" v-if="!selectedNode.data?.blocked">
                       <button
                         type="button"
                         @click="handleDeleteNode"
