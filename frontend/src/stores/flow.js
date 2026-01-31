@@ -12,6 +12,25 @@ function clone(obj) {
   }
 }
 
+// Deep equality check for objects
+function deepEqual(a, b) {
+  if (a === b) return true
+  if (a == null || b == null) return a === b
+  if (typeof a !== 'object' || typeof b !== 'object') return a === b
+
+  const keysA = Object.keys(a)
+  const keysB = Object.keys(b)
+
+  if (keysA.length !== keysB.length) return false
+
+  for (const key of keysA) {
+    if (!keysB.includes(key)) return false
+    if (!deepEqual(a[key], b[key])) return false
+  }
+
+  return true
+}
+
 export const useFlowStore = defineStore('flowStore', {
   state() {
     return {
@@ -214,15 +233,36 @@ export const useFlowStore = defineStore('flowStore', {
     updateElement(event) {
       for (let i = 0; i < this.elements.length; i++) {
         if (this.elements[i].id === event.id) {
-          // Preserve existing stats before updating data
-          const existingStats = this.elements[i].data?.stats
-          this.elements[i].data = { ...event.graph.data }
-          // Merge stats: preserve existing stats and layer new stats on top
-          if (existingStats || event.graph.data?.stats) {
-            this.elements[i].data.stats = Object.assign({}, existingStats, event.graph.data?.stats)
+          const existingData = this.elements[i].data
+          const newData = event.graph.data
+
+          // Check if data actually changed (excluding stats which are handled separately)
+          const existingWithoutStats = { ...existingData }
+          const newWithoutStats = { ...newData }
+          delete existingWithoutStats.stats
+          delete newWithoutStats.stats
+
+          const dataChanged = !deepEqual(existingWithoutStats, newWithoutStats)
+
+          // Only update data if it actually changed
+          if (dataChanged) {
+            // Preserve existing stats before updating data
+            const existingStats = existingData?.stats
+            this.elements[i].data = { ...newData }
+            // Merge stats: preserve existing stats and layer new stats on top
+            if (existingStats || newData?.stats) {
+              this.elements[i].data.stats = Object.assign({}, existingStats, newData?.stats)
+            }
+          } else if (newData?.stats) {
+            // Just update stats if data didn't change but stats did
+            if (!this.elements[i].data.stats) {
+              this.elements[i].data.stats = {}
+            }
+            Object.assign(this.elements[i].data.stats, newData.stats)
           }
-          // Update position if provided
-          if (event.graph.position) {
+
+          // Update position if provided and different
+          if (event.graph.position && !deepEqual(this.elements[i].position, event.graph.position)) {
             this.elements[i].position = event.graph.position
           }
           return true

@@ -853,6 +853,7 @@ const saveEdgeConfiguration = async () => {
           <!-- Schema-based form when both schema and configuration are available -->
           <SchemaForm
             v-if="settingsSchema && (settingsSchema.properties || settingsSchema.type || settingsSchema.$ref) && configurationReady"
+            :key="'node-form-' + selectedNode?.id"
             :schema="settingsSchema"
             :model-value="formValue"
             @update:model-value="updateFormValue"
