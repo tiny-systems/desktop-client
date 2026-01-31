@@ -240,8 +240,32 @@ const editableSchema = ref(null)
 const settingsSchema = computed(() => editableSchema.value)
 
 // Watch for schema changes from the handle and update local copy
-watch(() => settingsHandle.value?.schema, () => {
-  editableSchema.value = parseSchemaFromHandle()
+// Only update if the schema content actually changed (not just reference)
+// Preserve the 'configure' flag which is UI-only state
+watch(() => settingsHandle.value?.schema, (newSchema, oldSchema) => {
+  const newParsed = parseSchemaFromHandle()
+
+  // If we have an existing schema with configure=true, preserve it unless schema actually changed
+  if (editableSchema.value?.configure) {
+    // Compare without the configure flag
+    const existingWithoutConfigure = { ...editableSchema.value }
+    delete existingWithoutConfigure.configure
+
+    const newWithoutConfigure = newParsed ? { ...newParsed } : null
+    if (newWithoutConfigure) delete newWithoutConfigure.configure
+
+    // Only update if content actually changed
+    if (JSON.stringify(existingWithoutConfigure) === JSON.stringify(newWithoutConfigure)) {
+      return // Keep existing schema with configure flag
+    }
+
+    // Schema changed but preserve configure flag
+    if (newParsed) {
+      newParsed.configure = true
+    }
+  }
+
+  editableSchema.value = newParsed
 }, { immediate: true, deep: true })
 
 // Parse settings configuration into object for form
@@ -264,8 +288,12 @@ watch(settingsConfiguration, (val) => {
 }, { immediate: true })
 
 // Watch settings changes for form
-watch(settingsConfigObject, (val) => {
-  formValue.value = { ...val }
+// Only update if the configuration actually changed to avoid disrupting user edits
+watch(settingsConfigObject, (val, oldVal) => {
+  // Only update if values actually differ
+  if (JSON.stringify(val) !== JSON.stringify(formValue.value)) {
+    formValue.value = { ...val }
+  }
   configurationReady.value = true
 }, { immediate: true, deep: true })
 
