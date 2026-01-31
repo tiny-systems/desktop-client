@@ -1743,6 +1743,19 @@ func (a *App) ImportProject(contextName string, namespace string, projectName st
 	finalPages, _ := mgr.GetProjectPageWidgets(ctx, projectName)
 	a.logger.Info("pages after import complete", "count", len(finalPages), "projectName", projectName)
 
+	// Build detailed summary
+	var summary strings.Builder
+	summary.WriteString(fmt.Sprintf("Import complete: %d nodes imported", importedNodes))
+	if len(failedNodes) > 0 {
+		summary.WriteString(fmt.Sprintf(", %d nodes failed (%v)", len(failedNodes), failedNodes))
+	}
+	summary.WriteString(fmt.Sprintf(", %d pages imported", len(finalPages)))
+	if len(failedPages) > 0 {
+		summary.WriteString(fmt.Sprintf(", %d pages failed (%v)", len(failedPages), failedPages))
+	}
+	summary.WriteString(fmt.Sprintf(", nodeIDMap has %d entries", len(nodeIDMap)))
+	a.logger.Info(summary.String())
+
 	// Return error summary if any failures
 	if len(failedNodes) > 0 || len(failedPages) > 0 {
 		return fmt.Errorf("import completed with errors: %d nodes imported, %d nodes failed (%v), %d pages failed (%v)",
