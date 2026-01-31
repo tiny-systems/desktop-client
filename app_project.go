@@ -1432,7 +1432,6 @@ func (a *App) ImportProject(contextName string, namespace string, projectName st
 		sourceHandle, _ := elem["sourceHandle"].(string)
 		oldTargetID, _ := elem["target"].(string)
 		targetHandle, _ := elem["targetHandle"].(string)
-		edgeID, _ := elem["id"].(string)
 		flowName, _ := elem["flow"].(string)
 
 		// Translate old IDs to new names
@@ -1445,8 +1444,11 @@ func (a *App) ImportProject(contextName string, namespace string, projectName st
 			continue
 		}
 
+		// Generate new edge ID with new node names: {source}_{sourcePort}-{target}_{targetPort}
+		newEdgeID := fmt.Sprintf("%s_%s-%s_%s", newSourceName, sourceHandle, newTargetName, targetHandle)
+
 		edge := v1alpha1.TinyNodeEdge{
-			ID:     edgeID,
+			ID:     newEdgeID,
 			Port:   sourceHandle,
 			To:     newTargetName + ":" + targetHandle,
 			FlowID: newFlowName,
