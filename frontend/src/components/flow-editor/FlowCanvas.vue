@@ -33,6 +33,13 @@ const draggedNodes = ref(new Map())
 // Handle Delete key press - show confirmation dialog instead of deleting directly
 const handleKeyDown = (event) => {
   if (event.key === 'Delete' || event.key === 'Backspace') {
+    // Ignore if typing in an input field
+    const target = event.target
+    const tagName = target?.tagName?.toLowerCase()
+    if (tagName === 'input' || tagName === 'textarea' || target?.isContentEditable) {
+      return // Let the input handle the keypress
+    }
+
     // Prevent default behavior
     event.preventDefault()
 
@@ -143,13 +150,6 @@ onPaneReady(() => {
 })
 
 // Handle node/edge selection
-const handleNodeClick = (event) => {
-  const nodeId = event.node?.id
-  if (nodeId) {
-    flowStore.select(nodeId)
-  }
-}
-
 const handleEdgeClick = (event) => {
   const edgeId = event.edge?.id
   if (edgeId) {
@@ -250,8 +250,6 @@ const handleAutoLayout = async () => {
       :min-zoom="0.5"
       :max-zoom="1"
       :delete-key-code="null"
-      :multi-selection-key-code="'Shift'"
-      @node-click="handleNodeClick"
       @edge-click="handleEdgeClick"
       @pane-click="handlePaneClick"
       @move-end="handleMoveEnd"
