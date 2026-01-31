@@ -51,7 +51,7 @@
     </div>
     <div :class="['flex justify-between', deleteHover ? 'bg-red-100 dark:bg-red-900/50 border-0 rounded' : (hover ? 'bg-indigo-100 dark:bg-indigo-800 border-0 rounded' : '')]">
       <div v-if="value !== undefined"
-           :class="[theme.card, noBorder ? '' : 'border', (!!expression ? 'mx-1 rounded-lg dark:border-indigo-800' : 'rounded-lg dark:border-gray-800')]">
+           :class="[theme.card, noBorder ? '' : 'border', (!!expression ? 'mx-1 rounded-lg border-indigo-200 dark:border-indigo-800' : 'rounded-lg border-gray-300 dark:border-gray-600')]">
         <div class="w-full">
           <nav v-if="tabs.length > 0" class="relative z-0 my-2 px-1 justify-between rounded-lg dark:border-gray-600 flex" aria-label="Tabs">
             <a v-for="(p, i) in tabs"  @click.prevent="currentTab = p" :key="i" href="#" :class="['text-gray-500 dark:text-gray-300 rounded-lg', current == p ? 'bg-gray-100 dark:bg-gray-800' : '', 'relative min-w-0 flex-1 overflow-hidden  py-2 px-2 mx-2 text-sm font-medium text-center focus:z-10 whitespace-nowrap']"
@@ -310,12 +310,16 @@ export default {
       this.filter = e.target.value
     },
     getAllValue() {
-      if (this.value === undefined || this.plainStruct) {
+      if (this.value === undefined) {
         return this.value
       }
       // New format: expression wrapped in {{expr}}, literals are plain values
+      // Always return expression wrapper when there's an expression (needed for lookup)
       if (this.expression) {
         return `{{${this.expression}}}`
+      }
+      if (this.plainStruct) {
+        return this.value
       }
       return this.value || {}
     },

@@ -158,26 +158,6 @@ export namespace main {
 	        this.current = source["current"];
 	    }
 	}
-	export class NodeSettingsRequest {
-	    sharedWithFlows: string;
-	    dashboard: boolean;
-	    module: string;
-	    moduleVersion: string;
-	    component: string;
-	
-	    static createFrom(source: any = {}) {
-	        return new NodeSettingsRequest(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.sharedWithFlows = source["sharedWithFlows"];
-	        this.dashboard = source["dashboard"];
-	        this.module = source["module"];
-	        this.moduleVersion = source["moduleVersion"];
-	        this.component = source["component"];
-	    }
-	}
 	export class Preferences {
 	    lastContext: string;
 	    lastNamespace: string;

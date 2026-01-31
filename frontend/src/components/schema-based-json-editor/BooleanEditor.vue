@@ -196,14 +196,18 @@ export default {
     //@ts-ignore
     getAllValue() {
       //@ts-ignore
-      if(this.value === undefined || this.plainStruct) {
+      if(this.value === undefined) {
         return this.value
       }
       // New format: expression wrapped in {{expr}}, literals are plain values
+      // Always return expression wrapper when there's an expression (needed for lookup)
       //@ts-ignore
       if (this.expression) {
         //@ts-ignore
         return `{{${this.expression}}}`
+      }
+      if (this.plainStruct) {
+        return this.value
       }
       //@ts-ignore
       return !!this.value

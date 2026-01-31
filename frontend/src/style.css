@@ -66,3 +66,14 @@ select {
 .dark ::-webkit-scrollbar-thumb:hover {
   @apply bg-gray-500;
 }
+
+/* Ensure backdrop-filter works in WebKit */
+.backdrop-blur-sm {
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+}
+
+.backdrop-blur-md {
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}

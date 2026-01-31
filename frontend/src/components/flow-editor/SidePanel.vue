@@ -240,9 +240,17 @@ const editableSchema = ref(null)
 const settingsSchema = computed(() => editableSchema.value)
 
 // Watch for schema changes from the handle and update local copy
-// Only update if the schema content actually changed (not just reference)
+// Use stringified schema as watch source to avoid false triggers from Vue reactivity
 // Preserve the 'configure' flag which is UI-only state
-watch(() => settingsHandle.value?.schema, (newSchema, oldSchema) => {
+watch(() => {
+  const schema = settingsHandle.value?.schema
+  return typeof schema === 'string' ? schema : JSON.stringify(schema || null)
+}, (newSchemaStr, oldSchemaStr) => {
+  // Skip if content is identical (watcher might fire due to reactivity even with same content)
+  if (newSchemaStr === oldSchemaStr && editableSchema.value !== null) {
+    return
+  }
+
   const newParsed = parseSchemaFromHandle()
 
   // If we have an existing schema with configure=true, preserve it unless schema actually changed
@@ -266,7 +274,7 @@ watch(() => settingsHandle.value?.schema, (newSchema, oldSchema) => {
   }
 
   editableSchema.value = newParsed
-}, { immediate: true, deep: true })
+}, { immediate: true })
 
 // Parse settings configuration into object for form
 const settingsConfigObject = computed(() => {

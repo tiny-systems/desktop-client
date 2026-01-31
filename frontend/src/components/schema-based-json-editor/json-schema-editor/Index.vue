@@ -163,9 +163,6 @@ export default {
     advancedAttr() {
       return TYPE[this.pickValue.type].attr
     },
-    ownProps() {
-      return ['type', 'title', 'properties', 'items', 'required', ...Object.keys(this.advancedAttr)]
-    },
     advancedNotEmptyValue() {
       const jsonNode = Object.assign({}, this.advancedValue);
       for (let key in jsonNode) {
@@ -175,12 +172,6 @@ export default {
         }
       }
       return jsonNode
-    },
-    completeNodeValue() {
-      const t = {}
-      const basicValue = {...this.pickValue}
-      this._pickDiffKey().forEach(key => delete basicValue[key])
-      return Object.assign({}, basicValue, t, this.advancedNotEmptyValue)
     },
     enumText() {
       const t = this.advancedValue['enum']
@@ -324,12 +315,9 @@ export default {
           this.pickValue[key] = this.advancedValue[key]
         }
       }
-      const diffKey = this._pickDiffKey()
-      diffKey.forEach(key => delete this.pickValue[key])
-    },
-    _pickDiffKey() {
-      const keys = Object.keys(this.pickValue)
-      return keys.filter(item => this.ownProps.indexOf(item) === -1)
+      // Note: We intentionally do NOT delete keys that aren't in ownProps.
+      // This preserves custom schema properties like 'example', 'default', '$ref', 'configurable', etc.
+      // that may have been set by the backend or other schema editors.
     }
   }
 }

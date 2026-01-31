@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, watch, nextTick } from 'vue'
 
 const props = defineProps({
   modelValue: Boolean,
@@ -13,6 +13,16 @@ const emit = defineEmits(['update:modelValue', 'error', 'success'])
 const importJSON = ref('')
 const parseError = ref('')
 const loading = ref(false)
+const textareaRef = ref(null)
+
+// Focus textarea when modal opens
+watch(() => props.modelValue, (newVal) => {
+  if (newVal) {
+    nextTick(() => {
+      textareaRef.value?.focus()
+    })
+  }
+})
 
 const GoApp = window.go?.main?.App
 
@@ -77,10 +87,10 @@ const importFromFile = async () => {
       <!-- Textarea -->
       <div class="h-full">
         <textarea
+          ref="textareaRef"
           v-model="importJSON"
           placeholder="Paste project JSON here..."
           class="mt-1 border-sky-600 h-56 max-w-full placeholder-gray-400 focus:ring-sky-600 appearance-none border rounded w-full py-3 px-3 text-gray-700 leading-tight transition duration-150 ease-in-out sm:text-sm sm:leading-5 dark:bg-gray-900 dark:text-gray-300"
-          autofocus
         ></textarea>
       </div>
 

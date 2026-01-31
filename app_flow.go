@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -10,7 +11,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/santhosh-tekuri/jsonschema/v5"
 	"github.com/tiny-systems/module/api/v1alpha1"
+	"github.com/tiny-systems/module/pkg/schema"
 	"github.com/tiny-systems/module/pkg/utils"
 	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -139,23 +142,24 @@ func (a *App) GetFlowForEditor(contextName, namespace, projectName, flowResource
 		projectDisplayName = projectName
 	}
 
-	nodes, err := mgr.GetProjectFlowNodes(a.ctx, projectName, flowResourceName)
+	// Get ALL project nodes - needed for validation (same as platform uses clusterNodes.Items())
+	allNodes, err := mgr.GetProjectNodes(a.ctx, projectName)
 	if err != nil {
-		return nil, fmt.Errorf("get flow nodes: %w", err)
+		return nil, fmt.Errorf("get project nodes: %w", err)
 	}
 
-	nodesMap := make(map[string]v1alpha1.TinyNode, len(nodes))
-	for _, node := range nodes {
-		nodesMap[node.Name] = node
+	allNodesMap := make(map[string]v1alpha1.TinyNode, len(allNodes))
+	for _, node := range allNodes {
+		allNodesMap[node.Name] = node
 	}
 
-	// Cache nodes for edge validation during watch
+	// Cache ALL nodes for validation during watch
 	flowNodesCacheMu.Lock()
-	flowNodesCache = nodesMap
+	flowNodesCache = allNodesMap
 	flowNodesCacheMu.Unlock()
 
-	// Build elements with edge validation
-	elements, err := buildFlowElementsWithValidation(a.ctx, nodesMap)
+	// Build elements - pass flowResourceName to filter which nodes to display
+	elements, err := buildFlowElements(a.ctx, allNodesMap, flowResourceName)
 	if err != nil {
 		return nil, fmt.Errorf("build flow elements: %w", err)
 	}
@@ -182,24 +186,67 @@ func (a *App) GetFlowForEditor(contextName, namespace, projectName, flowResource
 	}, nil
 }
 
-// buildFlowElementsWithValidation builds flow elements (nodes + edges) with edge validation
-func buildFlowElementsWithValidation(ctx context.Context, nodesMap map[string]v1alpha1.TinyNode) ([]map[string]interface{}, error) {
+// buildFlowElements builds flow elements (nodes + edges) with validation
+// Matches platform's buildGraphEvents logic exactly
+func buildFlowElements(ctx context.Context, allNodesMap map[string]v1alpha1.TinyNode, flowResourceName string) ([]map[string]interface{}, error) {
 	elements := make([]map[string]interface{}, 0)
 
-	// Add nodes first
-	for _, node := range nodesMap {
-		nodeElement := buildNodeElement(&node)
+	// Get flow maps ONCE at start - same as platform line 92
+	statusPortSchemaMap, portConfigMap, _, _, _, err := utils.GetFlowMaps(allNodesMap)
+	if err != nil {
+		return nil, err
+	}
+
+	// Process nodes - same logic as platform lines 99-167
+	for nodeName, node := range allNodesMap {
+		var (
+			blocked            bool
+			sharedWithThisFlow bool
+			notThisFlow        bool
+		)
+
+		// Same as platform lines 110-119
+		if containsFlow(node.Annotations[v1alpha1.SharedWithFlowsAnnotation], flowResourceName) {
+			sharedWithThisFlow = true
+		}
+		if node.Labels[v1alpha1.FlowNameLabel] != flowResourceName {
+			notThisFlow = true
+		}
+		if notThisFlow {
+			// ALL nodes from other flows are blocked - same as platform line 118
+			blocked = true
+		}
+
+		// Skip nodes that don't belong to and aren't shared with this flow - platform line 151-158
+		if notThisFlow && !sharedWithThisFlow {
+			continue
+		}
+
+		nodeElement := buildNodeElement(&node, blocked)
 		elements = append(elements, nodeElement)
 
-		// Add edges for this node with validation
+		// Process edges - same as platform lines 170-291
 		for i := range node.Spec.Edges {
 			edge := &node.Spec.Edges[i]
-			edgeElement := buildEdgeElement(ctx, &node, edge, nodesMap)
+			edgeElement := buildEdgeElementFull(ctx, nodeName, &node, edge, allNodesMap, statusPortSchemaMap, portConfigMap, flowResourceName, sharedWithThisFlow, nil)
 			elements = append(elements, edgeElement)
 		}
 	}
 
 	return elements, nil
+}
+
+// containsFlow checks if flowResourceName is in comma-separated sharedFlows
+func containsFlow(sharedFlows, flowResourceName string) bool {
+	if sharedFlows == "" {
+		return false
+	}
+	for _, f := range strings.Split(sharedFlows, ",") {
+		if f == flowResourceName {
+			return true
+		}
+	}
+	return false
 }
 
 func parseViewportMeta(annotations map[string]string) map[string]interface{} {
@@ -218,72 +265,139 @@ func parseViewportMeta(annotations map[string]string) map[string]interface{} {
 	return meta
 }
 
-func buildNodeElement(node *v1alpha1.TinyNode) map[string]interface{} {
-	return utils.ApiNodeToMap(*node, map[string]interface{}{}, false)
+func buildNodeElement(node *v1alpha1.TinyNode, blocked bool) map[string]interface{} {
+	extra := map[string]interface{}{}
+	if blocked {
+		extra["blocked"] = true
+	}
+	return utils.ApiNodeToMap(*node, extra, false)
 }
 
-func buildEdgeElement(ctx context.Context, sourceNode *v1alpha1.TinyNode, edge *v1alpha1.TinyNodeEdge, nodesMap map[string]v1alpha1.TinyNode) map[string]interface{} {
+// buildEdgeElementFull matches platform's edge building logic EXACTLY (lines 170-291)
+// runtimeData is optional - when provided, validation uses actual trace data instead of simulated
+func buildEdgeElementFull(ctx context.Context, sourceNodeName string, sourceNode *v1alpha1.TinyNode, edge *v1alpha1.TinyNodeEdge, allNodesMap map[string]v1alpha1.TinyNode, statusPortSchemaMap map[string][]byte, portConfigMap map[string][]v1alpha1.TinyNodePortConfig, flowResourceName string, sharedWithThisFlow bool, runtimeData map[string][]byte) map[string]interface{} {
 	data := map[string]interface{}{
-		"valid":  false, // Prove me wrong - same pattern as platform
+		"valid":  false, // prove me wrong - platform line 214
 		"flowID": edge.FlowID,
 	}
 
 	var edgeConfiguration []byte
+	var edgeSchema []byte
 
-	// Find edge configuration from target node's Spec.Ports
-	toParts := strings.Split(edge.To, ":")
-	if len(toParts) == 2 {
-		targetNodeName, targetPort := toParts[0], toParts[1]
-		if targetNode, ok := nodesMap[targetNodeName]; ok {
-			sourcePortFullName := utils.GetPortFullName(sourceNode.Name, edge.Port)
-			for _, portConfig := range targetNode.Spec.Ports {
-				if portConfig.Port == targetPort && portConfig.From == sourcePortFullName {
-					edgeConfiguration = portConfig.Configuration
-					if len(portConfig.Configuration) > 0 {
-						data["configuration"] = json.RawMessage(portConfig.Configuration)
-					}
-					if len(portConfig.Schema) > 0 {
-						data["schema"] = json.RawMessage(portConfig.Schema)
-					}
-					break
-				}
+	// Platform lines 181-182
+	targetPortConfigs := portConfigMap[edge.To]
+	targetNodeName, targetPort := utils.ParseFullPortName(edge.To)
+
+	targetNode, ok := allNodesMap[targetNodeName]
+	if !ok {
+		return buildEdgeFallback(sourceNode, edge, data)
+	}
+
+	// Platform lines 188-191
+	from := utils.GetPortFullName(sourceNodeName, edge.Port)
+	defs := utils.GetConfigurableDefinitions(targetNode, &from)
+
+	// Platform lines 193-208
+	for _, pc := range targetPortConfigs {
+		if pc.From == from && pc.Port == targetPort {
+			edgeConfiguration = pc.Configuration
+			edgeSchema = pc.Schema
+
+			if len(edgeSchema) == 0 {
+				// Edge has no custom schema - use port's status schema (platform line 200)
+				edgeSchema = statusPortSchemaMap[edge.To]
 			}
+			// CRITICAL: Update schema with configurable definitions (platform line 202)
+			var err error
+			edgeSchema, err = schema.UpdateWithDefinitions(edgeSchema, defs)
+			if err != nil {
+				// Log error but continue - same as platform line 203-205
+			}
+			break
 		}
 	}
 
-	// Validate the edge
-	if nodesMap != nil && len(nodesMap) > 0 {
-		sourcePortFullName := utils.GetPortFullName(sourceNode.Name, edge.Port)
-		err := utils.ValidateEdge(ctx, nodesMap, sourcePortFullName, edge.To, edgeConfiguration)
-		if err != nil {
-			data["error"] = err.Error()
-		} else {
-			data["valid"] = true
+	// Platform lines 217-223
+	if len(edgeConfiguration) > 0 {
+		data["configuration"] = json.RawMessage(edgeConfiguration)
+	}
+	if len(edgeSchema) > 0 {
+		data["schema"] = json.RawMessage(edgeSchema)
+	}
+
+	// Platform lines 227-238 - edge blocking logic
+	if sharedWithThisFlow {
+		if targetNode.Labels[v1alpha1.FlowNameLabel] != flowResourceName &&
+			!containsFlow(targetNode.Annotations[v1alpha1.SharedWithFlowsAnnotation], flowResourceName) {
+			data["blocked"] = true
+		}
+	}
+
+	// Platform lines 242-265 - validation
+	sourcePortFullName := utils.GetPortFullName(sourceNodeName, edge.Port)
+	err := utils.ValidateEdgeWithSchemaAndRuntimeData(ctx, allNodesMap, sourcePortFullName, edgeConfiguration, edgeSchema, runtimeData)
+	if err != nil {
+		data["error"] = err.Error()
+		data["errors"] = map[string]interface{}{"error": data["error"]}
+		var validationErr *jsonschema.ValidationError
+		if errors.As(err, &validationErr) {
+			leaf := validationErr
+			for len(leaf.Causes) > 0 {
+				leaf = leaf.Causes[0]
+			}
+			data["errors"] = getValidationErrorsMap(validationErr)
+			data["error"] = fmt.Sprintf("%s %s", leaf.KeywordLocation, leaf.Message)
 		}
 	} else {
-		// No nodesMap available, assume valid
 		data["valid"] = true
 	}
 
+	// Platform line 267
 	edgeMap, err := utils.ApiEdgeToProtoMap(sourceNode, edge, data)
 	if err != nil {
-		targetNode := edge.To
-		targetHandle := ""
-		if len(toParts) == 2 {
-			targetNode = toParts[0]
-			targetHandle = toParts[1]
-		}
-		return map[string]interface{}{
-			"id":           edge.ID,
-			"source":       sourceNode.Name,
-			"sourceHandle": edge.Port,
-			"target":       targetNode,
-			"targetHandle": targetHandle,
-			"type":         "tinyEdge",
-			"data":         data,
-		}
+		return buildEdgeFallback(sourceNode, edge, data)
 	}
 	return edgeMap
+}
+
+// buildEdgeElement - simple wrapper for watch handler and other callers
+// runtimeData is optional - pass nil for simulated data, or provide trace data for real validation
+func buildEdgeElement(ctx context.Context, sourceNode *v1alpha1.TinyNode, edge *v1alpha1.TinyNodeEdge, allNodesMap map[string]v1alpha1.TinyNode, flowResourceName string, sharedWithThisFlow bool, runtimeData map[string][]byte) map[string]interface{} {
+	statusPortSchemaMap, portConfigMap, _, _, _, _ := utils.GetFlowMaps(allNodesMap)
+	return buildEdgeElementFull(ctx, sourceNode.Name, sourceNode, edge, allNodesMap, statusPortSchemaMap, portConfigMap, flowResourceName, sharedWithThisFlow, runtimeData)
+}
+
+func buildEdgeFallback(sourceNode *v1alpha1.TinyNode, edge *v1alpha1.TinyNodeEdge, data map[string]interface{}) map[string]interface{} {
+	targetNodeName, targetPort := utils.ParseFullPortName(edge.To)
+	return map[string]interface{}{
+		"id":           edge.ID,
+		"source":       sourceNode.Name,
+		"sourceHandle": edge.Port,
+		"target":       targetNodeName,
+		"targetHandle": targetPort,
+		"type":         "tinyEdge",
+		"data":         data,
+	}
+}
+
+// getValidationErrorsMap extracts detailed errors from jsonschema.ValidationError
+func getValidationErrorsMap(err *jsonschema.ValidationError) map[string]interface{} {
+	m := map[string]interface{}{}
+	if err == nil {
+		return m
+	}
+	getDetailedValidationError(err.DetailedOutput(), m)
+	return m
+}
+
+func getDetailedValidationError(err jsonschema.Detailed, in map[string]interface{}) {
+	if err.Error != "" {
+		in[err.InstanceLocation] = err.Error
+		return
+	}
+	for _, e := range err.Errors {
+		getDetailedValidationError(e, in)
+	}
 }
 
 // WatchFlowNodes starts watching nodes for a specific flow and emits events.
@@ -349,11 +463,24 @@ func (a *App) WatchFlowNodes(contextName, namespace, projectName, flowResourceNa
 				}
 
 				node, ok := event.Object.(*v1alpha1.TinyNode)
-				if !ok || node.Labels[v1alpha1.FlowNameLabel] != flowResourceName {
+				if !ok {
 					continue
 				}
 
-				// Update nodes cache
+				// Check if node belongs to or is shared with this flow - same as platform
+				belongsToFlow := node.Labels[v1alpha1.FlowNameLabel] == flowResourceName
+				sharedWithFlow := containsFlow(node.Annotations[v1alpha1.SharedWithFlowsAnnotation], flowResourceName)
+				notThisFlow := !belongsToFlow
+
+				// Skip nodes that don't belong to and aren't shared with this flow
+				if notThisFlow && !sharedWithFlow {
+					continue
+				}
+
+				// ALL nodes from other flows are blocked - same as platform line 116-118
+				blocked := notThisFlow
+
+				// Update nodes cache (ALL project nodes for validation)
 				flowNodesCacheMu.Lock()
 				if flowNodesCache == nil {
 					flowNodesCache = make(map[string]v1alpha1.TinyNode)
@@ -363,7 +490,6 @@ func (a *App) WatchFlowNodes(contextName, namespace, projectName, flowResourceNa
 				} else {
 					flowNodesCache[node.Name] = *node
 				}
-				// Get a copy of the cache for validation
 				nodesMapCopy := make(map[string]v1alpha1.TinyNode, len(flowNodesCache))
 				for k, v := range flowNodesCache {
 					nodesMapCopy[k] = v
@@ -376,14 +502,14 @@ func (a *App) WatchFlowNodes(contextName, namespace, projectName, flowResourceNa
 				}
 
 				if event.Type != watch.Deleted {
-					update.Graph = buildNodeElement(node)
+					update.Graph = buildNodeElement(node, blocked)
 
 					for i := range node.Spec.Edges {
 						edge := &node.Spec.Edges[i]
 						wailsruntime.EventsEmit(a.ctx, "flowNodeUpdate", FlowNodeEvent{
 							Type:  string(event.Type),
 							ID:    edge.ID,
-							Graph: buildEdgeElement(watchCtx, node, edge, nodesMapCopy),
+							Graph: buildEdgeElement(watchCtx, node, edge, nodesMapCopy, flowResourceName, sharedWithFlow, nil),
 						})
 					}
 				}
@@ -482,7 +608,7 @@ func (a *App) AddNode(contextName, namespace, projectName, flowResourceName, com
 		return nil, fmt.Errorf("get created node: %w", err)
 	}
 
-	return buildNodeElement(createdNode), nil
+	return buildNodeElement(createdNode, false), nil // New nodes are never blocked
 }
 
 // DeleteNode deletes a node from a flow.
@@ -1139,19 +1265,20 @@ func (a *App) ApplyTraceToFlow(contextName, namespace, projectName, flowResource
 		return nil, err
 	}
 
-	// Get all nodes for the flow
-	nodes, err := mgr.GetProjectFlowNodes(a.ctx, projectName, flowResourceName)
+	// Get ALL project nodes (needed for validation, same as GetFlowForEditor)
+	allNodes, err := mgr.GetProjectNodes(a.ctx, projectName)
 	if err != nil {
-		return nil, fmt.Errorf("get flow nodes: %w", err)
+		return nil, fmt.Errorf("get project nodes: %w", err)
 	}
 
-	nodesMap := make(map[string]v1alpha1.TinyNode, len(nodes))
-	for _, node := range nodes {
-		nodesMap[node.Name] = node
+	allNodesMap := make(map[string]v1alpha1.TinyNode, len(allNodes))
+	for _, node := range allNodes {
+		allNodesMap[node.Name] = node
 	}
 
-	// Fetch trace data and extract statistics
+	// Fetch trace data and extract statistics + runtime data
 	var traceStats *utils.TraceStatistics
+	var runtimeData map[string][]byte
 	if traceID != "" {
 		config, err := loadContextConfig(contextName)
 		if err != nil {
@@ -1171,7 +1298,8 @@ func (a *App) ApplyTraceToFlow(contextName, namespace, projectName, flowResource
 			return nil, fmt.Errorf("get trace: %w", err)
 		}
 
-		traceStats, _ = utils.ExtractTraceStatistics(trace)
+		// Capture BOTH trace stats AND runtime data - same as platform
+		traceStats, runtimeData = utils.ExtractTraceStatistics(trace)
 	}
 
 	// Build response with trace stats applied
@@ -1180,8 +1308,26 @@ func (a *App) ApplyTraceToFlow(contextName, namespace, projectName, flowResource
 		Edges: make([]map[string]interface{}, 0),
 	}
 
-	for _, node := range nodes {
-		nodeAsMap := utils.ApiNodeToMap(node, map[string]interface{}{}, false)
+	// Process only nodes that belong to or are shared with this flow
+	// Same logic as platform buildGraphEvents lines 99-167
+	for _, node := range allNodesMap {
+		belongsToFlow := node.Labels[v1alpha1.FlowNameLabel] == flowResourceName
+		sharedWithFlow := containsFlow(node.Annotations[v1alpha1.SharedWithFlowsAnnotation], flowResourceName)
+		notThisFlow := !belongsToFlow
+
+		// Skip nodes that don't belong to and aren't shared with this flow
+		if notThisFlow && !sharedWithFlow {
+			continue
+		}
+
+		// ALL nodes from other flows are blocked - same as platform line 116-118
+		blocked := notThisFlow
+
+		extra := map[string]interface{}{}
+		if blocked {
+			extra["blocked"] = true
+		}
+		nodeAsMap := utils.ApiNodeToMap(node, extra, false)
 
 		if traceStats != nil {
 			utils.ApplyTraceStatToNode(nodeAsMap, traceStats)
@@ -1189,10 +1335,10 @@ func (a *App) ApplyTraceToFlow(contextName, namespace, projectName, flowResource
 
 		response.Nodes = append(response.Nodes, nodeAsMap)
 
-		// Process edges with validation
+		// Process edges with validation - pass runtime data for accurate validation
 		for i := range node.Spec.Edges {
 			edge := &node.Spec.Edges[i]
-			edgeAsMap := buildEdgeElement(a.ctx, &node, edge, nodesMap)
+			edgeAsMap := buildEdgeElement(a.ctx, &node, edge, allNodesMap, flowResourceName, sharedWithFlow, runtimeData)
 
 			if traceStats != nil {
 				utils.ApplyTraceStatToEdge(edgeAsMap, traceStats)

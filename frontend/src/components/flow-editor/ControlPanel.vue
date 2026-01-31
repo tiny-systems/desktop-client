@@ -1,20 +1,27 @@
 <script setup>
-import { ArrowDownTrayIcon, ArrowUpTrayIcon } from '@heroicons/vue/24/outline'
+import FlowSwitcher from './FlowSwitcher.vue'
 
 const props = defineProps({
   flowName: String,
   flowResourceName: String,
   projectName: String,
+  projectResourceName: String,
+  contextName: String,
+  namespace: String,
   loading: Boolean,
 })
 
-const emit = defineEmits(['close', 'error', 'import', 'export'])
+const emit = defineEmits(['close', 'error', 'switch-flow', 'new-flow'])
+
+const handleFlowSwitch = (flowResourceName) => {
+  emit('switch-flow', flowResourceName)
+}
 </script>
 
 <template>
   <div class="lg:items-center lg:justify-center p-1 lg:p-3 border-b border-gray-200 dark:border-gray-700">
     <div class="flex justify-between align-middle">
-      <div class="flex justify-left align-middle">
+      <div class="flex justify-left align-middle items-center">
         <!-- Back button -->
         <button
           type="button"
@@ -38,12 +45,21 @@ const emit = defineEmits(['close', 'error', 'import', 'export'])
           <span class="sr-only">Back to project</span>
         </button>
 
-        <!-- Flow name -->
-        <div class="inline-flex items-center max-w-96 truncate">
-          <h3 class="text-lg inline-flex leading-4 font-medium text-gray-900 dark:text-gray-300 px-2">
-            {{ flowName || flowResourceName }}
-            <template v-if="projectName"> - {{ projectName }}</template>
-          </h3>
+        <!-- Project / Flow header -->
+        <div class="inline-flex items-center">
+          <span v-if="projectName" class="text-lg font-medium text-gray-500 dark:text-gray-400 px-1">
+            {{ projectName }}
+          </span>
+          <span v-if="projectName" class="text-gray-400 dark:text-gray-500 px-1">/</span>
+          <FlowSwitcher
+            :current-flow-name="flowName || flowResourceName"
+            :current-flow-resource-name="flowResourceName"
+            :project-name="projectResourceName"
+            :context-name="contextName"
+            :namespace="namespace"
+            @switch="handleFlowSwitch"
+            @new-flow="emit('new-flow')"
+          />
         </div>
 
         <!-- Saving indicator -->
@@ -52,30 +68,6 @@ const emit = defineEmits(['close', 'error', 'import', 'export'])
         </div>
       </div>
 
-      <!-- Import/Export buttons -->
-      <div class="flex items-center gap-2">
-        <!-- Import button -->
-        <button
-          type="button"
-          @click="emit('import')"
-          title="Import flow JSON"
-          class="text-sky-600 border border-sky-600 hover:bg-sky-600 hover:text-white focus:ring-4 focus:outline-none focus:ring-sky-300 font-medium rounded-lg text-sm p-2 text-center inline-flex items-center dark:border-sky-500 dark:text-sky-500 dark:hover:text-white dark:focus:ring-sky-800 dark:hover:bg-sky-600"
-        >
-          <ArrowUpTrayIcon class="w-4 h-4" />
-          <span class="sr-only">Import</span>
-        </button>
-
-        <!-- Export button -->
-        <button
-          type="button"
-          @click="emit('export')"
-          title="Export flow JSON"
-          class="text-sky-600 border border-sky-600 hover:bg-sky-600 hover:text-white focus:ring-4 focus:outline-none focus:ring-sky-300 font-medium rounded-lg text-sm p-2 text-center inline-flex items-center dark:border-sky-500 dark:text-sky-500 dark:hover:text-white dark:focus:ring-sky-800 dark:hover:bg-sky-600"
-        >
-          <ArrowDownTrayIcon class="w-4 h-4" />
-          <span class="sr-only">Export</span>
-        </button>
-      </div>
     </div>
   </div>
 </template>

@@ -54,7 +54,7 @@ const importFromFile = async () => {
   >
     <!-- Backdrop -->
     <div
-      class="fixed inset-0 bg-gray-500 bg-opacity-25 dark:bg-black dark:bg-opacity-75 backdrop-blur-sm"
+      class="fixed inset-0 bg-gray-500/25 dark:bg-black/75 backdrop-blur-sm"
       @click="closeModal"
     ></div>
 

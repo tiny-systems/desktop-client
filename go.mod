@@ -6,7 +6,8 @@ require (
 	github.com/evanphx/json-patch v5.9.11+incompatible
 	github.com/go-logr/logr v1.4.3
 	github.com/google/uuid v1.6.0
-	github.com/tiny-systems/module v0.1.275
+	github.com/santhosh-tekuri/jsonschema/v5 v5.3.1
+	github.com/tiny-systems/module v0.1.278
 	github.com/wailsapp/wails/v2 v2.11.0
 	gomodules.xyz/jsonpatch/v2 v2.5.0
 	k8s.io/apimachinery v0.34.1
@@ -105,7 +106,6 @@ require (
 	github.com/rubenv/sql-migrate v1.8.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/samber/lo v1.49.1 // indirect
-	github.com/santhosh-tekuri/jsonschema/v5 v5.3.1 // indirect
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.2 // indirect
 	github.com/shopspring/decimal v1.4.0 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect

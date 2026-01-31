@@ -9,6 +9,7 @@ import FlowExportModal from './FlowExportModal.vue'
 import SidePanel from './SidePanel.vue'
 import Telemetry from './Telemetry.vue'
 import Trace from './Trace.vue'
+import FlowNodeSettings from './FlowNodeSettings.vue'
 
 const props = defineProps({
   ctx: String,
@@ -17,7 +18,7 @@ const props = defineProps({
   flowResourceName: String,
 })
 
-const emit = defineEmits(['close'])
+const emit = defineEmits(['close', 'switch-flow'])
 
 const flowStore = useFlowStore()
 const error = ref('')
@@ -30,6 +31,11 @@ const newNodePosition = ref({ x: 100, y: 100 })
 // Import/Export modal state
 const showImportModal = ref(false)
 const showExportModal = ref(false)
+
+// Node settings modal state
+const showSettingsModal = ref(false)
+const settingsNode = ref(null)
+const projectFlows = ref([])
 
 // Auto-open side panel when something is selected
 const hasSelection = computed(() => flowStore.selectedNode || flowStore.selectedEdge)
@@ -145,10 +151,6 @@ const cancelDeleteEdge = () => {
   deleteEdge.value = null
 }
 
-// Handle settings from SidePanel (not implemented yet)
-const handleSettings = (node) => {
-  console.log('Settings for node:', node)
-}
 
 // Handle add node from FlowCanvas (double-click or plus button)
 const handleAddNode = (position) => {
@@ -166,27 +168,59 @@ const handleExport = () => {
   showExportModal.value = true
 }
 
+// Handle flow switch from ControlPanel
+// Handle settings from SidePanel - opens node settings modal
+const handleSettings = async (node) => {
+  if (!node) return
+  settingsNode.value = JSON.parse(JSON.stringify(node)) // deep clone
+  // Load flows for the project
+  try {
+    const GoApp = window.go?.main?.App
+    if (GoApp) {
+      const flows = await GoApp.GetFlows(props.ctx, props.ns, props.projectName)
+      projectFlows.value = flows || []
+    }
+  } catch (err) {
+    console.error('Failed to load flows:', err)
+    projectFlows.value = []
+  }
+  showSettingsModal.value = true
+}
+
+const handleFlowSwitch = (flowResourceName) => {
+  emit('switch-flow', flowResourceName)
+}
+
+// Handle new flow creation from ControlPanel
+const handleNewFlow = async () => {
+  const flowName = window.prompt('Enter new flow name:')
+  if (!flowName || !flowName.trim()) return
+
+  try {
+    const GoApp = window.go?.main?.App
+    if (!GoApp) throw new Error('Wails runtime not available')
+
+    const newFlow = await GoApp.CreateFlow(props.ctx, props.ns, props.projectName, flowName.trim())
+    if (newFlow?.resourceName) {
+      emit('switch-flow', newFlow.resourceName)
+    }
+  } catch (err) {
+    console.error('Failed to create flow:', err)
+    handleError(err.message || 'Failed to create flow')
+  }
+}
+
 onMounted(() => {
   loadFlow()
 })
 
 onUnmounted(() => {
-  // Clean up tracker when component unmounts
-  DeleteTracker(props.ctx, props.ns).catch(e => {
-    console.warn('Failed to delete tracker on unmount:', e)
-  })
   flowStore.stopWatching()
   flowStore.clean()
 })
 
 // Reload when flow changes
-watch(() => props.flowResourceName, async () => {
-  // Delete tracker for old flow
-  try {
-    await DeleteTracker(props.ctx, props.ns)
-  } catch (e) {
-    console.warn('Failed to delete tracker on flow change:', e)
-  }
+watch(() => props.flowResourceName, () => {
   flowStore.clean()
   loadFlow()
 })
@@ -208,11 +242,16 @@ watch(() => props.flowResourceName, async () => {
         :flow-name="flowStore.flowName"
         :flow-resource-name="flowStore.flowResourceName"
         :project-name="flowStore.projectName"
+        :project-resource-name="flowStore.projectResourceName"
+        :context-name="ctx"
+        :namespace="ns"
         :loading="flowStore.loadingAlt"
         @close="handleClose"
         @error="handleError"
         @import="handleImport"
         @export="handleExport"
+        @switch-flow="handleFlowSwitch"
+        @new-flow="handleNewFlow"
       />
 
       <!-- Error banner -->
@@ -270,6 +309,16 @@ watch(() => props.flowResourceName, async () => {
           <FlowExportModal
             v-model="showExportModal"
             @error="handleError"
+          />
+
+          <!-- Node Settings Modal -->
+          <FlowNodeSettings
+            v-if="showSettingsModal && settingsNode"
+            :node="settingsNode"
+            :flows="projectFlows"
+            :current-flow-resource-name="flowStore.flowResourceName"
+            @close="showSettingsModal = false"
+            @saved="showSettingsModal = false"
           />
 
           <!-- Side Panel -->

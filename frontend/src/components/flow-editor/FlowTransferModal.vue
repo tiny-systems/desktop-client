@@ -139,7 +139,7 @@ const transferNodes = async () => {
   >
     <!-- Backdrop -->
     <div
-      class="fixed inset-0 bg-gray-500 bg-opacity-25 dark:bg-black dark:bg-opacity-75 backdrop-blur-sm"
+      class="fixed inset-0 bg-gray-500/25 dark:bg-black/75 backdrop-blur-sm"
       @click="closeModal"
     ></div>
 
@@ -189,7 +189,9 @@ const transferNodes = async () => {
               type="text"
               placeholder="New flow name"
               @keydown.enter.prevent="createNewFlow"
-              @keydown.escape="cancelNewFlow"
+              @keydown.escape.stop="cancelNewFlow"
+              @keydown.delete.stop
+              @keydown.backspace.stop
               class="flex-1 border-gray-300 dark:border-gray-600 placeholder-gray-400 focus:ring-sky-600 focus:border-sky-600 appearance-none border rounded py-2 px-3 text-gray-700 leading-tight sm:text-sm dark:bg-gray-900 dark:text-gray-300"
             />
             <button

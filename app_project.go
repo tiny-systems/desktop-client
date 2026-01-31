@@ -1533,10 +1533,9 @@ func (a *App) ImportProject(contextName string, namespace string, projectName st
 		time.Sleep(3 * time.Second)
 	}
 
-	// Import edges - update source nodes with their edges AND target nodes with port configs
+	// Import edges - collect all updates per node to do a single update
+	// This prevents race conditions where controller reconciliation between updates could reset data
 	edgesBySourceNode := make(map[string][]v1alpha1.TinyNodeEdge)
-	// portConfigsByTargetNode stores edge configurations to add to target nodes
-	// Key: target node name, Value: list of port configs
 	portConfigsByTargetNode := make(map[string][]v1alpha1.TinyNodePortConfig)
 
 	for _, elem := range importData.Elements {
@@ -1607,48 +1606,103 @@ func (a *App) ImportProject(contextName string, namespace string, projectName st
 			}
 		}
 
-		// Create port config for target node
-		// From = source port full name, Port = target port name
-		sourcePortFullName := newSourceName + ":" + sourceHandle
-		portConfig := v1alpha1.TinyNodePortConfig{
-			From:          sourcePortFullName,
-			Port:          targetHandle,
-			Configuration: configBytes,
-			Schema:        schemaBytes,
-			FlowID:        newFlowName,
-		}
-		portConfigsByTargetNode[newTargetName] = append(portConfigsByTargetNode[newTargetName], portConfig)
-		a.logger.Info("prepared edge port config", "target", newTargetName, "port", targetHandle, "from", sourcePortFullName, "configLen", len(configBytes))
-	}
-
-	// Update source nodes with their edges
-	for nodeName, edges := range edgesBySourceNode {
-		node, err := mgr.GetNode(ctx, nodeName, namespace)
-		if err != nil {
-			a.logger.Error(err, "failed to get node for edge update", "node", nodeName)
-			continue
-		}
-		node.Spec.Edges = append(node.Spec.Edges, edges...)
-		if err := mgr.UpdateNode(ctx, node); err != nil {
-			a.logger.Error(err, "failed to update node edges", "node", nodeName)
-		} else {
-			a.logger.Info("added edges to node", "node", nodeName, "edgeCount", len(edges))
+		// Only add port config if there's actual configuration data
+		if len(configBytes) > 0 || len(schemaBytes) > 0 {
+			// Create port config for target node
+			// From = source port full name, Port = target port name
+			sourcePortFullName := newSourceName + ":" + sourceHandle
+			portConfig := v1alpha1.TinyNodePortConfig{
+				From:          sourcePortFullName,
+				Port:          targetHandle,
+				Configuration: configBytes,
+				Schema:        schemaBytes,
+				FlowID:        newFlowName,
+			}
+			portConfigsByTargetNode[newTargetName] = append(portConfigsByTargetNode[newTargetName], portConfig)
+			a.logger.Info("prepared edge port config", "target", newTargetName, "port", targetHandle, "from", sourcePortFullName, "configLen", len(configBytes), "schemaLen", len(schemaBytes))
 		}
 	}
 
-	// Update target nodes with edge port configurations
-	for nodeName, portConfigs := range portConfigsByTargetNode {
+	// Collect all nodes that need updates
+	allNodesToUpdate := make(map[string]bool)
+	for nodeName := range edgesBySourceNode {
+		allNodesToUpdate[nodeName] = true
+	}
+	for nodeName := range portConfigsByTargetNode {
+		allNodesToUpdate[nodeName] = true
+	}
+
+	a.logger.Info("edge port configs summary",
+		"totalEdges", len(edgesBySourceNode),
+		"totalPortConfigs", len(portConfigsByTargetNode),
+		"nodesToUpdate", len(allNodesToUpdate))
+
+	// Update each node ONCE with all its changes (both edges and port configs)
+	// This prevents race conditions with controller reconciliation
+	for nodeName := range allNodesToUpdate {
 		node, err := mgr.GetNode(ctx, nodeName, namespace)
 		if err != nil {
-			a.logger.Error(err, "failed to get node for port config update", "node", nodeName)
+			a.logger.Error(err, "failed to get node for update", "node", nodeName)
 			continue
 		}
-		node.Spec.Ports = append(node.Spec.Ports, portConfigs...)
-		if err := mgr.UpdateNode(ctx, node); err != nil {
-			a.logger.Error(err, "failed to update node port configs", "node", nodeName)
-		} else {
-			a.logger.Info("added port configs to node", "node", nodeName, "portConfigCount", len(portConfigs))
+
+		existingPortsCount := len(node.Spec.Ports)
+		existingEdgesCount := len(node.Spec.Edges)
+
+		// Add edges if this node is a source
+		if edges, ok := edgesBySourceNode[nodeName]; ok {
+			node.Spec.Edges = append(node.Spec.Edges, edges...)
+			a.logger.Info("adding edges to node", "node", nodeName, "newEdgeCount", len(edges))
 		}
+
+		// Add port configs if this node is a target
+		if portConfigs, ok := portConfigsByTargetNode[nodeName]; ok {
+			// Log details of port configs being added
+			for _, pc := range portConfigs {
+				a.logger.Info("adding port config detail",
+					"node", nodeName,
+					"from", pc.From,
+					"port", pc.Port,
+					"configLen", len(pc.Configuration),
+					"schemaLen", len(pc.Schema),
+					"flowID", pc.FlowID)
+			}
+			node.Spec.Ports = append(node.Spec.Ports, portConfigs...)
+			a.logger.Info("adding port configs to node", "node", nodeName, "newPortConfigCount", len(portConfigs))
+		}
+
+		if err := mgr.UpdateNode(ctx, node); err != nil {
+			a.logger.Error(err, "failed to update node", "node", nodeName)
+		} else {
+			a.logger.Info("updated node successfully", "node", nodeName,
+				"existingEdges", existingEdgesCount, "totalEdges", len(node.Spec.Edges),
+				"existingPorts", existingPortsCount, "totalPorts", len(node.Spec.Ports))
+		}
+	}
+
+	// Verification: Read back nodes and check if port configs were persisted
+	a.logger.Info("verifying port configs were persisted...")
+	time.Sleep(1 * time.Second) // Small delay to let k8s process
+	for nodeName := range portConfigsByTargetNode {
+		verifyNode, err := mgr.GetNode(ctx, nodeName, namespace)
+		if err != nil {
+			a.logger.Error(err, "failed to verify node", "node", nodeName)
+			continue
+		}
+		edgePortConfigCount := 0
+		for _, pc := range verifyNode.Spec.Ports {
+			if pc.From != "" {
+				edgePortConfigCount++
+				a.logger.Info("verified edge port config",
+					"node", nodeName,
+					"from", pc.From,
+					"port", pc.Port,
+					"configLen", len(pc.Configuration))
+			}
+		}
+		a.logger.Info("verification result", "node", nodeName,
+			"totalPorts", len(verifyNode.Spec.Ports),
+			"edgePortConfigs", edgePortConfigCount)
 	}
 
 	// Import pages with widgets

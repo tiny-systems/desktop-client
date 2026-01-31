@@ -31,6 +31,7 @@ const loading = ref(false)
 const error = ref('')
 const query = ref('')
 const currentTag = ref('')
+const searchInputRef = ref(null)
 
 const open = computed({
   get: () => props.modelValue,
@@ -123,7 +124,7 @@ const closeModal = () => {
 
 <template>
   <TransitionRoot :show="open" as="template" @after-leave="query = ''">
-    <Dialog as="div" class="fixed inset-0 z-50 overflow-y-auto p-4 sm:p-6 md:p-20" @close="open = false">
+    <Dialog as="div" class="fixed inset-0 z-50 overflow-y-auto p-4 sm:p-6 md:p-20" @close="open = false" :initial-focus="searchInputRef">
       <!-- Backdrop overlay -->
       <TransitionChild
         as="template"
@@ -157,6 +158,7 @@ const closeModal = () => {
           <div class="relative">
             <MagnifyingGlassIcon class="pointer-events-none absolute top-3.5 left-4 h-6 w-6 text-gray-400" />
             <ComboboxInput
+              ref="searchInputRef"
               class="h-12 w-full border-0 bg-transparent pl-11 pr-4 text-gray-800 dark:text-gray-200 placeholder-gray-400 focus:ring-0 sm:text-sm focus:outline-none"
               placeholder="Search components..."
               @change="query = $event.target.value"

@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, nextTick } from 'vue'
 import { PlusIcon, TrashIcon, XMarkIcon } from '@heroicons/vue/24/outline'
 
 const props = defineProps({
@@ -19,10 +19,14 @@ const emit = defineEmits(['selectPage', 'createPage', 'deletePage'])
 const showAddDialog = ref(false)
 const newPageTitle = ref('')
 const showDeleteConfirm = ref(null)
+const pageTitleInput = ref(null)
 
 const openAddDialog = () => {
   newPageTitle.value = ''
   showAddDialog.value = true
+  nextTick(() => {
+    pageTitleInput.value?.focus()
+  })
 }
 
 const closeAddDialog = () => {
@@ -109,12 +113,12 @@ const confirmDelete = () => {
           </button>
         </div>
         <input
+          ref="pageTitleInput"
           v-model="newPageTitle"
           type="text"
           placeholder="Page title"
           class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-sky-500 focus:border-transparent"
           @keyup.enter="confirmAdd"
-          autofocus
         />
         <div class="flex justify-end gap-2 mt-4">
           <button

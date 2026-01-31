@@ -136,14 +136,14 @@ const undeployFlow = async () => {
           class="absolute right-0 top-8 z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-md shadow-lg py-1 min-w-36"
         >
           <button
-            @click="openRenameDialog"
+            @click.stop="openRenameDialog"
             class="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center space-x-2"
           >
             <PencilIcon class="w-4 h-4" />
             <span>Rename</span>
           </button>
           <button
-            @click="openUndeployDialog"
+            @click.stop="openUndeployDialog"
             class="w-full px-4 py-2 text-left text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center space-x-2"
           >
             <TrashIcon class="w-4 h-4" />
@@ -165,17 +165,18 @@ const undeployFlow = async () => {
     <div
       v-if="showRenameDialog"
       class="fixed inset-0 z-50 overflow-y-auto"
+      @click.stop
       @keydown.enter.prevent="renameFlow"
       @keydown.escape="closeRenameDialog"
     >
-      <div class="fixed inset-0 bg-black/40 backdrop-blur-md" @click="closeRenameDialog"></div>
+      <div class="fixed inset-0 bg-black/40 backdrop-blur-md" @click.stop="closeRenameDialog"></div>
       <div class="flex min-h-full items-center justify-center p-4">
-        <div class="relative bg-white dark:bg-gray-900 rounded-lg shadow-xl w-full max-w-md p-6">
+        <div class="relative bg-white dark:bg-gray-900 rounded-lg shadow-xl w-full max-w-md p-6" @click.stop>
           <div class="flex items-center justify-between mb-4">
             <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">
               Rename Flow
             </h3>
-            <button @click="closeRenameDialog" class="text-gray-400 hover:text-gray-500">
+            <button @click.stop="closeRenameDialog" class="text-gray-400 hover:text-gray-500">
               <XMarkIcon class="w-5 h-5" />
             </button>
           </div>
@@ -193,13 +194,13 @@ const undeployFlow = async () => {
           </div>
           <div class="flex justify-end gap-2">
             <button
-              @click="closeRenameDialog"
+              @click.stop="closeRenameDialog"
               class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700"
             >
               Cancel
             </button>
             <button
-              @click="renameFlow"
+              @click.stop="renameFlow"
               :disabled="!newFlowName.trim() || renaming"
               class="px-4 py-2 text-sm font-medium text-white bg-sky-600 rounded-md hover:bg-sky-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
@@ -214,12 +215,13 @@ const undeployFlow = async () => {
     <div
       v-if="showUndeployDialog"
       class="fixed inset-0 z-50 overflow-y-auto"
+      @click.stop
       @keydown.enter.prevent="undeployFlow"
       @keydown.escape="closeUndeployDialog"
     >
-      <div class="fixed inset-0 bg-black/40 backdrop-blur-md" @click="closeUndeployDialog"></div>
+      <div class="fixed inset-0 bg-black/40 backdrop-blur-md" @click.stop="closeUndeployDialog"></div>
       <div class="flex min-h-full items-center justify-center p-4">
-        <div class="relative bg-white dark:bg-gray-900 rounded-lg shadow-xl w-full max-w-md p-6">
+        <div class="relative bg-white dark:bg-gray-900 rounded-lg shadow-xl w-full max-w-md p-6" @click.stop>
           <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">
             Undeploy Flow?
           </h3>
@@ -229,13 +231,13 @@ const undeployFlow = async () => {
           </p>
           <div class="flex justify-end gap-2">
             <button
-              @click="closeUndeployDialog"
+              @click.stop="closeUndeployDialog"
               class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700"
             >
               Cancel
             </button>
             <button
-              @click="undeployFlow"
+              @click.stop="undeployFlow"
               :disabled="undeploying"
               class="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >

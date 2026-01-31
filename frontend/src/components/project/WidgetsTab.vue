@@ -383,6 +383,17 @@ onUnmounted(async () => {
     }
   }
 })
+
+// Expose refresh method for parent components
+const refresh = async () => {
+  activePage.value = ''
+  await loadPages()
+  if (activePage.value) {
+    await loadWidgets()
+  }
+}
+
+defineExpose({ refresh })
 </script>
 
 <template>

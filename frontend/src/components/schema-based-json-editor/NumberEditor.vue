@@ -205,12 +205,16 @@ export default {
       this.$emit('update-value', { value: this.getAllValue(), isValid: !this.errorMessage })
     },
     getAllValue() {
-      if(this.value === undefined || this.plainStruct) {
+      if(this.value === undefined) {
         return this.value
       }
       // New format: expression wrapped in {{expr}}, literals are plain values
+      // Always return expression wrapper when there's an expression (needed for lookup)
       if (this.expression) {
         return `{{${this.expression}}}`
+      }
+      if (this.plainStruct) {
+        return this.value
       }
       return this.value ?? 0
     },

@@ -32,6 +32,7 @@ const loading = ref(true)
 const error = ref('')
 const showExportModal = ref(false)
 const showImportModal = ref(false)
+const widgetsTabRef = ref(null)
 
 const loadProjectDetails = async () => {
   if (!GoApp) {
@@ -110,8 +111,11 @@ const handleImportProject = () => {
 }
 
 const handleImportSuccess = async () => {
-  // Reload stats and refresh the current tab
+  // Reload stats and refresh the widgets tab
   await loadStats()
+  if (widgetsTabRef.value && typeof widgetsTabRef.value.refresh === 'function') {
+    await widgetsTabRef.value.refresh()
+  }
 }
 
 onMounted(async () => {
@@ -170,6 +174,7 @@ onMounted(async () => {
       <div class="flex-1 overflow-hidden">
         <WidgetsTab
           v-if="activeTab === 'widgets'"
+          ref="widgetsTabRef"
           :ctx="ctx"
           :ns="ns"
           :project-name="name"

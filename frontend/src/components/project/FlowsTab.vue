@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted, nextTick } from 'vue'
 import FlowCard from './FlowCard.vue'
-import { PlusIcon, XMarkIcon } from '@heroicons/vue/24/outline'
+import { PlusIcon, XMarkIcon, ArrowPathIcon } from '@heroicons/vue/24/outline'
 
 const GoApp = window.go.main.App
 
@@ -18,7 +18,7 @@ const loading = ref(true)
 const showCreateDialog = ref(false)
 const newFlowName = ref('')
 const creating = ref(false)
-const createDialogRef = ref(null)
+const flowNameInput = ref(null)
 
 const loadFlows = async () => {
   if (!GoApp) return
@@ -37,7 +37,7 @@ const openCreateDialog = () => {
   newFlowName.value = ''
   showCreateDialog.value = true
   nextTick(() => {
-    createDialogRef.value?.focus()
+    flowNameInput.value?.focus()
   })
 }
 
@@ -84,13 +84,23 @@ onMounted(() => {
     <!-- Header with create button -->
     <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
       <h2 class="text-sm font-medium text-gray-700 dark:text-gray-300">Flows</h2>
-      <button
-        @click="openCreateDialog"
-        class="flex items-center space-x-1 px-3 py-1.5 text-sm font-medium text-white bg-sky-600 rounded-lg hover:bg-sky-700 transition-colors"
-      >
-        <PlusIcon class="w-4 h-4" />
-        <span>New Flow</span>
-      </button>
+      <div class="flex items-center gap-2">
+        <button
+          @click="loadFlows"
+          :disabled="loading"
+          title="Refresh flows"
+          class="flex items-center justify-center p-1.5 text-gray-500 dark:text-gray-400 hover:text-sky-600 dark:hover:text-sky-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors disabled:opacity-50"
+        >
+          <ArrowPathIcon :class="['w-4 h-4', loading ? 'animate-spin' : '']" />
+        </button>
+        <button
+          @click="openCreateDialog"
+          class="flex items-center space-x-1 px-3 py-1.5 text-sm font-medium text-white bg-sky-600 rounded-lg hover:bg-sky-700 transition-colors"
+        >
+          <PlusIcon class="w-4 h-4" />
+          <span>New Flow</span>
+        </button>
+      </div>
     </div>
 
     <!-- Content -->
@@ -127,8 +137,6 @@ onMounted(() => {
     <!-- Create Flow Dialog -->
     <div
       v-if="showCreateDialog"
-      ref="createDialogRef"
-      tabindex="-1"
       class="fixed inset-0 z-50 overflow-y-auto outline-none"
       @keydown.enter.prevent="createFlow"
       @keydown.escape="closeCreateDialog"
@@ -149,12 +157,12 @@ onMounted(() => {
               Flow Name
             </label>
             <input
+              ref="flowNameInput"
               id="flow-name"
               v-model="newFlowName"
               type="text"
               placeholder="My Awesome Flow"
               class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-sky-500 focus:border-transparent"
-              autofocus
             />
           </div>
           <div class="flex justify-end gap-2">
