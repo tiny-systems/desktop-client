@@ -1372,8 +1372,9 @@ func (a *App) ImportProject(contextName string, namespace string, projectName st
 			}
 		}
 
-		// Create node using the same pattern as AddNode in app_flow.go
-		nodeName := utils.SanitizeResourceName(component) + "-" + strconv.FormatInt(time.Now().UnixNano(), 36)[:8]
+		// Create node with proper naming: {hash}.{module}.{component}-{suffix}
+		nodeGenerateName := utils.GetNodeGenerateName(projectName, newFlowName, module, component)
+		nodeName := nodeGenerateName + strconv.FormatInt(time.Now().UnixNano(), 36)[:5]
 
 		// Get label from data
 		label, _ := data["label"].(string)
