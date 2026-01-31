@@ -12,23 +12,18 @@ function clone(obj) {
   }
 }
 
-// Deep equality check for objects
+// Deep equality check using JSON serialization
+// This handles all edge cases including arrays, nested objects, etc.
 function deepEqual(a, b) {
   if (a === b) return true
   if (a == null || b == null) return a === b
   if (typeof a !== 'object' || typeof b !== 'object') return a === b
 
-  const keysA = Object.keys(a)
-  const keysB = Object.keys(b)
-
-  if (keysA.length !== keysB.length) return false
-
-  for (const key of keysA) {
-    if (!keysB.includes(key)) return false
-    if (!deepEqual(a[key], b[key])) return false
+  try {
+    return JSON.stringify(a) === JSON.stringify(b)
+  } catch {
+    return false
   }
-
-  return true
 }
 
 export const useFlowStore = defineStore('flowStore', {

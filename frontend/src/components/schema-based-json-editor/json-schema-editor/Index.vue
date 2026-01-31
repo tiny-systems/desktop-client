@@ -7,7 +7,8 @@
           <chevron-down-icon v-else class="h-3 w-3 text-sky-500 inline-block cursor-pointer"/>
         </button>
         <input type="text" :disabled="disabled || root" :value="pickKey" @blur="onInputName"
-               class="schema-input bg-transparent border border-gray-600 text-gray-300 text-xs rounded focus:ring-sky-500 focus:border-sky-500 block w-full px-2 py-1.5 dark:bg-gray-800 dark:border-gray-600 dark:placeholder-gray-500 dark:text-gray-300 disabled:text-gray-500 disabled:bg-gray-800/50"/>
+               class="schema-input bg-transparent border border-gray-600 text-gray-300 text-xs rounded focus:ring-sky-500 focus:border-sky-500 block w-full px-2 py-1.5 dark:bg-gray-800 dark:border-gray-600 dark:placeholder-gray-500 dark:text-gray-300 disabled:text-gray-500 disabled:bg-gray-800/50"
+               autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"/>
       </div>
       <div v-if="root" class="col-span-2 flex items-center justify-center">
         <label class="text-gray-400 whitespace-nowrap flex items-center cursor-pointer">
@@ -33,7 +34,8 @@
       </div>
       <div class="col-span-3">
         <input v-model="pickValue.title" :disabled="root" :placeholder="local['title']"
-               class="schema-input bg-transparent border border-gray-600 text-gray-300 text-xs rounded focus:ring-sky-500 focus:border-sky-500 block w-full px-2 py-1.5 dark:bg-gray-800 dark:border-gray-600 dark:placeholder-gray-500 dark:text-gray-300 disabled:text-gray-500 disabled:bg-gray-800/50"/>
+               class="schema-input bg-transparent border border-gray-600 text-gray-300 text-xs rounded focus:ring-sky-500 focus:border-sky-500 block w-full px-2 py-1.5 dark:bg-gray-800 dark:border-gray-600 dark:placeholder-gray-500 dark:text-gray-300 disabled:text-gray-500 disabled:bg-gray-800/50"
+               autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"/>
       </div>
       <div class="col-span-1 flex items-center justify-end space-x-1">
         <button v-if="isObject" type="button" @click="addChild" :title="local['add_child_node']" class="p-0.5 hover:bg-gray-700 rounded">

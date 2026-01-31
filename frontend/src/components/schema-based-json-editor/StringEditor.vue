@@ -24,7 +24,8 @@
       <textarea v-if="useTextArea"
           :class="[errorMessage ? theme.errorTextarea : theme.textarea, !!expression ? theme.expression : '']"
           @change="onChange($event)" @keyup="onChange($event)" :rows="!!expression ? 3 : 10"
-          :disabled="isReadOnly || !!expression" :value="expression || value"></textarea>
+          :disabled="isReadOnly || !!expression" :value="expression || value"
+          autocapitalize="off" autocorrect="off" spellcheck="false"></textarea>
       <vue-monaco-editor v-if="useCodeEditor"
         :class="[errorMessage ? theme.errorCodeEditor : theme.codeEditor, !!expression ? theme.expression : '', 'min-h-80']"
         :value="expression || value"
@@ -45,6 +46,9 @@
              @keyup="onChange($event)"
              :value="expression || value"
              autocomplete="off"
+             autocapitalize="off"
+             autocorrect="off"
+             spellcheck="false"
              :disabled="isReadOnly || !!expression"/>
       <!-- Standard select for small option lists -->
       <select v-if="useSelectComponent && !useRadioBoxComponent && !useSearchableSelect"
@@ -70,6 +74,10 @@
             @keydown.enter.prevent="selectFirstFilteredOption"
             @keydown.down.prevent="focusNextOption"
             @keydown.up.prevent="focusPrevOption"
+            autocomplete="off"
+            autocapitalize="off"
+            autocorrect="off"
+            spellcheck="false"
           />
           <button
             type="button"
@@ -463,7 +471,8 @@ export default {
       return this.useSelect && this.schema.format === 'radiobox'
     },
     useSearchableSelect(): boolean {
-      return this.options.length > 20
+      // Always use styled dropdown instead of native select
+      return true
     },
     filteredOptions(): { value: string | number; label: string | number }[] {
       if (!this.searchQuery) return this.options
