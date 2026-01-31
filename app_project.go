@@ -1249,6 +1249,10 @@ func (a *App) ExportProject(contextName string, namespace string, projectName st
 
 // ImportProject imports JSON data into an existing project
 func (a *App) ImportProject(contextName string, namespace string, projectName string, jsonData string) error {
+	// Create a dedicated context with longer timeout for import operations
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
+
 	// Parse import data
 	var importData ProjectExport
 	if err := json.Unmarshal([]byte(jsonData), &importData); err != nil {
@@ -1265,7 +1269,7 @@ func (a *App) ImportProject(contextName string, namespace string, projectName st
 	}
 
 	// Get existing flows
-	existingFlows, err := mgr.GetFlowList(a.ctx, projectName)
+	existingFlows, err := mgr.GetFlowList(ctx, projectName)
 	if err != nil {
 		return fmt.Errorf("unable to get existing flows: %w", err)
 	}
@@ -1276,7 +1280,7 @@ func (a *App) ImportProject(contextName string, namespace string, projectName st
 	}
 
 	// Get existing nodes
-	existingNodes, err := mgr.GetProjectNodes(a.ctx, projectName)
+	existingNodes, err := mgr.GetProjectNodes(ctx, projectName)
 	if err != nil {
 		return fmt.Errorf("unable to get existing nodes: %w", err)
 	}
@@ -1295,7 +1299,7 @@ func (a *App) ImportProject(contextName string, namespace string, projectName st
 			a.logger.Info("flow already exists", "resourceName", importFlow.ResourceName)
 			continue
 		}
-		newResourceName, err := mgr.CreateFlow(a.ctx, namespace, projectName, importFlow.Name)
+		newResourceName, err := mgr.CreateFlow(ctx, namespace, projectName, importFlow.Name)
 		if err != nil {
 			a.logger.Error(err, "failed to create flow", "name", importFlow.Name)
 			continue
@@ -1398,8 +1402,8 @@ func (a *App) ImportProject(contextName string, namespace string, projectName st
 			},
 		}
 
-		// Use sync CreateNode to ensure node exists before adding edges
-		if err := mgr.CreateNodeSync(a.ctx, node, 30*time.Second); err != nil {
+		// Use async CreateNode - don't wait for sync (too slow)
+		if err := mgr.CreateNode(ctx, node); err != nil {
 			a.logger.Error(err, "failed to create node", "component", component)
 			failedNodes = append(failedNodes, component)
 		} else {
@@ -1407,9 +1411,12 @@ func (a *App) ImportProject(contextName string, namespace string, projectName st
 			nodeIDMap[oldNodeID] = nodeName
 			importedNodes++
 		}
+	}
 
-		// Small delay to avoid overwhelming the cluster
-		time.Sleep(100 * time.Millisecond)
+	// Wait for nodes to be created before adding edges
+	if len(nodeIDMap) > 0 {
+		a.logger.Info("waiting for nodes to be ready before adding edges", "nodeCount", len(nodeIDMap))
+		time.Sleep(3 * time.Second)
 	}
 
 	// Import edges - update source nodes with their edges
@@ -1448,13 +1455,13 @@ func (a *App) ImportProject(contextName string, namespace string, projectName st
 
 	// Update nodes with their edges
 	for nodeName, edges := range edgesBySourceNode {
-		node, err := mgr.GetNode(a.ctx, nodeName, namespace)
+		node, err := mgr.GetNode(ctx, nodeName, namespace)
 		if err != nil {
 			a.logger.Error(err, "failed to get node for edge update", "node", nodeName)
 			continue
 		}
 		node.Spec.Edges = append(node.Spec.Edges, edges...)
-		if err := mgr.UpdateNode(a.ctx, node); err != nil {
+		if err := mgr.UpdateNode(ctx, node); err != nil {
 			a.logger.Error(err, "failed to update node edges", "node", nodeName)
 		} else {
 			a.logger.Info("added edges to node", "node", nodeName, "edgeCount", len(edges))
@@ -1463,7 +1470,7 @@ func (a *App) ImportProject(contextName string, namespace string, projectName st
 
 	// Import pages
 	var failedPages []string
-	existingPages, err := mgr.GetProjectPageWidgets(a.ctx, projectName)
+	existingPages, err := mgr.GetProjectPageWidgets(ctx, projectName)
 	if err != nil {
 		return fmt.Errorf("unable to get existing pages: %w", err)
 	}
@@ -1478,7 +1485,7 @@ func (a *App) ImportProject(contextName string, namespace string, projectName st
 			continue
 		}
 
-		_, err := mgr.CreatePage(a.ctx, importPage.Title, projectName, namespace, importPage.SortIdx)
+		_, err := mgr.CreatePage(ctx, importPage.Title, projectName, namespace, importPage.SortIdx)
 		if err != nil {
 			a.logger.Error(err, "failed to create page", "name", importPage.Name)
 			failedPages = append(failedPages, importPage.Name)
