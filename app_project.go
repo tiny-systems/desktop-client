@@ -7,6 +7,7 @@ import (
 	"runtime/debug"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	jsonpatchapply "github.com/evanphx/json-patch"
@@ -710,15 +711,52 @@ func (a *App) GetWidgets(contextName string, namespace string, projectName strin
 
 // DeleteProject deletes a project and all its resources
 func (a *App) DeleteProject(contextName string, namespace string, projectName string) error {
+  a.logger.Info("deleting project", "context", contextName, "namespace", namespace, "project", projectName)
+
   mgr, err := a.getManager(contextName, namespace)
   if err != nil {
+    a.logger.Error(err, "failed to get manager for delete")
     return err
   }
 
+  // First delete all flows and their nodes
+  flows, err := mgr.GetFlowList(a.ctx, projectName)
+  if err != nil {
+    a.logger.Error(err, "failed to get flows for deletion", "project", projectName)
+  } else {
+    for _, flow := range flows {
+      a.logger.Info("deleting flow nodes", "flow", flow.Name)
+      // Delete nodes in this flow first
+      if err := mgr.DeleteFlowNodes(a.ctx, projectName, flow.Name); err != nil {
+        a.logger.Error(err, "failed to delete flow nodes", "flow", flow.Name)
+      }
+      a.logger.Info("deleting flow", "flow", flow.Name)
+      if err := mgr.DeleteFlow(a.ctx, flow.Name); err != nil {
+        a.logger.Error(err, "failed to delete flow", "flow", flow.Name)
+      }
+    }
+  }
+
+  // Delete all pages
+  pages, err := mgr.GetProjectPageWidgets(a.ctx, projectName)
+  if err != nil {
+    a.logger.Error(err, "failed to get pages for deletion", "project", projectName)
+  } else {
+    for _, page := range pages {
+      a.logger.Info("deleting page", "page", page.Name)
+      if err := mgr.DeletePage(a.ctx, &page); err != nil {
+        a.logger.Error(err, "failed to delete page", "page", page.Name)
+      }
+    }
+  }
+
+  // Finally delete the project itself
   if err := mgr.DeleteProject(a.ctx, projectName); err != nil {
+    a.logger.Error(err, "failed to delete project resource", "project", projectName)
     return fmt.Errorf("failed to delete project: %w", err)
   }
 
+  a.logger.Info("project deleted successfully", "project", projectName)
   return nil
 }
 
@@ -1382,24 +1420,79 @@ func (a *App) ImportProject(contextName string, namespace string, projectName st
 			label = component
 		}
 
+		// Get spin value
+		spin := 0
+		if spinVal, ok := data["spin"].(float64); ok {
+			spin = int(spinVal)
+		}
+
+		// Get dashboard flag
+		dashboard, _ := data["dashboard"].(string)
+
+		labels := map[string]string{
+			v1alpha1.FlowNameLabel:    newFlowName,
+			v1alpha1.ProjectNameLabel: projectName,
+		}
+		if dashboard == "true" {
+			labels[v1alpha1.DashboardLabel] = "true"
+		}
+
+		// Extract port configurations from handles
+		var ports []v1alpha1.TinyNodePortConfig
+		if handles, ok := data["handles"].([]interface{}); ok {
+			a.logger.Info("processing handles for node", "component", component, "handleCount", len(handles))
+			for _, h := range handles {
+				handle, ok := h.(map[string]interface{})
+				if !ok {
+					continue
+				}
+				portID, _ := handle["id"].(string)
+				if portID == "" {
+					continue
+				}
+				config := handle["configuration"]
+				a.logger.Info("handle found", "port", portID, "hasConfig", config != nil)
+				if config == nil {
+					continue
+				}
+				// Marshal config to JSON for storage
+				configBytes, err := json.Marshal(config)
+				if err != nil {
+					a.logger.Error(err, "failed to marshal port config", "port", portID)
+					continue
+				}
+				// Skip empty configurations
+				if len(configBytes) == 0 || string(configBytes) == "{}" || string(configBytes) == "null" {
+					a.logger.Info("skipping empty config", "port", portID, "config", string(configBytes))
+					continue
+				}
+				ports = append(ports, v1alpha1.TinyNodePortConfig{
+					Port:          portID,
+					Configuration: configBytes,
+				})
+				a.logger.Info("added port config", "port", portID, "configLen", len(configBytes))
+			}
+		} else {
+			a.logger.Info("no handles found for node", "component", component, "dataKeys", getMapKeys(data))
+		}
+
 		node := &v1alpha1.TinyNode{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      nodeName,
 				Namespace: namespace,
-				Labels: map[string]string{
-					v1alpha1.FlowNameLabel:    newFlowName,
-					v1alpha1.ProjectNameLabel: projectName,
-				},
+				Labels:    labels,
 				Annotations: map[string]string{
-					v1alpha1.ComponentPosXAnnotation: strconv.Itoa(posX),
-					v1alpha1.ComponentPosYAnnotation: strconv.Itoa(posY),
-					v1alpha1.NodeLabelAnnotation:     label,
+					v1alpha1.ComponentPosXAnnotation:   strconv.Itoa(posX),
+					v1alpha1.ComponentPosYAnnotation:   strconv.Itoa(posY),
+					v1alpha1.ComponentPosSpinAnnotation: strconv.Itoa(spin),
+					v1alpha1.NodeLabelAnnotation:       label,
 				},
 			},
 			Spec: v1alpha1.TinyNodeSpec{
 				Module:        module,
 				ModuleVersion: version,
 				Component:     component,
+				Ports:         ports,
 			},
 		}
 
@@ -1408,7 +1501,7 @@ func (a *App) ImportProject(contextName string, namespace string, projectName st
 			a.logger.Error(err, "failed to create node", "component", component)
 			failedNodes = append(failedNodes, component)
 		} else {
-			a.logger.Info("imported node", "component", component, "name", nodeName)
+			a.logger.Info("imported node", "component", component, "name", nodeName, "portsCount", len(ports))
 			nodeIDMap[oldNodeID] = nodeName
 			importedNodes++
 		}
@@ -1420,8 +1513,12 @@ func (a *App) ImportProject(contextName string, namespace string, projectName st
 		time.Sleep(3 * time.Second)
 	}
 
-	// Import edges - update source nodes with their edges
+	// Import edges - update source nodes with their edges AND target nodes with port configs
 	edgesBySourceNode := make(map[string][]v1alpha1.TinyNodeEdge)
+	// portConfigsByTargetNode stores edge configurations to add to target nodes
+	// Key: target node name, Value: list of port configs
+	portConfigsByTargetNode := make(map[string][]v1alpha1.TinyNodePortConfig)
+
 	for _, elem := range importData.Elements {
 		elemType, _ := elem["type"].(string)
 		if elemType != "edge" && elemType != "tinyEdge" {
@@ -1433,6 +1530,10 @@ func (a *App) ImportProject(contextName string, namespace string, projectName st
 		oldTargetID, _ := elem["target"].(string)
 		targetHandle, _ := elem["targetHandle"].(string)
 		flowName, _ := elem["flow"].(string)
+
+		// Log the raw edge data for debugging
+		edgeDataRaw, _ := json.Marshal(elem["data"])
+		a.logger.Info("processing edge", "source", oldSourceID, "sourceHandle", sourceHandle, "target", oldTargetID, "targetHandle", targetHandle, "dataRaw", string(edgeDataRaw))
 
 		// Translate old IDs to new names
 		newSourceName := nodeIDMap[oldSourceID]
@@ -1454,9 +1555,53 @@ func (a *App) ImportProject(contextName string, namespace string, projectName st
 			FlowID: newFlowName,
 		}
 		edgesBySourceNode[newSourceName] = append(edgesBySourceNode[newSourceName], edge)
+
+		// Extract edge configuration from elem["data"]["configuration"]
+		// This needs to be added as a port config on the TARGET node
+		edgeData, hasData := elem["data"].(map[string]interface{})
+		if !hasData {
+			a.logger.Info("edge has no data map", "edge", newEdgeID)
+			continue
+		}
+
+		var configBytes []byte
+		var schemaBytes []byte
+
+		config := edgeData["configuration"]
+		a.logger.Info("edge configuration check", "edge", newEdgeID, "hasConfig", config != nil, "configType", fmt.Sprintf("%T", config))
+
+		if config != nil {
+			var err error
+			configBytes, err = json.Marshal(config)
+			if err != nil {
+				a.logger.Error(err, "failed to marshal edge config", "edge", newEdgeID)
+			} else {
+				a.logger.Info("edge config marshaled", "edge", newEdgeID, "configLen", len(configBytes), "configPreview", truncateString(string(configBytes), 200))
+			}
+		}
+		if edgeSchema := edgeData["schema"]; edgeSchema != nil {
+			var err error
+			schemaBytes, err = json.Marshal(edgeSchema)
+			if err != nil {
+				a.logger.Error(err, "failed to marshal edge schema", "edge", newEdgeID)
+			}
+		}
+
+		// Create port config for target node
+		// From = source port full name, Port = target port name
+		sourcePortFullName := newSourceName + ":" + sourceHandle
+		portConfig := v1alpha1.TinyNodePortConfig{
+			From:          sourcePortFullName,
+			Port:          targetHandle,
+			Configuration: configBytes,
+			Schema:        schemaBytes,
+			FlowID:        newFlowName,
+		}
+		portConfigsByTargetNode[newTargetName] = append(portConfigsByTargetNode[newTargetName], portConfig)
+		a.logger.Info("prepared edge port config", "target", newTargetName, "port", targetHandle, "from", sourcePortFullName, "configLen", len(configBytes))
 	}
 
-	// Update nodes with their edges
+	// Update source nodes with their edges
 	for nodeName, edges := range edgesBySourceNode {
 		node, err := mgr.GetNode(ctx, nodeName, namespace)
 		if err != nil {
@@ -1471,29 +1616,132 @@ func (a *App) ImportProject(contextName string, namespace string, projectName st
 		}
 	}
 
-	// Import pages
+	// Update target nodes with edge port configurations
+	for nodeName, portConfigs := range portConfigsByTargetNode {
+		node, err := mgr.GetNode(ctx, nodeName, namespace)
+		if err != nil {
+			a.logger.Error(err, "failed to get node for port config update", "node", nodeName)
+			continue
+		}
+		node.Spec.Ports = append(node.Spec.Ports, portConfigs...)
+		if err := mgr.UpdateNode(ctx, node); err != nil {
+			a.logger.Error(err, "failed to update node port configs", "node", nodeName)
+		} else {
+			a.logger.Info("added port configs to node", "node", nodeName, "portConfigCount", len(portConfigs))
+		}
+	}
+
+	// Import pages with widgets
 	var failedPages []string
 	existingPages, err := mgr.GetProjectPageWidgets(ctx, projectName)
 	if err != nil {
 		return fmt.Errorf("unable to get existing pages: %w", err)
 	}
+	a.logger.Info("existing pages before import", "count", len(existingPages), "projectName", projectName)
 
-	existingPageNames := make(map[string]bool)
+	// Build map of existing page titles to avoid duplicates
+	existingPageTitles := make(map[string]bool)
 	for _, page := range existingPages {
-		existingPageNames[page.Name] = true
+		title := page.Annotations[v1alpha1.PageTitleAnnotation]
+		if title == "" {
+			title = page.Name
+		}
+		existingPageTitles[title] = true
 	}
 
 	for _, importPage := range importData.Pages {
-		if existingPageNames[importPage.Name] {
+		// Check by title, not by resource name (resource names are regenerated)
+		if existingPageTitles[importPage.Title] {
+			a.logger.Info("skipping page - already exists", "title", importPage.Title)
 			continue
 		}
 
-		_, err := mgr.CreatePage(ctx, importPage.Title, projectName, namespace, importPage.SortIdx)
+		// Build widgets with translated port references first
+		var widgets []v1alpha1.TinyWidget
+		for _, importWidget := range importPage.Widgets {
+			// Translate port reference: "oldNodeID:portName" -> "newNodeName:portName"
+			portParts := strings.SplitN(importWidget.Port, ":", 2)
+			if len(portParts) != 2 {
+				a.logger.Info("skipping widget - invalid port format", "port", importWidget.Port)
+				continue
+			}
+			oldNodeID := portParts[0]
+			portName := portParts[1]
+
+			newNodeName := nodeIDMap[oldNodeID]
+			if newNodeName == "" {
+				a.logger.Info("skipping widget - node not found in map", "oldNodeID", oldNodeID, "availableNodes", len(nodeIDMap))
+				continue
+			}
+
+			newPort := newNodeName + ":" + portName
+			widget := v1alpha1.TinyWidget{
+				Port:  newPort,
+				Name:  importWidget.Name,
+				GridX: importWidget.GridX,
+				GridY: importWidget.GridY,
+				GridW: importWidget.GridW,
+				GridH: importWidget.GridH,
+			}
+			if len(importWidget.SchemaPatch) > 0 {
+				widget.SchemaPatch = []byte(importWidget.SchemaPatch)
+			}
+			widgets = append(widgets, widget)
+			a.logger.Info("translated widget port", "oldPort", importWidget.Port, "newPort", newPort, "widgetName", importWidget.Name)
+		}
+
+		// Create the page
+		a.logger.Info("creating page", "title", importPage.Title, "project", projectName, "namespace", namespace, "sortIdx", importPage.SortIdx)
+		newPageName, err := mgr.CreatePage(ctx, importPage.Title, projectName, namespace, importPage.SortIdx)
 		if err != nil {
-			a.logger.Error(err, "failed to create page", "name", importPage.Name)
-			failedPages = append(failedPages, importPage.Name)
+			a.logger.Error(err, "failed to create page", "title", importPage.Title)
+			failedPages = append(failedPages, importPage.Title)
+			continue
+		}
+		if newPageName == nil {
+			a.logger.Error(nil, "CreatePage returned nil name without error", "title", importPage.Title)
+			failedPages = append(failedPages, importPage.Title)
+			continue
+		}
+		a.logger.Info("page created successfully", "title", importPage.Title, "resourceName", *newPageName)
+
+		// Update page with widgets if any
+		if len(widgets) > 0 {
+			// Small delay to ensure page is queryable
+			time.Sleep(500 * time.Millisecond)
+
+			// Fetch the page we just created to update it
+			allPages, err := mgr.GetProjectPageWidgets(ctx, projectName)
+			if err != nil {
+				a.logger.Error(err, "failed to get pages after creation", "project", projectName)
+				continue
+			}
+			a.logger.Info("fetched pages after creation", "count", len(allPages))
+
+			found := false
+			for i := range allPages {
+				if allPages[i].Name == *newPageName {
+					found = true
+					allPages[i].Spec.Widgets = widgets
+					if err := mgr.UpdatePage(ctx, &allPages[i]); err != nil {
+						a.logger.Error(err, "failed to update page with widgets", "page", *newPageName)
+					} else {
+						a.logger.Info("added widgets to page", "page", *newPageName, "widgetCount", len(widgets))
+					}
+					break
+				}
+			}
+			if !found {
+				a.logger.Error(nil, "created page not found when trying to add widgets", "expectedName", *newPageName, "availablePages", len(allPages))
+			}
+		} else {
+			a.logger.Info("no widgets to add to page", "page", *newPageName)
 		}
 	}
+
+	// Final verification
+	finalPages, _ := mgr.GetProjectPageWidgets(ctx, projectName)
+	a.logger.Info("pages after import complete", "count", len(finalPages), "projectName", projectName)
 
 	// Return error summary if any failures
 	if len(failedNodes) > 0 || len(failedPages) > 0 {
@@ -1502,6 +1750,23 @@ func (a *App) ImportProject(contextName string, namespace string, projectName st
 	}
 
 	return nil
+}
+
+// getMapKeys returns the keys of a map for logging purposes
+func getMapKeys(m map[string]interface{}) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	return keys
+}
+
+// truncateString truncates a string to maxLen characters
+func truncateString(s string, maxLen int) string {
+	if len(s) <= maxLen {
+		return s
+	}
+	return s[:maxLen] + "..."
 }
 
 // parseNodeToWidget converts a TinyNode to a Widget
