@@ -1450,27 +1450,47 @@ func (a *App) ImportProject(contextName string, namespace string, projectName st
 				if portID == "" {
 					continue
 				}
+
+				// Get configuration and schema from handle
 				config := handle["configuration"]
-				a.logger.Info("handle found", "port", portID, "hasConfig", config != nil)
-				if config == nil {
-					continue
-				}
+				schema := handle["schema"]
+
 				// Marshal config to JSON for storage
-				configBytes, err := json.Marshal(config)
-				if err != nil {
-					a.logger.Error(err, "failed to marshal port config", "port", portID)
+				var configBytes []byte
+				if config != nil {
+					var err error
+					configBytes, err = json.Marshal(config)
+					if err != nil {
+						a.logger.Error(err, "failed to marshal port config", "port", portID)
+						continue
+					}
+					// Check if empty
+					if string(configBytes) == "{}" || string(configBytes) == "null" {
+						configBytes = nil
+					}
+				}
+
+				// Marshal schema to JSON for storage
+				var schemaBytes []byte
+				if schema != nil {
+					var err error
+					schemaBytes, err = json.Marshal(schema)
+					if err != nil {
+						a.logger.Error(err, "failed to marshal port schema", "port", portID)
+					}
+				}
+
+				// Skip if both config and schema are empty
+				if len(configBytes) == 0 && len(schemaBytes) == 0 {
 					continue
 				}
-				// Skip empty configurations
-				if len(configBytes) == 0 || string(configBytes) == "{}" || string(configBytes) == "null" {
-					a.logger.Info("skipping empty config", "port", portID, "config", string(configBytes))
-					continue
-				}
+
 				ports = append(ports, v1alpha1.TinyNodePortConfig{
 					Port:          portID,
 					Configuration: configBytes,
+					Schema:        schemaBytes,
 				})
-				a.logger.Info("added port config", "port", portID, "configLen", len(configBytes))
+				a.logger.Info("added port config", "port", portID, "configLen", len(configBytes), "schemaLen", len(schemaBytes))
 			}
 		} else {
 			a.logger.Info("no handles found for node", "component", component, "dataKeys", getMapKeys(data))
