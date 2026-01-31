@@ -1134,38 +1134,7 @@ func (a *App) StopWatchProjectNodes() error {
   return nil
 }
 
-// ProjectExport represents the project export format
-type ProjectExport struct {
-	Version   int                      `json:"version"`
-	TinyFlows []ProjectExportFlow      `json:"tinyFlows"`
-	Elements  []map[string]interface{} `json:"elements"`
-	Pages     []ProjectExportPage      `json:"pages"`
-}
-
-// ProjectExportFlow represents a flow in the export format
-type ProjectExportFlow struct {
-	ResourceName string `json:"resourceName"`
-	Name         string `json:"name"`
-}
-
-// ProjectExportPage represents a dashboard page in the export format
-type ProjectExportPage struct {
-	Name    string                `json:"name"`
-	Title   string                `json:"title"`
-	SortIdx int                   `json:"sortIdx"`
-	Widgets []ProjectExportWidget `json:"widgets"`
-}
-
-// ProjectExportWidget represents a widget in the export format
-type ProjectExportWidget struct {
-	Port        string          `json:"port"`
-	Name        string          `json:"name"`
-	GridX       int             `json:"gridX"`
-	GridY       int             `json:"gridY"`
-	GridW       int             `json:"gridW"`
-	GridH       int             `json:"gridH"`
-	SchemaPatch json.RawMessage `json:"schemaPatch,omitempty"`
-}
+// Type aliases for SDK export types (for backward compatibility)
 
 // ExportProject exports a project to JSON format
 func (a *App) ExportProject(contextName string, namespace string, projectName string) (string, error) {
@@ -1192,13 +1161,13 @@ func (a *App) ExportProject(contextName string, namespace string, projectName st
 	}
 
 	// Build export flows
-	var exportFlows []ProjectExportFlow
+	var exportFlows []utils.ExportFlow
 	for _, flow := range flows {
 		name := flow.Annotations[v1alpha1.FlowDescriptionAnnotation]
 		if name == "" {
 			name = flow.Name
 		}
-		exportFlows = append(exportFlows, ProjectExportFlow{
+		exportFlows = append(exportFlows, utils.ExportFlow{
 			ResourceName: flow.Name,
 			Name:         name,
 		})
@@ -1240,7 +1209,7 @@ func (a *App) ExportProject(contextName string, namespace string, projectName st
 	}
 
 	// Build export pages
-	var exportPages []ProjectExportPage
+	var exportPages []utils.ExportPage
 	for _, page := range pages {
 		sortIdx, _ := strconv.Atoi(page.Annotations[v1alpha1.PageSortIdxAnnotation])
 		title := page.Annotations[v1alpha1.PageTitleAnnotation]
@@ -1248,9 +1217,9 @@ func (a *App) ExportProject(contextName string, namespace string, projectName st
 			title = page.Name
 		}
 
-		var widgets []ProjectExportWidget
+		var widgets []utils.ExportWidget
 		for _, w := range page.Spec.Widgets {
-			widgets = append(widgets, ProjectExportWidget{
+			widgets = append(widgets, utils.ExportWidget{
 				Port:        w.Port,
 				Name:        w.Name,
 				GridX:       w.GridX,
@@ -1261,7 +1230,7 @@ func (a *App) ExportProject(contextName string, namespace string, projectName st
 			})
 		}
 
-		exportPages = append(exportPages, ProjectExportPage{
+		exportPages = append(exportPages, utils.ExportPage{
 			Name:    page.Name,
 			Title:   title,
 			SortIdx: sortIdx,
@@ -1270,8 +1239,8 @@ func (a *App) ExportProject(contextName string, namespace string, projectName st
 	}
 
 	// Build export object
-	export := ProjectExport{
-		Version:   1,
+	export := utils.ProjectExport{
+		Version:   utils.CurrentExportVersion,
 		TinyFlows: exportFlows,
 		Elements:  elements,
 		Pages:     exportPages,
@@ -1292,14 +1261,17 @@ func (a *App) ImportProject(contextName string, namespace string, projectName st
 	defer cancel()
 
 	// Parse import data
-	var importData ProjectExport
+	var importData utils.ProjectExport
 	if err := json.Unmarshal([]byte(jsonData), &importData); err != nil {
 		return fmt.Errorf("invalid import data: %v", err)
 	}
 
-	if importData.Version != 1 {
+	if importData.Version != utils.CurrentExportVersion {
 		return fmt.Errorf("unsupported import version: %d", importData.Version)
 	}
+
+	// Validate import data and log warnings
+	utils.ValidateProjectExport(&importData)
 
 	mgr, err := a.getManager(contextName, namespace)
 	if err != nil {
