@@ -1301,6 +1301,10 @@ func (a *App) ImportProject(contextName string, namespace string, projectName st
 		flowResourceNameMap[importFlow.ResourceName] = *newResourceName
 	}
 
+	// Track errors for reporting
+	var failedNodes []string
+	var importedNodes int
+
 	// Import nodes
 	for _, elem := range importData.Elements {
 		elemType, _ := elem["type"].(string)
@@ -1374,12 +1378,15 @@ func (a *App) ImportProject(contextName string, namespace string, projectName st
 		// Use async CreateNode for batch import - don't wait for sync
 		if err := mgr.CreateNode(a.ctx, node); err != nil {
 			a.logger.Error(err, "failed to create node", "component", component)
+			failedNodes = append(failedNodes, component)
 		} else {
 			a.logger.Info("imported node", "component", component, "name", nodeName)
+			importedNodes++
 		}
 	}
 
 	// Import pages
+	var failedPages []string
 	existingPages, err := mgr.GetProjectPageWidgets(a.ctx, projectName)
 	if err != nil {
 		return fmt.Errorf("unable to get existing pages: %w", err)
@@ -1398,7 +1405,14 @@ func (a *App) ImportProject(contextName string, namespace string, projectName st
 		_, err := mgr.CreatePage(a.ctx, importPage.Title, projectName, namespace, importPage.SortIdx)
 		if err != nil {
 			a.logger.Error(err, "failed to create page", "name", importPage.Name)
+			failedPages = append(failedPages, importPage.Name)
 		}
+	}
+
+	// Return error summary if any failures
+	if len(failedNodes) > 0 || len(failedPages) > 0 {
+		return fmt.Errorf("import completed with errors: %d nodes imported, %d nodes failed (%v), %d pages failed (%v)",
+			importedNodes, len(failedNodes), failedNodes, len(failedPages), failedPages)
 	}
 
 	return nil
