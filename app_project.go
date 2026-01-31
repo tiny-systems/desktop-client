@@ -1371,8 +1371,11 @@ func (a *App) ImportProject(contextName string, namespace string, projectName st
 			},
 		}
 
-		if err := mgr.CreateNodeSync(a.ctx, node, 10*time.Second); err != nil {
+		// Use async CreateNode for batch import - don't wait for sync
+		if err := mgr.CreateNode(a.ctx, node); err != nil {
 			a.logger.Error(err, "failed to create node", "component", component)
+		} else {
+			a.logger.Info("imported node", "component", component, "name", nodeName)
 		}
 	}
 
