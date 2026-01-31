@@ -54,6 +54,10 @@ export function DisconnectNodes(arg1, arg2, arg3, arg4) {
   return window['go']['main']['App']['DisconnectNodes'](arg1, arg2, arg3, arg4);
 }
 
+export function ExportProject(arg1, arg2, arg3) {
+  return window['go']['main']['App']['ExportProject'](arg1, arg2, arg3);
+}
+
 export function GetAvailableComponents(arg1, arg2) {
   return window['go']['main']['App']['GetAvailableComponents'](arg1, arg2);
 }
@@ -68,6 +72,10 @@ export function GetFlowGraph(arg1, arg2, arg3, arg4) {
 
 export function GetFlows(arg1, arg2, arg3) {
   return window['go']['main']['App']['GetFlows'](arg1, arg2, arg3);
+}
+
+export function GetFlowsWithGraphs(arg1, arg2, arg3) {
+  return window['go']['main']['App']['GetFlowsWithGraphs'](arg1, arg2, arg3);
 }
 
 export function GetKubeContexts() {
@@ -116,6 +124,10 @@ export function GetWidgetPages(arg1, arg2, arg3) {
 
 export function GetWidgets(arg1, arg2, arg3, arg4) {
   return window['go']['main']['App']['GetWidgets'](arg1, arg2, arg3, arg4);
+}
+
+export function ImportProject(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['App']['ImportProject'](arg1, arg2, arg3, arg4);
 }
 
 export function InspectNodePort(arg1, arg2, arg3, arg4, arg5, arg6) {
@@ -208,6 +220,10 @@ export function UpdateNodeLabel(arg1, arg2, arg3, arg4) {
 
 export function UpdateNodePosition(arg1, arg2, arg3, arg4, arg5) {
   return window['go']['main']['App']['UpdateNodePosition'](arg1, arg2, arg3, arg4, arg5);
+}
+
+export function UpdateNodeSettings(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['App']['UpdateNodeSettings'](arg1, arg2, arg3, arg4);
 }
 
 export function WatchFlowNodes(arg1, arg2, arg3, arg4) {

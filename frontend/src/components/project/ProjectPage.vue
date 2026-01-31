@@ -5,6 +5,8 @@ import ProjectStatsBar from './ProjectStatsBar.vue'
 import WidgetsTab from './WidgetsTab.vue'
 import FlowsTab from './FlowsTab.vue'
 import FlowEditorPage from '../flow-editor/FlowEditorPage.vue'
+import ProjectExportModal from './ProjectExportModal.vue'
+import ProjectImportModal from './ProjectImportModal.vue'
 
 const GoApp = window.go.main.App
 
@@ -28,6 +30,8 @@ const stats = ref({
 const activeTab = ref('widgets')
 const loading = ref(true)
 const error = ref('')
+const showExportModal = ref(false)
+const showImportModal = ref(false)
 
 const loadProjectDetails = async () => {
   if (!GoApp) {
@@ -93,6 +97,23 @@ const handleCloseFlowEditor = () => {
   selectedFlow.value = null
 }
 
+const handleSwitchFlow = (flowResourceName) => {
+  selectedFlow.value = { resourceName: flowResourceName }
+}
+
+const handleExportProject = () => {
+  showExportModal.value = true
+}
+
+const handleImportProject = () => {
+  showImportModal.value = true
+}
+
+const handleImportSuccess = async () => {
+  // Reload stats and refresh the current tab
+  await loadStats()
+}
+
 onMounted(async () => {
   loading.value = true
   await Promise.all([loadProjectDetails(), loadStats()])
@@ -110,6 +131,7 @@ onMounted(async () => {
       :project-name="name"
       :flow-resource-name="selectedFlow.resourceName"
       @close="handleCloseFlowEditor"
+      @switch-flow="handleSwitchFlow"
     />
 
     <!-- Loading state -->
@@ -129,6 +151,8 @@ onMounted(async () => {
         @close="emit('close')"
         @delete-project="handleDeleteProject"
         @rename-project="handleRenameProject"
+        @export-project="handleExportProject"
+        @import-project="handleImportProject"
       />
 
       <ProjectStatsBar
@@ -161,5 +185,24 @@ onMounted(async () => {
         />
       </div>
     </template>
+
+    <!-- Export Modal -->
+    <ProjectExportModal
+      v-model="showExportModal"
+      :context-name="ctx"
+      :namespace="ns"
+      :project-name="name"
+      @error="handleError"
+    />
+
+    <!-- Import Modal -->
+    <ProjectImportModal
+      v-model="showImportModal"
+      :context-name="ctx"
+      :namespace="ns"
+      :project-name="name"
+      @error="handleError"
+      @success="handleImportSuccess"
+    />
   </div>
 </template>

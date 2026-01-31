@@ -1,6 +1,6 @@
 <script setup>
 import { ref, nextTick } from 'vue'
-import { ArrowLeftIcon, EllipsisVerticalIcon, PencilIcon, TrashIcon, XMarkIcon } from '@heroicons/vue/24/outline'
+import { ArrowLeftIcon, EllipsisVerticalIcon, PencilIcon, TrashIcon, XMarkIcon, ArrowUpTrayIcon, ArrowDownTrayIcon } from '@heroicons/vue/24/outline'
 
 const props = defineProps({
   title: String,
@@ -8,7 +8,7 @@ const props = defineProps({
   projectName: String,
 })
 
-const emit = defineEmits(['close', 'delete-project', 'rename-project'])
+const emit = defineEmits(['close', 'delete-project', 'rename-project', 'export-project', 'import-project'])
 
 const showMoreMenu = ref(false)
 const showDeleteConfirm = ref(false)
@@ -39,6 +39,16 @@ const openRenameDialog = () => {
     renameInputRef.value?.focus()
     renameInputRef.value?.select()
   })
+}
+
+const openExport = () => {
+  showMoreMenu.value = false
+  emit('export-project')
+}
+
+const openImport = () => {
+  showMoreMenu.value = false
+  emit('import-project')
 }
 
 const closeRenameDialog = () => {
@@ -90,6 +100,21 @@ const confirmRename = () => {
         v-if="showMoreMenu"
         class="absolute right-0 top-10 z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-md shadow-lg py-1 min-w-40"
       >
+        <button
+          @click="openExport"
+          class="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center space-x-2"
+        >
+          <ArrowUpTrayIcon class="w-4 h-4" />
+          <span>Export JSON</span>
+        </button>
+        <button
+          @click="openImport"
+          class="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center space-x-2"
+        >
+          <ArrowDownTrayIcon class="w-4 h-4" />
+          <span>Import JSON</span>
+        </button>
+        <div class="border-t border-gray-200 dark:border-gray-700 my-1"></div>
         <button
           @click="openRenameDialog"
           class="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center space-x-2"

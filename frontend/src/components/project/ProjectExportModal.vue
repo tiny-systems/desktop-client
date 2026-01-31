@@ -1,0 +1,139 @@
+<script setup>
+import { ref, watch } from 'vue'
+
+const props = defineProps({
+  modelValue: Boolean,
+  contextName: String,
+  namespace: String,
+  projectName: String
+})
+
+const emit = defineEmits(['update:modelValue', 'error'])
+
+const exportJSON = ref('')
+const saveError = ref('')
+const copied = ref(false)
+const loading = ref(false)
+
+const GoApp = window.go?.main?.App
+
+// Generate JSON when modal opens
+watch(() => props.modelValue, async (isOpen) => {
+  if (isOpen) {
+    saveError.value = ''
+    copied.value = false
+    loading.value = true
+    try {
+      const json = await GoApp.ExportProject(props.contextName, props.namespace, props.projectName)
+      exportJSON.value = json
+    } catch (e) {
+      saveError.value = e.message || 'Failed to export project'
+      emit('error', saveError.value)
+    } finally {
+      loading.value = false
+    }
+  }
+})
+
+const closeModal = () => {
+  emit('update:modelValue', false)
+  exportJSON.value = ''
+  saveError.value = ''
+  copied.value = false
+}
+
+const exportToFile = async () => {
+  saveError.value = ''
+  try {
+    const filename = `${props.projectName || 'project'}.json`
+    const savedPath = await GoApp.SaveFile(filename, exportJSON.value)
+    if (savedPath) {
+      closeModal()
+    }
+  } catch (e) {
+    saveError.value = e.message || 'Failed to save file'
+    emit('error', saveError.value)
+  }
+}
+
+const copyToClipboard = async () => {
+  try {
+    await navigator.clipboard.writeText(exportJSON.value)
+    copied.value = true
+    setTimeout(() => { copied.value = false }, 2000)
+  } catch (e) {
+    saveError.value = 'Failed to copy to clipboard'
+  }
+}
+</script>
+
+<template>
+  <div
+    v-if="modelValue"
+    class="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 md:p-20"
+    @keydown.escape="closeModal"
+  >
+    <!-- Backdrop -->
+    <div
+      class="fixed inset-0 bg-gray-500/25 dark:bg-black/75 backdrop-blur-sm"
+      @click="closeModal"
+    ></div>
+
+    <!-- Modal -->
+    <div class="relative transform rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 p-1 w-full max-w-3xl mx-auto dark:bg-black dark:border dark:border-gray-800 dark:text-gray-300">
+      <h3 class="text-center sm:mt-3 font-medium text-gray-900 dark:text-gray-100">
+        Export Project JSON
+      </h3>
+
+      <!-- Loading -->
+      <div v-if="loading" class="flex items-center justify-center h-56">
+        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-sky-600"></div>
+      </div>
+
+      <!-- Textarea -->
+      <div v-else class="h-full">
+        <textarea
+          v-model="exportJSON"
+          readonly
+          class="mt-1 border-sky-600 h-56 max-w-full placeholder-gray-400 focus:ring-sky-600 appearance-none border rounded w-full py-3 px-3 text-gray-700 leading-tight transition duration-150 ease-in-out sm:text-sm sm:leading-5 dark:bg-gray-900 dark:text-gray-300"
+        ></textarea>
+      </div>
+
+      <!-- Error message -->
+      <div v-if="saveError" class="text-red-500 text-sm py-2 px-1">
+        {{ saveError }}
+      </div>
+
+      <!-- Buttons -->
+      <div class="flex justify-between p-3">
+        <!-- Export to file button -->
+        <button
+          @click="exportToFile"
+          type="button"
+          :disabled="loading || !exportJSON"
+          class="text-gray-500 bg-white hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-gray-200 rounded-md border border-gray-200 text-sm font-medium px-3 py-1 hover:text-gray-900 focus:z-10 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-500 dark:hover:text-white dark:hover:bg-gray-600 dark:focus:ring-gray-600 disabled:opacity-50"
+        >
+          Export File...
+        </button>
+
+        <div class="flex gap-2">
+          <button
+            @click="copyToClipboard"
+            type="button"
+            :disabled="loading || !exportJSON"
+            class="text-gray-500 bg-white hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-gray-200 rounded-md border border-gray-200 text-sm font-medium px-3 py-1 hover:text-gray-900 focus:z-10 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-500 dark:hover:text-white dark:hover:bg-gray-600 dark:focus:ring-gray-600 disabled:opacity-50"
+          >
+            {{ copied ? 'Copied!' : 'Copy' }}
+          </button>
+          <button
+            @click="closeModal"
+            type="button"
+            class="text-gray-500 bg-white hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-gray-200 rounded-md border border-gray-200 text-sm font-medium px-3 py-1 hover:text-gray-900 focus:z-10 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-500 dark:hover:text-white dark:hover:bg-gray-600 dark:focus:ring-gray-600"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>

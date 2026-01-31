@@ -29,6 +29,8 @@ export function DeleteProject(arg1:string,arg2:string,arg3:string):Promise<void>
 
 export function DisconnectNodes(arg1:string,arg2:string,arg3:string,arg4:string):Promise<void>;
 
+export function ExportProject(arg1:string,arg2:string,arg3:string):Promise<string>;
+
 export function GetAvailableComponents(arg1:string,arg2:string):Promise<Array<main.ComponentInfo>>;
 
 export function GetFlowForEditor(arg1:string,arg2:string,arg3:string,arg4:string):Promise<main.FlowEditorData>;
@@ -36,6 +38,8 @@ export function GetFlowForEditor(arg1:string,arg2:string,arg3:string,arg4:string
 export function GetFlowGraph(arg1:string,arg2:string,arg3:string,arg4:string):Promise<Record<string, any>>;
 
 export function GetFlows(arg1:string,arg2:string,arg3:string):Promise<Array<main.Flow>>;
+
+export function GetFlowsWithGraphs(arg1:string,arg2:string,arg3:string):Promise<Array<main.Flow>>;
 
 export function GetKubeContexts():Promise<Array<main.KubeContext>>;
 
@@ -60,6 +64,8 @@ export function GetTraces(arg1:string,arg2:string,arg3:string,arg4:string,arg5:n
 export function GetWidgetPages(arg1:string,arg2:string,arg3:string):Promise<Array<main.WidgetPage>>;
 
 export function GetWidgets(arg1:string,arg2:string,arg3:string,arg4:string):Promise<Array<main.Widget>>;
+
+export function ImportProject(arg1:string,arg2:string,arg3:string,arg4:string):Promise<void>;
 
 export function InspectNodePort(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string,arg6:string):Promise<Record<string, any>>;
 
@@ -106,6 +112,8 @@ export function UpdateNodeConfiguration(arg1:string,arg2:string,arg3:string,arg4
 export function UpdateNodeLabel(arg1:string,arg2:string,arg3:string,arg4:string):Promise<void>;
 
 export function UpdateNodePosition(arg1:string,arg2:string,arg3:string,arg4:number,arg5:number):Promise<void>;
+
+export function UpdateNodeSettings(arg1:string,arg2:string,arg3:string,arg4:main.NodeSettingsRequest):Promise<void>;
 
 export function WatchFlowNodes(arg1:string,arg2:string,arg3:string,arg4:string):Promise<void>;
 
