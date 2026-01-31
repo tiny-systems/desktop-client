@@ -1289,8 +1289,10 @@ func (a *App) ImportProject(contextName string, namespace string, projectName st
 	// Create flows that don't exist
 	flowResourceNameMap := make(map[string]string) // old name -> new name
 	for _, importFlow := range importData.TinyFlows {
+		a.logger.Info("processing flow", "oldResourceName", importFlow.ResourceName, "displayName", importFlow.Name)
 		if existingFlowNames[importFlow.ResourceName] {
 			flowResourceNameMap[importFlow.ResourceName] = importFlow.ResourceName
+			a.logger.Info("flow already exists", "resourceName", importFlow.ResourceName)
 			continue
 		}
 		newResourceName, err := mgr.CreateFlow(a.ctx, namespace, projectName, importFlow.Name)
@@ -1299,33 +1301,45 @@ func (a *App) ImportProject(contextName string, namespace string, projectName st
 			continue
 		}
 		flowResourceNameMap[importFlow.ResourceName] = *newResourceName
+		a.logger.Info("created new flow", "oldResourceName", importFlow.ResourceName, "newResourceName", *newResourceName)
 	}
+	a.logger.Info("flow mapping complete", "mappings", flowResourceNameMap)
 
 	// Track errors for reporting
 	var failedNodes []string
 	var importedNodes int
 
+	// Map old node IDs to new node names (for edge translation)
+	nodeIDMap := make(map[string]string) // oldID -> newName
+
 	// Import nodes
 	for _, elem := range importData.Elements {
 		elemType, _ := elem["type"].(string)
-		if elemType == "edge" || elemType == "" {
+		if elemType == "edge" || elemType == "tinyEdge" || elemType == "" {
 			continue
 		}
 
-		nodeID, _ := elem["id"].(string)
-		if nodeID == "" || existingNodeNames[nodeID] {
+		oldNodeID, _ := elem["id"].(string)
+		if oldNodeID == "" || existingNodeNames[oldNodeID] {
+			// If node already exists, map it to itself
+			if existingNodeNames[oldNodeID] {
+				nodeIDMap[oldNodeID] = oldNodeID
+			}
 			continue
 		}
 
 		// Get flow for this node
 		flowName, _ := elem["flow"].(string)
 		if flowName == "" {
+			a.logger.Info("skipping node - no flow name", "nodeID", oldNodeID)
 			continue
 		}
 		newFlowName := flowResourceNameMap[flowName]
 		if newFlowName == "" {
+			a.logger.Info("skipping node - flow not in map", "nodeID", oldNodeID, "flowName", flowName, "availableFlows", flowResourceNameMap)
 			continue
 		}
+		a.logger.Info("creating node", "nodeID", oldNodeID, "oldFlow", flowName, "newFlow", newFlowName)
 
 		data, _ := elem["data"].(map[string]interface{})
 		if data == nil {
@@ -1334,7 +1348,10 @@ func (a *App) ImportProject(contextName string, namespace string, projectName st
 
 		component, _ := data["component"].(string)
 		module, _ := data["module"].(string)
-		version, _ := data["version"].(string)
+		version, _ := data["module_version"].(string)
+		if version == "" {
+			version, _ = data["version"].(string)
+		}
 		if component == "" || module == "" {
 			continue
 		}
@@ -1354,6 +1371,12 @@ func (a *App) ImportProject(contextName string, namespace string, projectName st
 		// Create node using the same pattern as AddNode in app_flow.go
 		nodeName := utils.SanitizeResourceName(component) + "-" + strconv.FormatInt(time.Now().UnixNano(), 36)[:8]
 
+		// Get label from data
+		label, _ := data["label"].(string)
+		if label == "" {
+			label = component
+		}
+
 		node := &v1alpha1.TinyNode{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      nodeName,
@@ -1365,7 +1388,7 @@ func (a *App) ImportProject(contextName string, namespace string, projectName st
 				Annotations: map[string]string{
 					v1alpha1.ComponentPosXAnnotation: strconv.Itoa(posX),
 					v1alpha1.ComponentPosYAnnotation: strconv.Itoa(posY),
-					v1alpha1.NodeLabelAnnotation:     component,
+					v1alpha1.NodeLabelAnnotation:     label,
 				},
 			},
 			Spec: v1alpha1.TinyNodeSpec{
@@ -1375,13 +1398,66 @@ func (a *App) ImportProject(contextName string, namespace string, projectName st
 			},
 		}
 
-		// Use async CreateNode for batch import - don't wait for sync
-		if err := mgr.CreateNode(a.ctx, node); err != nil {
+		// Use sync CreateNode to ensure node exists before adding edges
+		if err := mgr.CreateNodeSync(a.ctx, node, 30*time.Second); err != nil {
 			a.logger.Error(err, "failed to create node", "component", component)
 			failedNodes = append(failedNodes, component)
 		} else {
 			a.logger.Info("imported node", "component", component, "name", nodeName)
+			nodeIDMap[oldNodeID] = nodeName
 			importedNodes++
+		}
+
+		// Small delay to avoid overwhelming the cluster
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	// Import edges - update source nodes with their edges
+	edgesBySourceNode := make(map[string][]v1alpha1.TinyNodeEdge)
+	for _, elem := range importData.Elements {
+		elemType, _ := elem["type"].(string)
+		if elemType != "edge" && elemType != "tinyEdge" {
+			continue
+		}
+
+		oldSourceID, _ := elem["source"].(string)
+		sourceHandle, _ := elem["sourceHandle"].(string)
+		oldTargetID, _ := elem["target"].(string)
+		targetHandle, _ := elem["targetHandle"].(string)
+		edgeID, _ := elem["id"].(string)
+		flowName, _ := elem["flow"].(string)
+
+		// Translate old IDs to new names
+		newSourceName := nodeIDMap[oldSourceID]
+		newTargetName := nodeIDMap[oldTargetID]
+		newFlowName := flowResourceNameMap[flowName]
+
+		if newSourceName == "" || newTargetName == "" || newFlowName == "" {
+			a.logger.Info("skipping edge - missing node mapping", "source", oldSourceID, "target", oldTargetID)
+			continue
+		}
+
+		edge := v1alpha1.TinyNodeEdge{
+			ID:     edgeID,
+			Port:   sourceHandle,
+			To:     newTargetName + ":" + targetHandle,
+			FlowID: newFlowName,
+		}
+		edgesBySourceNode[newSourceName] = append(edgesBySourceNode[newSourceName], edge)
+	}
+
+	// Update nodes with their edges
+	for nodeName, edges := range edgesBySourceNode {
+		node, err := mgr.GetNode(a.ctx, nodeName, namespace)
+		if err != nil {
+			a.logger.Error(err, "failed to get node for edge update", "node", nodeName)
+			continue
+		}
+		node.Spec.Edges = append(node.Spec.Edges, edges...)
+		if err := mgr.UpdateNode(a.ctx, node); err != nil {
+			a.logger.Error(err, "failed to update node edges", "node", nodeName)
+		} else {
+			a.logger.Info("added edges to node", "node", nodeName, "edgeCount", len(edges))
 		}
 	}
 
