@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, nextTick } from 'vue'
 import { useFlowStore } from '../../stores/flow'
 import {
   Menu,
@@ -614,7 +614,6 @@ const deepCopy = (obj) => JSON.parse(JSON.stringify(obj))
 // Watch selected node for unsaved changes
 watch(selectedNode, (newNode, oldNode) => {
   if (isRestoringSelection.value) {
-    isRestoringSelection.value = false
     return
   }
 
@@ -629,6 +628,11 @@ watch(selectedNode, (newNode, oldNode) => {
     // Restore old selection using flowStore
     flowStore.selectElement(oldId)
 
+    // Clear restoring flag after Vue processes the change
+    nextTick(() => {
+      isRestoringSelection.value = false
+    })
+
     // Set pending action
     pendingSelectionAction.value = () => {
       isRestoringSelection.value = true
@@ -637,6 +641,9 @@ watch(selectedNode, (newNode, oldNode) => {
       } else {
         flowStore.selectElement(null)
       }
+      nextTick(() => {
+        isRestoringSelection.value = false
+      })
     }
     showUnsavedChangesDialog.value = true
   }
@@ -645,7 +652,6 @@ watch(selectedNode, (newNode, oldNode) => {
 // Watch selected edge for unsaved changes
 watch(() => flowStore.selectedEdge, (newEdge, oldEdge) => {
   if (isRestoringSelection.value) {
-    isRestoringSelection.value = false
     return
   }
 
@@ -660,6 +666,11 @@ watch(() => flowStore.selectedEdge, (newEdge, oldEdge) => {
     // Restore old selection using flowStore
     flowStore.selectElement(oldId)
 
+    // Clear restoring flag after Vue processes the change
+    nextTick(() => {
+      isRestoringSelection.value = false
+    })
+
     // Set pending action
     pendingSelectionAction.value = () => {
       isRestoringSelection.value = true
@@ -668,6 +679,9 @@ watch(() => flowStore.selectedEdge, (newEdge, oldEdge) => {
       } else {
         flowStore.selectElement(null)
       }
+      nextTick(() => {
+        isRestoringSelection.value = false
+      })
     }
     showUnsavedChangesDialog.value = true
   }
