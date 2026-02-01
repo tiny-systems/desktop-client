@@ -39,6 +39,7 @@ const edgeConfigDirty = ref(false)
 const showUnsavedChangesDialog = ref(false)
 const pendingSelectionAction = ref(null)
 const isRestoringSelection = ref(false)
+const configurationResetKey = ref(0) // Incremented on discard to force SchemaForm remount
 
 // Helper to decode HTML entities
 const decodeHtmlEntities = (text) => {
@@ -715,6 +716,17 @@ const handleUnsavedCancel = () => {
 }
 
 const handleUnsavedDiscard = () => {
+  // Revert form values to original
+  if (originalNodeConfigValue.value !== null) {
+    formValue.value = deepCopy(originalNodeConfigValue.value)
+    editorValue.value = JSON.stringify(formValue.value, null, 2)
+  }
+  if (originalEdgeConfigValue.value !== null) {
+    edgeFormValue.value = deepCopy(originalEdgeConfigValue.value)
+    edgeEditorValue.value = JSON.stringify(edgeFormValue.value, null, 2)
+  }
+  // Increment reset key to force SchemaForm remount
+  configurationResetKey.value++
   nodeConfigDirty.value = false
   edgeConfigDirty.value = false
   showUnsavedChangesDialog.value = false
@@ -996,7 +1008,7 @@ const saveEdgeConfiguration = async () => {
             <!-- Schema-based form when schema is available -->
             <SchemaForm
               v-if="edgeSchema && (edgeSchema.properties || edgeSchema.type || edgeSchema.$ref)"
-              :key="'edge-form-' + selectedEdge?.id"
+              :key="'edge-form-' + selectedEdge?.id + '-' + configurationResetKey"
               :schema="edgeSchema"
               :model-value="edgeFormValue"
               @update:model-value="updateEdgeFormValue"
@@ -1183,7 +1195,7 @@ const saveEdgeConfiguration = async () => {
           <!-- Schema-based form when both schema and configuration are available -->
           <SchemaForm
             v-if="settingsSchema && (settingsSchema.properties || settingsSchema.type || settingsSchema.$ref) && configurationReady"
-            :key="'node-form-' + selectedNode?.id"
+            :key="'node-form-' + selectedNode?.id + '-' + configurationResetKey"
             :schema="settingsSchema"
             :model-value="formValue"
             @update:model-value="updateFormValue"
