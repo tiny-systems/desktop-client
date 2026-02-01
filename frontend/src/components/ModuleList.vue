@@ -146,11 +146,7 @@ const loadModules = async () => {
   try {
     const fetchedModules = await GoApp.GetModules(props.ctx.name, props.ctx.ns)
     modules.value = fetchedModules || []
-
-    // Auto-expand all modules initially
-    for (const mod of modules.value) {
-      expandedModules[mod.name] = true
-    }
+    // Modules start collapsed by default
   } catch (e) {
     error.value = `Failed to load modules: ${e}`
     console.error('Error loading modules:', e)
