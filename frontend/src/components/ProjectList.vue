@@ -14,17 +14,16 @@
           </svg>
           <span>New Project</span>
         </button>
-        <a
+        <button
           v-if="ctx && activeTab === 'modules'"
-          href="https://tinysystems.io/modules"
-          target="_blank"
+          @click="openModulesDirectory"
           class="flex items-center space-x-2 px-4 py-2 text-sky-600 hover:text-sky-700 dark:text-sky-400 dark:hover:text-sky-300 text-sm font-medium transition-colors"
         >
           <span>Modules Directory</span>
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
           </svg>
-        </a>
+        </button>
       </div>
       <!-- Tabs -->
       <div v-if="ctx" class="px-4 border-t border-gray-100 dark:border-gray-800">
@@ -197,6 +196,7 @@
 </template>
 <script setup>
 import {onMounted, ref, watch, nextTick} from 'vue';
+import {BrowserOpenURL} from '../../wailsjs/runtime/runtime.js';
 import ContextSelector from "./ContextSelector.vue";
 import ModuleList from "./ModuleList.vue";
 
@@ -206,6 +206,10 @@ const props = defineProps({
 
 const activeTab = ref('projects')
 const moduleListRef = ref(null)
+
+const openModulesDirectory = () => {
+  BrowserOpenURL('https://tinysystems.io/modules')
+}
 
 const ctx = ref(props.ctx)
 const hasContexts = ref(false)
