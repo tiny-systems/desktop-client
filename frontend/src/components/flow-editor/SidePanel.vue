@@ -675,23 +675,27 @@ watch(() => flowStore.selectedEdge, (newEdge, oldEdge) => {
 
 // Save original node config when node selection changes
 watch(() => selectedNode.value?.id, (newId, oldId) => {
+  // Skip if we're restoring selection after cancel
+  if (isRestoringSelection.value) {
+    return
+  }
   if (newId && newId !== oldId) {
     // New node selected - save original config
     originalNodeConfigValue.value = deepCopy(settingsConfigObject.value)
     nodeConfigDirty.value = false
-  } else if (!newId && oldId) {
-    // Node deselected - don't reset original value, keep for comparison
   }
 }, { immediate: true })
 
 // Save original edge config when edge selection changes
 watch(() => selectedEdge.value?.id, (newId, oldId) => {
+  // Skip if we're restoring selection after cancel
+  if (isRestoringSelection.value) {
+    return
+  }
   if (newId && newId !== oldId) {
     // New edge selected - save original config
     originalEdgeConfigValue.value = deepCopy(edgeConfigObject.value)
     edgeConfigDirty.value = false
-  } else if (!newId && oldId) {
-    // Edge deselected - don't reset original value, keep for comparison
   }
 }, { immediate: true })
 
