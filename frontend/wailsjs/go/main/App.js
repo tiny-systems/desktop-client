@@ -82,6 +82,10 @@ export function GetKubeContexts() {
   return window['go']['main']['App']['GetKubeContexts']();
 }
 
+export function GetModules(arg1, arg2) {
+  return window['go']['main']['App']['GetModules'](arg1, arg2);
+}
+
 export function GetNamespaces(arg1) {
   return window['go']['main']['App']['GetNamespaces'](arg1);
 }

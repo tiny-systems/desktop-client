@@ -43,6 +43,8 @@ export function GetFlowsWithGraphs(arg1:string,arg2:string,arg3:string):Promise<
 
 export function GetKubeContexts():Promise<Array<main.KubeContext>>;
 
+export function GetModules(arg1:string,arg2:string):Promise<Array<main.Module>>;
+
 export function GetNamespaces(arg1:string):Promise<Array<string>>;
 
 export function GetNodeHandles(arg1:string,arg2:string,arg3:string):Promise<Array<Record<string, any>>>;

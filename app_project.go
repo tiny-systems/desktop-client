@@ -76,6 +76,22 @@ type WidgetPage struct {
   SortIdx      int    `json:"sortIdx"`
 }
 
+// Module - Installed module information
+type Module struct {
+  Name       string            `json:"name"`
+  Version    string            `json:"version"`
+  SDKVersion string            `json:"sdkVersion"`
+  Components []ModuleComponent `json:"components"`
+}
+
+// ModuleComponent - Component within a module
+type ModuleComponent struct {
+  Name        string   `json:"name"`
+  Description string   `json:"description"`
+  Info        string   `json:"info"`
+  Tags        []string `json:"tags"`
+}
+
 // NodeUpdate - Real-time update event
 type NodeUpdate struct {
   EventType string  `json:"eventType"` // "ADDED", "MODIFIED", "DELETED"
@@ -164,6 +180,60 @@ func (a *App) GetProjects(contextName string, namespace string) ([]Project, erro
 
 func (a *App) GetProject(contextName string, namespace string, projectName string) (*Project, error) {
   return &Project{}, nil
+}
+
+// GetModules returns a list of installed modules in the namespace
+func (a *App) GetModules(contextName string, namespace string) ([]Module, error) {
+  defer func() {
+    if r := recover(); r != nil {
+      a.logger.Error(nil, "panic in GetModules",
+        "panic", r,
+        "stacktrace", string(debug.Stack()))
+    }
+  }()
+
+  a.logger.Info("getting modules", "context", contextName, "namespace", namespace)
+
+  mgr, err := a.getManager(contextName, namespace)
+  if err != nil {
+    return nil, err
+  }
+
+  // Use SDK function to get installed modules
+  installedModules, err := mgr.GetInstalledComponents(a.ctx)
+  if err != nil {
+    return nil, fmt.Errorf("failed to get modules: %w", err)
+  }
+
+  a.logger.Info("modules found", "count", len(installedModules))
+
+  var modules []Module
+  for _, mod := range installedModules {
+    // Convert SDK module.ComponentInfo to our ModuleComponent
+    var components []ModuleComponent
+    for _, comp := range mod.Components {
+      components = append(components, ModuleComponent{
+        Name:        comp.Name,
+        Description: comp.Description,
+        Info:        comp.Info,
+        Tags:        comp.Tags,
+      })
+    }
+
+    modules = append(modules, Module{
+      Name:       mod.Name,
+      Version:    mod.Version,
+      SDKVersion: mod.SDKVersion,
+      Components: components,
+    })
+  }
+
+  // Sort modules by name for consistent display
+  sort.Slice(modules, func(i, j int) bool {
+    return modules[i].Name < modules[j].Name
+  })
+
+  return modules, nil
 }
 
 // CreateProject creates a new project in the cluster
