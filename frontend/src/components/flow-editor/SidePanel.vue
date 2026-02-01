@@ -305,16 +305,16 @@ const settingsConfigObject = computed(() => {
   return config
 })
 
-// Watch settings changes for raw editor
+// Watch settings changes for raw editor - only when not dirty
 watch(settingsConfiguration, (val) => {
-  editorValue.value = val
+  if (!nodeConfigDirty.value) {
+    editorValue.value = val
+  }
 }, { immediate: true })
 
-// Watch settings changes for form
-// Only update if the configuration actually changed to avoid disrupting user edits
+// Watch settings changes for form - only when not dirty
 watch(settingsConfigObject, (val, oldVal) => {
-  // Only update if values actually differ
-  if (JSON.stringify(val) !== JSON.stringify(formValue.value)) {
+  if (!nodeConfigDirty.value) {
     formValue.value = { ...val }
   }
   configurationReady.value = true
@@ -588,12 +588,17 @@ watch([edgeEditorValue, edgeSourceData], () => {
   previewTimeout = setTimeout(computeEdgePreview, 300)
 }, { deep: true })
 
+// Watch edge config changes - only when not dirty
 watch(edgeConfiguration, (val) => {
-  edgeEditorValue.value = val
+  if (!edgeConfigDirty.value) {
+    edgeEditorValue.value = val
+  }
 }, { immediate: true })
 
 watch(edgeConfigObject, (val) => {
-  edgeFormValue.value = { ...val }
+  if (!edgeConfigDirty.value) {
+    edgeFormValue.value = { ...val }
+  }
 }, { immediate: true, deep: true })
 
 // Update edge form value handler
