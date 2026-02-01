@@ -5,18 +5,9 @@ import {
   Menu,
   MenuButton,
   MenuItem,
-  MenuItems,
-  Listbox,
-  ListboxButton,
-  ListboxLabel,
-  ListboxOption,
-  ListboxOptions
+  MenuItems
 } from '@headlessui/vue'
-import {
-  EllipsisVerticalIcon,
-  ArrowsUpDownIcon,
-  CheckIcon
-} from '@heroicons/vue/24/solid'
+import { EllipsisVerticalIcon } from '@heroicons/vue/24/solid'
 import {
   PencilIcon,
   TrashIcon,
@@ -31,12 +22,23 @@ import VueJsonPretty from 'vue-json-pretty'
 import 'vue-json-pretty/lib/styles.css'
 import SchemaForm from './SchemaForm.vue'
 import FlowDataLookupModal from './FlowDataLookupModal.vue'
+import PortTabs from './PortTabs.vue'
 import FlowTransferModal from './FlowTransferModal.vue'
 import ConfirmDialog from './ConfirmDialog.vue'
+import UnsavedChangesDialog from './UnsavedChangesDialog.vue'
 
 const emit = defineEmits(['close', 'error', 'rename', 'settings', 'delete'])
 
 const flowStore = useFlowStore()
+
+// Unsaved changes tracking
+const originalNodeConfigValue = ref(null)
+const originalEdgeConfigValue = ref(null)
+const nodeConfigDirty = ref(false)
+const edgeConfigDirty = ref(false)
+const showUnsavedChangesDialog = ref(false)
+const pendingSelectionAction = ref(null)
+const isRestoringSelection = ref(false)
 
 // Helper to decode HTML entities
 const decodeHtmlEntities = (text) => {
@@ -51,7 +53,7 @@ const hasSelection = computed(() => flowStore.selectedNode || flowStore.selected
 const panelWidthClass = computed(() => {
   if (flowStore.selectedNodes.length > 1) return 'w-1/4' // Multi-node selection - smaller panel
   if (flowStore.selectedEdge) return 'w-2/3' // Edge configuration - wider panel
-  if (hasSelection.value) return 'w-1/2'
+  if (hasSelection.value) return 'w-1/3' // Single node selection
   return 'w-1/5 min-w-[300px]'
 })
 
@@ -99,6 +101,11 @@ const onTransferSingleNode = () => {
 }
 
 const clearSelection = () => {
+  if (nodeConfigDirty.value || edgeConfigDirty.value) {
+    pendingSelectionAction.value = () => flowStore.selectElement(null)
+    showUnsavedChangesDialog.value = true
+    return
+  }
   flowStore.selectElement(null)
 }
 
@@ -128,17 +135,23 @@ const copyInspectToClipboard = async () => {
   }
 }
 
-// Get handles for port selector (include _settings, exclude only _control)
+// Get all handles for port tabs
 const selectedNodeHandles = computed(() => {
-  const handles = selectedNode.value?.data?.handles || []
-  return handles.filter(h => h.id !== '_control')
+  return selectedNode.value?.data?.handles || []
 })
 
-// Get selected handle
+// Get visible handles (exclude those starting with underscore)
+const visibleNodeHandles = computed(() => {
+  return selectedNodeHandles.value.filter(h => h.id && !h.id.startsWith('_'))
+})
+
+// Get selected handle (only from visible handles)
 const selectedHandle = computed(() => {
-  if (!selectedNodeHandles.value.length) return null
+  if (!visibleNodeHandles.value.length) return null
   const sel = selectedHandleId.value || selectedNode.value?.data?.trace?.port
-  return selectedNodeHandles.value.find(h => h.id === sel) || selectedNodeHandles.value[0]
+  // Only return handle if it's in visible handles
+  const found = visibleNodeHandles.value.find(h => h.id === sel)
+  return found || visibleNodeHandles.value[0]
 })
 
 // Settings handle
@@ -310,6 +323,8 @@ watch(settingsConfigObject, (val, oldVal) => {
 const updateFormValue = (newValue) => {
   formValue.value = newValue
   editorValue.value = JSON.stringify(newValue, null, 2)
+  // Track dirty state
+  nodeConfigDirty.value = JSON.stringify(newValue) !== JSON.stringify(originalNodeConfigValue.value)
 }
 
 // Watch node and handle for port inspection
@@ -584,6 +599,144 @@ watch(edgeConfigObject, (val) => {
 const updateEdgeFormValue = (newValue) => {
   edgeFormValue.value = newValue
   edgeEditorValue.value = JSON.stringify(newValue, null, 2)
+  // Track dirty state
+  edgeConfigDirty.value = JSON.stringify(newValue) !== JSON.stringify(originalEdgeConfigValue.value)
+}
+
+// ==========================================
+// Unsaved Changes Tracking (platform-style)
+// ==========================================
+
+// Deep copy helper
+const deepCopy = (obj) => JSON.parse(JSON.stringify(obj))
+
+// Watch selected node for unsaved changes
+watch(selectedNode, (newNode, oldNode) => {
+  if (isRestoringSelection.value) {
+    isRestoringSelection.value = false
+    return
+  }
+
+  const newId = newNode?.id || null
+  const oldId = oldNode?.id || null
+
+  // If selection changed and we have unsaved changes
+  if (newId !== oldId && nodeConfigDirty.value && oldId !== null) {
+    const targetId = newId
+    isRestoringSelection.value = true
+
+    // Restore old selection
+    if (oldNode) {
+      oldNode.selected = true
+    }
+    if (newNode) {
+      newNode.selected = false
+    }
+
+    // Set pending action
+    pendingSelectionAction.value = () => {
+      if (targetId) {
+        flowStore.selectElement(targetId)
+      } else {
+        flowStore.selectElement(null)
+      }
+    }
+    showUnsavedChangesDialog.value = true
+    return
+  }
+
+  // Reset dirty state when selection changes cleanly
+  if (newId !== oldId) {
+    nodeConfigDirty.value = false
+    originalNodeConfigValue.value = null
+  }
+})
+
+// Watch selected edge for unsaved changes
+watch(() => flowStore.selectedEdge, (newEdge, oldEdge) => {
+  if (isRestoringSelection.value) {
+    isRestoringSelection.value = false
+    return
+  }
+
+  const newId = newEdge?.id || null
+  const oldId = oldEdge?.id || null
+
+  // If selection changed and we have unsaved changes
+  if (newId !== oldId && edgeConfigDirty.value && oldId !== null) {
+    const targetId = newId
+    isRestoringSelection.value = true
+
+    // Restore old selection
+    if (oldEdge) {
+      oldEdge.selected = true
+    }
+    if (newEdge) {
+      newEdge.selected = false
+    }
+
+    // Set pending action
+    pendingSelectionAction.value = () => {
+      if (targetId) {
+        flowStore.selectElement(targetId)
+      } else {
+        flowStore.selectElement(null)
+      }
+    }
+    showUnsavedChangesDialog.value = true
+    return
+  }
+
+  // Reset dirty state when selection changes cleanly
+  if (newId !== oldId) {
+    edgeConfigDirty.value = false
+    originalEdgeConfigValue.value = null
+  }
+})
+
+// Watch settings config to save original value
+watch(settingsConfigObject, (v) => {
+  if (v === undefined) return
+  originalNodeConfigValue.value = deepCopy(v)
+  nodeConfigDirty.value = false
+}, { immediate: true })
+
+// Watch edge config to save original value
+watch(edgeConfigObject, (v) => {
+  if (v === undefined) return
+  originalEdgeConfigValue.value = deepCopy(v)
+  edgeConfigDirty.value = false
+}, { immediate: true })
+
+// Handle unsaved changes dialog actions
+const handleUnsavedCancel = () => {
+  showUnsavedChangesDialog.value = false
+  pendingSelectionAction.value = null
+}
+
+const handleUnsavedDiscard = () => {
+  nodeConfigDirty.value = false
+  edgeConfigDirty.value = false
+  showUnsavedChangesDialog.value = false
+  if (pendingSelectionAction.value) {
+    pendingSelectionAction.value()
+    pendingSelectionAction.value = null
+  }
+}
+
+const handleUnsavedSave = async () => {
+  // Save based on what's selected
+  if (selectedNode.value && nodeConfigDirty.value) {
+    await saveConfiguration()
+  }
+  if (selectedEdge.value && edgeConfigDirty.value) {
+    await saveEdgeConfiguration()
+  }
+  showUnsavedChangesDialog.value = false
+  if (pendingSelectionAction.value) {
+    pendingSelectionAction.value()
+    pendingSelectionAction.value = null
+  }
 }
 
 // Lookup modal state
@@ -740,6 +893,9 @@ const saveConfiguration = async () => {
       editorValue.value,
       schemaStr
     )
+    // Reset dirty state after save
+    originalNodeConfigValue.value = deepCopy(formValue.value)
+    nodeConfigDirty.value = false
   } catch (err) {
     emit('error', `Failed to save: ${err}`)
   } finally {
@@ -759,6 +915,9 @@ const saveEdgeConfiguration = async () => {
       edgeEditorValue.value,
       selectedEdge.value.data?.flowID || flowStore.flowResourceName
     )
+    // Reset dirty state after save
+    originalEdgeConfigValue.value = deepCopy(edgeFormValue.value)
+    edgeConfigDirty.value = false
   } catch (err) {
     emit('error', `Failed to save: ${err}`)
   } finally {
@@ -1203,81 +1362,42 @@ const saveEdgeConfiguration = async () => {
           </div>
         </div>
 
-        <!-- Port selector -->
-        <Listbox
-          v-if="selectedNodeHandles.length > 0"
-          as="div"
-          :model-value="selectedHandleId"
-          @update:model-value="selectedHandleId = $event"
-          class="px-2"
-        >
-          <div class="mt-1 relative">
-            <ListboxLabel class="block pb-1 pt-1 text-xs font-medium text-gray-900 dark:text-gray-300 text-left">
-              Port data preview
-            </ListboxLabel>
-            <ListboxButton
-              v-if="selectedHandle"
-              class="bg-white dark:bg-gray-900 relative w-full border border-gray-300 dark:border-gray-700 rounded-md shadow-sm pl-3 pr-10 py-2 text-left cursor-default focus:outline-none focus:ring-1 focus:ring-sky-500 focus:border-sky-500 text-sm dark:text-gray-300"
-            >
-              <span class="block truncate text-xs">{{ selectedHandle.label || selectedHandle.id }}</span>
-              <span class="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-                <ArrowsUpDownIcon class="h-4 w-4 text-gray-400" />
-              </span>
-            </ListboxButton>
-            <transition
-              leave-active-class="transition ease-in duration-100"
-              leave-from-class="opacity-100"
-              leave-to-class="opacity-0"
-            >
-              <ListboxOptions class="absolute z-10 mt-1 w-full bg-white dark:bg-gray-800 shadow-lg max-h-60 rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none text-sm">
-                <ListboxOption
-                  v-for="handle in selectedNodeHandles"
-                  :key="handle.id"
-                  :value="handle.id"
-                  v-slot="{ active, selected }"
-                  as="template"
-                >
-                  <li :class="[active ? 'text-white bg-sky-600' : 'text-gray-900 dark:text-gray-300', 'text-xs cursor-default select-none relative py-2 pl-3 pr-9']">
-                    <span :class="[selected ? 'font-semibold' : 'font-normal', 'block truncate']">
-                      {{ handle.label || handle.id }}
-                    </span>
-                    <span v-if="selected" :class="[active ? 'text-white' : 'text-sky-600', 'absolute inset-y-0 right-0 flex items-center pr-4']">
-                      <CheckIcon class="h-4 w-4" />
-                    </span>
-                  </li>
-                </ListboxOption>
-              </ListboxOptions>
-            </transition>
-          </div>
-        </Listbox>
-
-        <!-- Port data display -->
-        <div class="relative bg-white dark:bg-gray-900 dark:text-gray-300 shadow rounded text-xs overflow-y-auto m-1 min-h-48">
-          <!-- Copy button -->
-          <button
-            v-if="inspectReady && inspect?.data !== undefined"
-            @click="copyInspectToClipboard"
-            class="absolute top-2 right-2 z-10 p-1.5 rounded-md transition-colors
-              bg-gray-100 hover:bg-gray-200 text-gray-600
-              dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-400
-              focus:outline-none focus:ring-2 focus:ring-sky-500"
-            :title="inspectCopied ? 'Copied!' : 'Copy to clipboard'"
+        <!-- Port tabs and data display -->
+        <div class="px-2 mt-2 flex-1 flex flex-col min-h-0">
+          <PortTabs
+            :handles="selectedNodeHandles"
+            :selected-handle-id="selectedHandle?.id"
+            @select="selectedHandleId = $event"
+            class="flex-1 min-h-0"
           >
-            <ClipboardDocumentCheckIcon v-if="inspectCopied" class="h-4 w-4 text-green-500" />
-            <ClipboardDocumentIcon v-else class="h-4 w-4" />
-          </button>
-          <div class="p-2">
-            <div v-if="!inspectReady" class="text-center text-gray-400 py-4">Loading...</div>
-            <div v-else-if="inspect?.dataError" class="text-center text-red-400 py-4 text-xs">{{ inspect.dataError }}</div>
-            <VueJsonPretty
-              v-else-if="inspect?.data !== undefined"
-              :data="inspect.data"
-              :deep="3"
-              :show-length="true"
-              class="text-xs"
-            />
-            <div v-else class="text-center text-gray-400 py-4">No data</div>
-          </div>
+            <div class="relative bg-white dark:bg-gray-900 dark:text-gray-300 shadow rounded-none text-xs h-full flex flex-col border border-gray-300 dark:border-gray-600">
+              <!-- Copy button -->
+              <button
+                v-if="inspectReady && inspect?.data !== undefined"
+                @click="copyInspectToClipboard"
+                class="absolute top-2 right-2 z-10 p-1.5 rounded-md transition-colors
+                  bg-gray-100 hover:bg-gray-200 text-gray-600
+                  dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-400
+                  focus:outline-none focus:ring-2 focus:ring-sky-500"
+                :title="inspectCopied ? 'Copied!' : 'Copy to clipboard'"
+              >
+                <ClipboardDocumentCheckIcon v-if="inspectCopied" class="h-4 w-4 text-green-500" />
+                <ClipboardDocumentIcon v-else class="h-4 w-4" />
+              </button>
+              <div class="p-2 flex-1 overflow-y-auto">
+                <div v-if="!inspectReady" class="text-center text-gray-400 py-4">Loading...</div>
+                <div v-else-if="inspect?.dataError" class="text-center text-red-400 py-4 text-xs">{{ inspect.dataError }}</div>
+                <VueJsonPretty
+                  v-else-if="inspect?.data !== undefined"
+                  :data="inspect.data"
+                  :deep="1"
+                  :show-length="true"
+                  class="text-xs"
+                />
+                <div v-else class="text-center text-gray-400 py-4">No data</div>
+              </div>
+            </div>
+          </PortTabs>
         </div>
 
         <!-- Info text -->
@@ -1332,6 +1452,14 @@ const saveEdgeConfiguration = async () => {
     :detail="deleteEdgeDetail"
     @confirm="handleDeleteEdgeConfirm"
     @cancel="handleDeleteEdgeCancel"
+  />
+
+  <!-- Unsaved changes dialog -->
+  <UnsavedChangesDialog
+    :show="showUnsavedChangesDialog"
+    @cancel="handleUnsavedCancel"
+    @discard="handleUnsavedDiscard"
+    @save="handleUnsavedSave"
   />
 
   <!-- Transfer nodes modal (used for both single and multi-node transfer) -->
