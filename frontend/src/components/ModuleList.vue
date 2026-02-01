@@ -20,6 +20,27 @@
 
     <!-- Modules list -->
     <div v-else-if="modules.length > 0" class="space-y-4">
+      <!-- Summary header -->
+      <div class="flex items-center justify-between px-1 pb-2 border-b border-gray-200 dark:border-gray-700">
+        <div class="flex items-center gap-4">
+          <div class="flex items-center gap-2">
+            <span class="text-2xl font-bold text-gray-900 dark:text-white">{{ modules.length }}</span>
+            <span class="text-sm text-gray-500 dark:text-gray-400">module{{ modules.length !== 1 ? 's' : '' }}</span>
+          </div>
+          <div class="h-4 w-px bg-gray-300 dark:bg-gray-600"></div>
+          <div class="flex items-center gap-2">
+            <span class="text-2xl font-bold text-gray-900 dark:text-white">{{ totalComponents }}</span>
+            <span class="text-sm text-gray-500 dark:text-gray-400">component{{ totalComponents !== 1 ? 's' : '' }}</span>
+          </div>
+        </div>
+        <button
+          @click="toggleAll"
+          class="text-xs text-sky-600 dark:text-sky-400 hover:text-sky-700 dark:hover:text-sky-300"
+        >
+          {{ allExpanded ? 'Collapse all' : 'Expand all' }}
+        </button>
+      </div>
+
       <div
         v-for="mod in modules"
         :key="mod.name"
@@ -119,7 +140,7 @@
 </template>
 
 <script setup>
-import { ref, watch, reactive } from 'vue'
+import { ref, watch, reactive, computed } from 'vue'
 
 const props = defineProps({
   ctx: Object
@@ -132,8 +153,28 @@ const isLoading = ref(false)
 const error = ref('')
 const expandedModules = reactive({})
 
+// Calculate total components across all modules
+const totalComponents = computed(() => {
+  return modules.value.reduce((sum, mod) => {
+    return sum + (mod.components?.length || 0)
+  }, 0)
+})
+
+// Check if all modules are expanded
+const allExpanded = computed(() => {
+  if (modules.value.length === 0) return false
+  return modules.value.every(mod => expandedModules[mod.name])
+})
+
 const toggleModule = (moduleName) => {
   expandedModules[moduleName] = !expandedModules[moduleName]
+}
+
+const toggleAll = () => {
+  const shouldExpand = !allExpanded.value
+  for (const mod of modules.value) {
+    expandedModules[mod.name] = shouldExpand
+  }
 }
 
 const loadModules = async () => {
