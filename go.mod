@@ -7,7 +7,7 @@ require (
 	github.com/go-logr/logr v1.4.3
 	github.com/google/uuid v1.6.0
 	github.com/santhosh-tekuri/jsonschema/v5 v5.3.1
-	github.com/tiny-systems/module v0.1.278
+	github.com/tiny-systems/module v0.1.280
 	github.com/wailsapp/wails/v2 v2.11.0
 	gomodules.xyz/jsonpatch/v2 v2.5.0
 	k8s.io/apimachinery v0.34.1
