@@ -50,6 +50,7 @@ const decodeHtmlEntities = (text) => {
 const hasSelection = computed(() => flowStore.selectedNode || flowStore.selectedEdge || flowStore.selectedNodes.length > 0)
 const panelWidthClass = computed(() => {
   if (flowStore.selectedNodes.length > 1) return 'w-1/4' // Multi-node selection - smaller panel
+  if (flowStore.selectedEdge) return 'w-2/3' // Edge configuration - wider panel
   if (hasSelection.value) return 'w-1/2'
   return 'w-1/5 min-w-[300px]'
 })
@@ -491,6 +492,86 @@ const edgeIsValid = computed(() => selectedEdge.value?.data?.valid !== false)
 const edgeEditorValue = ref('{}')
 const edgeFormValue = ref({})
 
+// Edge source data (left column) and preview result (right column)
+const edgeSourceData = ref({})
+const edgeSourceSchema = ref({})
+const edgeSourceLoading = ref(false)
+const edgePreviewResult = ref({})
+const edgePreviewLoading = ref(false)
+const edgePreviewError = ref('')
+
+// Fetch source port data when edge is selected
+watch(() => selectedEdge.value?.id, async (edgeId) => {
+  if (!edgeId || !selectedEdge.value) {
+    edgeSourceData.value = {}
+    edgeSourceSchema.value = {}
+    edgePreviewResult.value = {}
+    return
+  }
+
+  edgeSourceLoading.value = true
+  try {
+    const data = await flowStore.inspectNodePort(selectedEdge.value.source, selectedEdge.value.sourceHandle)
+    edgeSourceData.value = data?.data || {}
+
+    // Get source schema from handle
+    const sourceNode = flowStore.getElement(selectedEdge.value.source)
+    if (sourceNode?.data?.handles) {
+      const sourceHandle = sourceNode.data.handles.find(h => h.id === selectedEdge.value.sourceHandle)
+      if (sourceHandle?.schema) {
+        edgeSourceSchema.value = typeof sourceHandle.schema === 'string'
+          ? JSON.parse(sourceHandle.schema)
+          : sourceHandle.schema
+      }
+    }
+  } catch (e) {
+    console.error('Failed to fetch edge source data:', e)
+    edgeSourceData.value = {}
+  } finally {
+    edgeSourceLoading.value = false
+  }
+}, { immediate: true })
+
+// Compute preview result when source data or configuration changes
+const computeEdgePreview = async () => {
+  if (!selectedEdge.value || !edgeSourceData.value || Object.keys(edgeSourceData.value).length === 0) {
+    edgePreviewResult.value = {}
+    return
+  }
+
+  edgePreviewLoading.value = true
+  edgePreviewError.value = ''
+
+  try {
+    // Use previewEdgeMapping to apply the edge configuration mapping
+    const result = await flowStore.previewEdgeMapping(
+      edgeEditorValue.value,
+      edgeSourceData.value
+    )
+    if (result?.result) {
+      edgePreviewResult.value = JSON.parse(result.result)
+    } else {
+      edgePreviewResult.value = {}
+    }
+    // Show errors if any
+    if (result?.errors && result.errors.length > 0) {
+      edgePreviewError.value = result.errors.join('; ')
+    }
+  } catch (e) {
+    edgePreviewError.value = e.message || 'Preview failed'
+    edgePreviewResult.value = {}
+  } finally {
+    edgePreviewLoading.value = false
+  }
+}
+
+// Debounced preview computation
+let previewTimeout = null
+watch([edgeEditorValue, edgeSourceData], () => {
+  if (previewTimeout) clearTimeout(previewTimeout)
+  previewTimeout = setTimeout(computeEdgePreview, 300)
+}, { deep: true })
+
 watch(edgeConfiguration, (val) => {
   edgeEditorValue.value = val
 }, { immediate: true })
@@ -692,81 +773,135 @@ const saveEdgeConfiguration = async () => {
     v-if="selectedEdge && selectedNodes.length === 0"
     :class="['relative text-sm flex flex-col dark:text-gray-300 flex-shrink-0 bg-gray-50 dark:bg-black border-l-2 border-gray-300 dark:border-gray-600 h-full', panelWidthClass]"
   >
-    <form @submit.prevent="saveEdgeConfiguration" class="bg-white dark:bg-gray-900 shadow rounded-lg text-xs">
-      <!-- Tab header -->
-      <nav class="relative border-b border-gray-200 dark:border-gray-700 flex divide-x divide-gray-200 dark:divide-gray-700">
-        <a
-          href="#"
-          @click.prevent="handleDeselect"
-          class="text-gray-600 dark:text-gray-300 group relative min-w-0 flex-1 overflow-hidden bg-white dark:bg-gray-900 py-2 px-2 text-sm font-medium text-center hover:bg-gray-50 dark:hover:bg-gray-800 focus:z-10 whitespace-nowrap"
-        >
-          <span>{{ edgeSourceLabel }} &rarr; {{ edgeTargetLabel }} {{ selectedEdge.targetHandle?.toUpperCase() }}</span>
-          <span class="bg-sky-500 absolute inset-x-0 bottom-0 h-0.5"></span>
-        </a>
-      </nav>
+    <!-- Header -->
+    <nav class="relative border-b border-gray-200 dark:border-gray-700 flex divide-x divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-900">
+      <a
+        href="#"
+        @click.prevent="handleDeselect"
+        class="text-gray-600 dark:text-gray-300 group relative min-w-0 flex-1 overflow-hidden py-2 px-2 text-sm font-medium text-center hover:bg-gray-50 dark:hover:bg-gray-800 focus:z-10 whitespace-nowrap"
+      >
+        <span>{{ edgeSourceLabel }} &rarr; {{ edgeTargetLabel }} {{ selectedEdge.targetHandle?.toUpperCase() }}</span>
+        <span class="bg-sky-500 absolute inset-x-0 bottom-0 h-0.5"></span>
+      </a>
+    </nav>
 
-      <!-- Edge info -->
-      <div class="bg-white dark:bg-gray-900 shadow rounded-lg text-xs relative px-2 py-2 flex justify-start items-center">
-        <button
-          type="button"
-          @click="handleDeleteEdgeClick"
-          class="text-red-400 border-red-400 border px-3 py-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20"
-        >
-          Delete Edge
-        </button>
-        <div class="px-2">
-          <h3 class="font-semibold dark:text-gray-300 text-gray-600">EdgeID</h3>
-          <p class="font-light dark:text-gray-400 text-gray-500 text-xs truncate max-w-48">{{ selectedEdge.id }}</p>
+    <!-- Edge info bar -->
+    <div class="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 text-xs px-2 py-2 flex justify-start items-center gap-2">
+      <button
+        type="button"
+        @click="handleDeleteEdgeClick"
+        class="text-red-400 border-red-400 border px-3 py-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20"
+      >
+        Delete Edge
+      </button>
+      <div class="px-2">
+        <h3 class="font-semibold dark:text-gray-300 text-gray-600">EdgeID</h3>
+        <p class="font-light dark:text-gray-400 text-gray-500 text-xs">{{ selectedEdge.id }}</p>
+      </div>
+    </div>
+
+    <!-- 3-column layout: Source Node | Edge Configuration | Target Node -->
+    <div class="flex-1 flex overflow-hidden">
+      <!-- Left column: Source data (1/4) -->
+      <div class="w-1/4 flex flex-col border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
+        <div class="px-2 py-1.5 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+          <h3 class="text-xs font-semibold text-gray-600 dark:text-gray-300">{{ edgeSourceLabel }}</h3>
+          <p class="text-xs text-gray-400 dark:text-gray-500 truncate">{{ selectedEdge.sourceHandle }}</p>
+        </div>
+        <div class="flex-1 overflow-y-auto p-2">
+          <div v-if="edgeSourceLoading" class="text-center text-gray-400 py-4 text-xs">Loading...</div>
+          <VueJsonPretty
+            v-else-if="edgeSourceData && Object.keys(edgeSourceData).length > 0"
+            :data="edgeSourceData"
+            :deep="3"
+            :show-length="true"
+            class="text-xs"
+          />
+          <div v-else class="text-center text-gray-400 py-4 text-xs">No data</div>
         </div>
       </div>
 
-      <!-- Configuration form or JSON editor -->
-      <div class="overflow-y-auto">
-        <!-- Schema-based form when schema is available -->
-        <SchemaForm
-          v-if="edgeSchema && (edgeSchema.properties || edgeSchema.type || edgeSchema.$ref)"
-          :key="'edge-form-' + selectedEdge?.id"
-          :schema="edgeSchema"
-          :model-value="edgeFormValue"
-          @update:model-value="updateEdgeFormValue"
-          @lookup="handleEdgeLookup"
-          :readonly="selectedEdge.data?.blocked"
-          :allow-lookup="true"
-          :no-border="false"
-        />
-        <!-- Fallback to raw JSON editor -->
-        <div v-else class="p-2">
-          <textarea
-            v-model="edgeEditorValue"
-            class="w-full h-48 p-2 text-xs font-mono bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded focus:ring-sky-500 focus:border-sky-500 dark:text-gray-300"
-            placeholder="{}"
-          />
+      <!-- Middle column: Configuration form (2/4 = 1/2) -->
+      <div class="w-1/2 flex flex-col bg-white dark:bg-gray-900">
+        <div class="px-2 py-1.5 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+          <h3 class="text-xs font-semibold text-gray-600 dark:text-gray-300 flex items-center gap-1">
+            <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M20 12l-8-8v5H4v6h8v5l8-8z" />
+            </svg>
+            Edge configuration
+          </h3>
+          <p class="text-xs text-gray-400 dark:text-gray-500">Map input data to target port</p>
         </div>
-        <!-- Validation errors -->
-        <div v-if="!edgeIsValid && (edgeValidationError || edgeValidationErrors.length > 0)" class="px-2 pt-2">
-          <div class="text-xs font-medium text-red-500 mb-1">Validation errors:</div>
-          <div v-if="edgeValidationErrors.length > 0" class="space-y-1">
-            <div v-for="err in edgeValidationErrors" :key="err.path" class="text-xs text-red-400">
-              <span class="font-mono">{{ err.path }}</span>&nbsp;&nbsp;{{ err.message }}
+        <form @submit.prevent="saveEdgeConfiguration" class="flex-1 flex flex-col overflow-hidden">
+          <div class="flex-1 overflow-y-auto">
+            <!-- Schema-based form when schema is available -->
+            <SchemaForm
+              v-if="edgeSchema && (edgeSchema.properties || edgeSchema.type || edgeSchema.$ref)"
+              :key="'edge-form-' + selectedEdge?.id"
+              :schema="edgeSchema"
+              :model-value="edgeFormValue"
+              @update:model-value="updateEdgeFormValue"
+              @lookup="handleEdgeLookup"
+              :readonly="selectedEdge.data?.blocked"
+              :allow-lookup="true"
+              :hide-root-lookup="true"
+              :no-border="false"
+            />
+            <!-- Fallback to raw JSON editor -->
+            <div v-else class="p-2">
+              <textarea
+                v-model="edgeEditorValue"
+                class="w-full h-48 p-2 text-xs font-mono bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded focus:ring-sky-500 focus:border-sky-500 dark:text-gray-300"
+                placeholder="{}"
+              />
+            </div>
+            <!-- Validation errors -->
+            <div v-if="!edgeIsValid && (edgeValidationError || edgeValidationErrors.length > 0)" class="px-2 pt-2">
+              <div class="text-xs font-medium text-red-500 mb-1">Validation errors:</div>
+              <div v-if="edgeValidationErrors.length > 0" class="space-y-1">
+                <div v-for="err in edgeValidationErrors" :key="err.path" class="text-xs text-red-400">
+                  <span class="font-mono">{{ err.path }}</span>&nbsp;&nbsp;{{ err.message }}
+                </div>
+              </div>
+              <div v-else-if="edgeValidationError" class="text-xs text-red-400">
+                {{ edgeValidationError }}
+              </div>
             </div>
           </div>
-          <div v-else-if="edgeValidationError" class="text-xs text-red-400">
-            {{ edgeValidationError }}
+          <!-- Warning message and Save button -->
+          <div class="text-right px-2 pt-2 pb-3 border-t border-gray-200 dark:border-gray-700">
+            <p class="text-xs text-orange-600 pb-2 text-left">Do not store sensitive information if you plan sharing your project as a solution.</p>
+            <button
+              type="submit"
+              :disabled="saving || selectedEdge.data?.blocked"
+              class="px-4 py-2 text-xs font-medium rounded-md text-sky-700 bg-sky-100 hover:bg-sky-200 focus:outline-none focus:ring-2 focus:ring-sky-500 dark:bg-gray-900 dark:hover:bg-gray-800 dark:text-sky-500 disabled:opacity-50"
+            >
+              {{ saving ? 'Saving...' : 'Save' }}
+            </button>
           </div>
+        </form>
+      </div>
+
+      <!-- Right column: Preview result (1/4) -->
+      <div class="w-1/4 flex flex-col border-l border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
+        <div class="px-2 py-1.5 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+          <h3 class="text-xs font-semibold text-gray-600 dark:text-gray-300">{{ edgeTargetLabel }}</h3>
+          <p class="text-xs text-gray-400 dark:text-gray-500 truncate">{{ selectedEdge.targetHandle }}</p>
+        </div>
+        <div class="flex-1 overflow-y-auto p-2">
+          <div v-if="edgePreviewLoading" class="text-center text-gray-400 py-4 text-xs">Computing...</div>
+          <div v-else-if="edgePreviewError" class="text-center text-red-400 py-4 text-xs">{{ edgePreviewError }}</div>
+          <VueJsonPretty
+            v-else-if="edgePreviewResult && Object.keys(edgePreviewResult).length > 0"
+            :data="edgePreviewResult"
+            :deep="3"
+            :show-length="true"
+            class="text-xs"
+          />
+          <div v-else class="text-center text-gray-400 py-4 text-xs">No preview</div>
         </div>
       </div>
-      <!-- Warning message and Save button -->
-      <div class="text-right px-2 pt-2 pb-4">
-        <p class="text-xs text-orange-600 pb-2 text-left">Do not store sensitive information if you plan sharing your project as a solution.</p>
-        <button
-          type="submit"
-          :disabled="saving || selectedEdge.data?.blocked"
-          class="px-4 py-2 text-xs font-medium rounded-md text-sky-700 bg-sky-100 hover:bg-sky-200 focus:outline-none focus:ring-2 focus:ring-sky-500 dark:bg-gray-900 dark:hover:bg-gray-800 dark:text-sky-500 disabled:opacity-50"
-        >
-          {{ saving ? 'Saving...' : 'Save' }}
-        </button>
-      </div>
-    </form>
+    </div>
   </aside>
 
   <!-- Multiple nodes selected -->

@@ -35,6 +35,10 @@ const props = defineProps({
   disableCollapse: {
     type: Boolean,
     default: false
+  },
+  hideRootLookup: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -78,6 +82,7 @@ const handleLookup = (...args) => {
       :no-border="noBorder"
       :plain-struct="plainStruct"
       :disable-collapse="disableCollapse"
+      :hide-root-lookup="hideRootLookup"
       @update-value="handleUpdateValue"
       @lookup="handleLookup"
     />

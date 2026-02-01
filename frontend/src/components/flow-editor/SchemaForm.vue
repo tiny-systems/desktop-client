@@ -31,6 +31,10 @@ const props = defineProps({
   allowEditSchema: {
     type: Boolean,
     default: false
+  },
+  hideRootLookup: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -79,6 +83,7 @@ const handleUpdateValue = (event) => {
       :no-border="noBorder"
       :plain-struct="true"
       :allow-lookup="allowLookup"
+      :hide-root-lookup="hideRootLookup"
       :allow-edit-schema="allowEditSchema"
       @update-value="handleUpdateValue"
       @lookup="handleLookup"

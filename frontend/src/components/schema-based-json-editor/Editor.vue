@@ -23,6 +23,7 @@
      :key="property"
      :title="title"
      :allow-lookup="allowLookup"
+     :hide-root-lookup="hideRootLookup"
      :plain-struct="plainStruct"
      :allow-edit-schema="allowEditSchema"
      :getReference="getReference"
@@ -150,6 +151,7 @@ export default {
       required: true,
     },
     allowLookup: Boolean,
+    hideRootLookup: Boolean,
     plainStruct: Boolean,
     noBorder: Boolean,
     initialValue: null,
