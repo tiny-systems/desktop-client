@@ -626,16 +626,12 @@ watch(selectedNode, (newNode, oldNode) => {
     const targetId = newId
     isRestoringSelection.value = true
 
-    // Restore old selection
-    if (oldNode) {
-      oldNode.selected = true
-    }
-    if (newNode) {
-      newNode.selected = false
-    }
+    // Restore old selection using flowStore
+    flowStore.selectElement(oldId)
 
     // Set pending action
     pendingSelectionAction.value = () => {
+      isRestoringSelection.value = true
       if (targetId) {
         flowStore.selectElement(targetId)
       } else {
@@ -643,13 +639,6 @@ watch(selectedNode, (newNode, oldNode) => {
       }
     }
     showUnsavedChangesDialog.value = true
-    return
-  }
-
-  // Reset dirty state when selection changes cleanly
-  if (newId !== oldId) {
-    nodeConfigDirty.value = false
-    originalNodeConfigValue.value = null
   }
 })
 
@@ -668,16 +657,12 @@ watch(() => flowStore.selectedEdge, (newEdge, oldEdge) => {
     const targetId = newId
     isRestoringSelection.value = true
 
-    // Restore old selection
-    if (oldEdge) {
-      oldEdge.selected = true
-    }
-    if (newEdge) {
-      newEdge.selected = false
-    }
+    // Restore old selection using flowStore
+    flowStore.selectElement(oldId)
 
     // Set pending action
     pendingSelectionAction.value = () => {
+      isRestoringSelection.value = true
       if (targetId) {
         flowStore.selectElement(targetId)
       } else {
@@ -685,28 +670,29 @@ watch(() => flowStore.selectedEdge, (newEdge, oldEdge) => {
       }
     }
     showUnsavedChangesDialog.value = true
-    return
-  }
-
-  // Reset dirty state when selection changes cleanly
-  if (newId !== oldId) {
-    edgeConfigDirty.value = false
-    originalEdgeConfigValue.value = null
   }
 })
 
-// Watch settings config to save original value
-watch(settingsConfigObject, (v) => {
-  if (v === undefined) return
-  originalNodeConfigValue.value = deepCopy(v)
-  nodeConfigDirty.value = false
+// Save original node config when node selection changes
+watch(() => selectedNode.value?.id, (newId, oldId) => {
+  if (newId && newId !== oldId) {
+    // New node selected - save original config
+    originalNodeConfigValue.value = deepCopy(settingsConfigObject.value)
+    nodeConfigDirty.value = false
+  } else if (!newId && oldId) {
+    // Node deselected - don't reset original value, keep for comparison
+  }
 }, { immediate: true })
 
-// Watch edge config to save original value
-watch(edgeConfigObject, (v) => {
-  if (v === undefined) return
-  originalEdgeConfigValue.value = deepCopy(v)
-  edgeConfigDirty.value = false
+// Save original edge config when edge selection changes
+watch(() => selectedEdge.value?.id, (newId, oldId) => {
+  if (newId && newId !== oldId) {
+    // New edge selected - save original config
+    originalEdgeConfigValue.value = deepCopy(edgeConfigObject.value)
+    edgeConfigDirty.value = false
+  } else if (!newId && oldId) {
+    // Edge deselected - don't reset original value, keep for comparison
+  }
 }, { immediate: true })
 
 // Handle unsaved changes dialog actions
