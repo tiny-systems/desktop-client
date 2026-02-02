@@ -253,6 +253,7 @@ const buttonText = computed(() => {
                       :data="sourceData"
                       root-path="$"
                       selectable-type="single"
+                      :deep="1"
                     />
                   </div>
                 </div>
@@ -264,6 +265,7 @@ const buttonText = computed(() => {
                     <VueJsonPretty
                       :theme="isDark ? 'dark' : 'light'"
                       :data="cleanedTargetSchema"
+                      :deep="1"
                     />
                   </div>
                 </div>
@@ -276,6 +278,7 @@ const buttonText = computed(() => {
                       v-if="typeof expressionValidationResult === 'object' && expressionValidationResult !== null"
                       :theme="isDark ? 'dark' : 'light'"
                       :data="expressionValidationResult"
+                      :deep="1"
                     />
                     <div v-else class="p-2">{{ expressionValidationResult ?? 'null' }}</div>
                   </div>

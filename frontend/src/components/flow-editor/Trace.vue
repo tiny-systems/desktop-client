@@ -138,7 +138,7 @@ watch(() => props.trace, () => {
         </div>
       </div>
       <div class="p-2" v-if="traceData">
-        <VueJsonPretty :data="formattedTraceData" :deep="2" />
+        <VueJsonPretty :data="formattedTraceData" :deep="1" />
       </div>
       <div v-else-if="error" class="p-3 text-red-500 dark:text-red-400 text-xs">
         {{ error }}

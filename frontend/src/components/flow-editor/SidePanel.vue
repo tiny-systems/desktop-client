@@ -1154,7 +1154,7 @@ const saveEdgeConfiguration = async () => {
           <VueJsonPretty
             v-else-if="edgeSourceData && Object.keys(edgeSourceData).length > 0"
             :data="edgeSourceData"
-            :deep="3"
+            :deep="1"
             :show-length="true"
             class="text-xs"
           />
@@ -1235,7 +1235,7 @@ const saveEdgeConfiguration = async () => {
           <VueJsonPretty
             v-else-if="edgePreviewResult && Object.keys(edgePreviewResult).length > 0"
             :data="edgePreviewResult"
-            :deep="3"
+            :deep="1"
             :show-length="true"
             class="text-xs"
           />

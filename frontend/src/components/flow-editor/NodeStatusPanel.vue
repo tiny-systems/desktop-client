@@ -191,7 +191,7 @@ const rotateNode = async () => {
       <div v-else-if="portData" class="bg-gray-50 dark:bg-gray-800 rounded p-2 overflow-auto max-h-64">
         <VueJsonPretty
           :data="portData"
-          :deep="3"
+          :deep="1"
           :show-length="true"
           :show-line="false"
           class="text-xs"
