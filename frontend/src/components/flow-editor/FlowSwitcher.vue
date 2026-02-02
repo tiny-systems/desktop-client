@@ -31,12 +31,45 @@
               <span>Refresh</span>
             </button>
             <button
-              @click.stop="emit('new-flow')"
+              @click.stop="openNewFlowInput"
               class="flex items-center gap-1 text-xs text-sky-600 hover:text-sky-700 dark:text-sky-400 dark:hover:text-sky-300 transition-colors"
             >
               <PlusIcon class="w-4 h-4" />
               <span>New Flow</span>
             </button>
+          </div>
+
+          <!-- New flow input -->
+          <div v-if="showNewFlowInput" class="mb-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+            <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Flow Name</label>
+            <div class="flex gap-2">
+              <input
+                ref="newFlowInputRef"
+                v-model="newFlowName"
+                @keyup.enter="createNewFlow"
+                @keyup.escape="cancelNewFlow"
+                type="text"
+                placeholder="Enter flow name"
+                class="flex-1 text-sm px-2 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-sky-500"
+                :disabled="creatingFlow"
+              />
+              <button
+                @click.stop="createNewFlow"
+                :disabled="!newFlowName.trim() || creatingFlow"
+                class="p-1 text-green-600 hover:text-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Create"
+              >
+                <CheckIcon class="w-5 h-5" />
+              </button>
+              <button
+                @click.stop="cancelNewFlow"
+                :disabled="creatingFlow"
+                class="p-1 text-gray-400 hover:text-gray-500 disabled:opacity-50"
+                title="Cancel"
+              >
+                <XMarkIcon class="w-5 h-5" />
+              </button>
+            </div>
           </div>
 
           <div v-if="loading" class="text-center py-4 text-sm text-gray-500">
@@ -94,9 +127,9 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/vue'
-import { ChevronDownIcon, PlusIcon } from '@heroicons/vue/24/solid'
+import { ChevronDownIcon, PlusIcon, CheckIcon, XMarkIcon } from '@heroicons/vue/24/solid'
 import { ArrowPathIcon } from '@heroicons/vue/24/outline'
 import FlowPreview from '../flow/FlowPreview.vue'
 
@@ -129,6 +162,10 @@ const emit = defineEmits(['switch', 'new-flow'])
 
 const flows = ref([])
 const loading = ref(false)
+const showNewFlowInput = ref(false)
+const newFlowName = ref('')
+const creatingFlow = ref(false)
+const newFlowInputRef = ref(null)
 
 const isCurrentFlow = (flow) => {
   return flow.resourceName === props.currentFlowResourceName
@@ -157,6 +194,37 @@ const loadFlows = async () => {
 const switchToFlow = (flow) => {
   if (isCurrentFlow(flow)) return
   emit('switch', flow.resourceName)
+}
+
+const openNewFlowInput = async () => {
+  showNewFlowInput.value = true
+  newFlowName.value = ''
+  await nextTick()
+  newFlowInputRef.value?.focus()
+}
+
+const cancelNewFlow = () => {
+  showNewFlowInput.value = false
+  newFlowName.value = ''
+}
+
+const createNewFlow = async () => {
+  if (!newFlowName.value.trim() || !GoApp) return
+
+  creatingFlow.value = true
+  try {
+    const newFlow = await GoApp.CreateFlow(props.contextName, props.namespace, props.projectName, newFlowName.value.trim())
+    showNewFlowInput.value = false
+    newFlowName.value = ''
+    await loadFlows()
+    if (newFlow?.resourceName) {
+      emit('switch', newFlow.resourceName)
+    }
+  } catch (err) {
+    console.error('Failed to create flow:', err)
+  } finally {
+    creatingFlow.value = false
+  }
 }
 
 onMounted(() => {

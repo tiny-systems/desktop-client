@@ -451,7 +451,7 @@ export const useFlowStore = defineStore('flowStore', {
         console.error('Failed to save meta:', e)
       }
     },
-    async addNode(componentName, moduleName, moduleVersion, posX, posY) {
+    async addNode(componentName, componentDescription, moduleName, moduleVersion, posX, posY) {
       if (!GoApp) throw new Error('Wails runtime not available')
 
       this.loadingAlt = true
@@ -462,6 +462,7 @@ export const useFlowStore = defineStore('flowStore', {
           this.projectResourceName,
           this.flowResourceName,
           componentName,
+          componentDescription,
           moduleName,
           moduleVersion,
           posX,
@@ -843,6 +844,14 @@ export const useFlowStore = defineStore('flowStore', {
       const schemaStr = typeof schema === 'string' ? schema : JSON.stringify(schema || {})
 
       return await GoApp.RunExpression(expression, dataStr, schemaStr)
+    },
+    async previewEdgeMapping(configuration, sourceData) {
+      if (!GoApp) throw new Error('Wails runtime not available')
+
+      const configStr = typeof configuration === 'string' ? configuration : JSON.stringify(configuration)
+      const dataStr = typeof sourceData === 'string' ? sourceData : JSON.stringify(sourceData)
+
+      return await GoApp.PreviewEdgeMapping(configStr, dataStr)
     },
     // Get source data for an edge (data from the source node's output port)
     getEdgeSourceData(edge) {

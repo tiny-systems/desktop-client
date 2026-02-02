@@ -40,6 +40,20 @@ const showUnsavedChangesDialog = ref(false)
 const pendingSelectionAction = ref(null)
 const isRestoringSelection = ref(false)
 const configurationResetKey = ref(0) // Incremented on discard to force SchemaForm remount
+// Store the dirty element reference when dialog shows (because selection might not restore properly)
+const pendingDirtyNode = ref(null)
+const pendingDirtyEdge = ref(null)
+// Also store the form values at time of showing dialog (watchers might reset them)
+const pendingNodeFormValue = ref(null)
+const pendingEdgeFormValue = ref(null)
+
+// Safety: ensure isRestoringSelection is cleared when dialog closes
+watch(showUnsavedChangesDialog, (show) => {
+  if (!show) {
+    // Dialog closed - ensure flag is cleared
+    isRestoringSelection.value = false
+  }
+})
 
 // Helper to decode HTML entities
 const decodeHtmlEntities = (text) => {
@@ -363,8 +377,10 @@ watch(() => selectedNode.value?.id, (newId, oldId) => {
   if (newId !== oldId) {
     setCurrentTab('status')
     selectedHandleId.value = null
-    // Update form value from current config and mark as ready
-    formValue.value = { ...settingsConfigObject.value }
+    // Only update form value if not restoring selection AND not dirty (dialog flow preserves form value)
+    if (!isRestoringSelection.value && !nodeConfigDirty.value) {
+      formValue.value = { ...settingsConfigObject.value }
+    }
     configurationReady.value = true
   }
 }, { immediate: true })
@@ -630,15 +646,16 @@ watch(selectedNode, (newNode, oldNode) => {
     const targetId = newId
     isRestoringSelection.value = true
 
+    // Store deep copy of the dirty node AND form value (watchers might clear them)
+    pendingDirtyNode.value = deepCopy(oldNode)
+    pendingNodeFormValue.value = deepCopy(formValue.value)
+    pendingDirtyEdge.value = null
+    pendingEdgeFormValue.value = null
+
     // Restore old selection using flowStore
     flowStore.selectElement(oldId)
 
-    // Clear restoring flag after Vue processes the change
-    nextTick(() => {
-      isRestoringSelection.value = false
-    })
-
-    // Set pending action
+    // Set pending action (isRestoringSelection will be cleared in dialog handlers)
     pendingSelectionAction.value = () => {
       isRestoringSelection.value = true
       if (targetId) {
@@ -646,9 +663,6 @@ watch(selectedNode, (newNode, oldNode) => {
       } else {
         flowStore.selectElement(null)
       }
-      nextTick(() => {
-        isRestoringSelection.value = false
-      })
     }
     showUnsavedChangesDialog.value = true
   }
@@ -668,15 +682,20 @@ watch(() => flowStore.selectedEdge, (newEdge, oldEdge) => {
     const targetId = newId
     isRestoringSelection.value = true
 
+    // Store deep copy of the dirty edge AND form value (watchers might clear them)
+    console.log('Storing dirty edge:', oldEdge)
+    console.log('Storing edge form value:', edgeFormValue.value)
+    pendingDirtyEdge.value = deepCopy(oldEdge)
+    pendingEdgeFormValue.value = deepCopy(edgeFormValue.value)
+    console.log('Stored pendingDirtyEdge:', pendingDirtyEdge.value)
+    console.log('Stored pendingEdgeFormValue:', pendingEdgeFormValue.value)
+    pendingDirtyNode.value = null
+    pendingNodeFormValue.value = null
+
     // Restore old selection using flowStore
     flowStore.selectElement(oldId)
 
-    // Clear restoring flag after Vue processes the change
-    nextTick(() => {
-      isRestoringSelection.value = false
-    })
-
-    // Set pending action
+    // Set pending action (isRestoringSelection will be cleared in dialog handlers)
     pendingSelectionAction.value = () => {
       isRestoringSelection.value = true
       if (targetId) {
@@ -684,9 +703,6 @@ watch(() => flowStore.selectedEdge, (newEdge, oldEdge) => {
       } else {
         flowStore.selectElement(null)
       }
-      nextTick(() => {
-        isRestoringSelection.value = false
-      })
     }
     showUnsavedChangesDialog.value = true
   }
@@ -722,6 +738,14 @@ watch(() => selectedEdge.value?.id, (newId, oldId) => {
 const handleUnsavedCancel = () => {
   showUnsavedChangesDialog.value = false
   pendingSelectionAction.value = null
+  pendingDirtyNode.value = null
+  pendingDirtyEdge.value = null
+  pendingNodeFormValue.value = null
+  pendingEdgeFormValue.value = null
+  // Clear restoring flag since we're staying on current selection
+  nextTick(() => {
+    isRestoringSelection.value = false
+  })
 }
 
 const handleUnsavedDiscard = () => {
@@ -738,26 +762,142 @@ const handleUnsavedDiscard = () => {
   configurationResetKey.value++
   nodeConfigDirty.value = false
   edgeConfigDirty.value = false
+  pendingDirtyNode.value = null
+  pendingDirtyEdge.value = null
+  pendingNodeFormValue.value = null
+  pendingEdgeFormValue.value = null
   showUnsavedChangesDialog.value = false
   if (pendingSelectionAction.value) {
     pendingSelectionAction.value()
     pendingSelectionAction.value = null
   }
+  // Clear restoring flag after pending action completes
+  nextTick(() => {
+    isRestoringSelection.value = false
+  })
 }
 
 const handleUnsavedSave = async () => {
-  // Save based on what's selected
-  if (selectedNode.value && nodeConfigDirty.value) {
-    await saveConfiguration()
+  console.log('handleUnsavedSave called')
+  console.log('pendingDirtyNode:', pendingDirtyNode.value)
+  console.log('pendingNodeFormValue:', pendingNodeFormValue.value)
+  console.log('pendingDirtyEdge:', pendingDirtyEdge.value)
+  console.log('pendingEdgeFormValue:', pendingEdgeFormValue.value)
+
+  // Use stored dirty references AND form values - selection/watchers might have cleared them
+  if (pendingDirtyNode.value && pendingNodeFormValue.value) {
+    console.log('Saving node...')
+    // Save node configuration using the stored reference and form value
+    const node = pendingDirtyNode.value
+    const configToSave = pendingNodeFormValue.value
+    const handles = node?.data?.handles || []
+    const settings = handles.find(h => h.id === '_settings')
+    if (settings) {
+      saving.value = true
+      try {
+        const schemaStr = settingsSchema.value ? JSON.stringify(settingsSchema.value) : ''
+        const configStr = JSON.stringify(configToSave)
+        console.log('Calling updateNodeConfiguration:', { nodeId: node.id, configStr })
+        await flowStore.updateNodeConfiguration(
+          node.id,
+          '_settings',
+          configStr,
+          schemaStr
+        )
+        console.log('Node save completed successfully')
+
+        // Update local node data in store so it reflects the new config
+        const localNode = flowStore.getElement(node.id)
+        if (localNode && localNode.data?.handles) {
+          const settingsIdx = localNode.data.handles.findIndex(h => h.id === '_settings')
+          if (settingsIdx !== -1) {
+            localNode.data.handles[settingsIdx].configuration = configToSave
+            console.log('Updated local node data')
+          }
+        }
+
+        originalNodeConfigValue.value = deepCopy(configToSave)
+        nodeConfigDirty.value = false
+      } catch (err) {
+        console.error('Node save failed:', err)
+        emit('error', `Failed to save: ${err}`)
+      } finally {
+        saving.value = false
+      }
+    } else {
+      console.log('No _settings handle found on node')
+    }
+  } else {
+    console.log('Node save skipped - pendingDirtyNode:', !!pendingDirtyNode.value, 'pendingNodeFormValue:', !!pendingNodeFormValue.value)
   }
-  if (selectedEdge.value && edgeConfigDirty.value) {
-    await saveEdgeConfiguration()
+  if (pendingDirtyEdge.value && pendingEdgeFormValue.value) {
+    console.log('Saving edge...')
+    // Save edge configuration using the stored reference and form value
+    const edge = pendingDirtyEdge.value
+    const configToSave = pendingEdgeFormValue.value
+    // Validate edge has required properties
+    if (!edge.source || !edge.sourceHandle || !edge.target || !edge.targetHandle) {
+      console.log('Edge validation failed:', edge)
+      emit('error', 'Cannot save: edge data is incomplete')
+    } else {
+      saving.value = true
+      try {
+        const targetTo = `${edge.target}:${edge.targetHandle}`
+        const configStr = JSON.stringify(configToSave)
+        console.log('Calling updateEdgeConfiguration:', {
+          source: edge.source,
+          sourceHandle: edge.sourceHandle,
+          targetTo,
+          configStr,
+          flowID: edge.data?.flowID || flowStore.flowResourceName
+        })
+        await flowStore.updateEdgeConfiguration(
+          edge.source,
+          edge.sourceHandle,
+          targetTo,
+          configStr,
+          edge.data?.flowID || flowStore.flowResourceName
+        )
+        console.log('Edge save completed successfully')
+
+        // Update local edge data in store so it reflects the new config
+        const localEdge = flowStore.getElement(edge.id)
+        if (localEdge && localEdge.data) {
+          localEdge.data.configuration = configToSave
+          console.log('Updated local edge data')
+        }
+
+        originalEdgeConfigValue.value = deepCopy(configToSave)
+        edgeConfigDirty.value = false
+      } catch (err) {
+        console.error('Edge save failed:', err, err?.stack)
+        emit('error', `Failed to save edge: ${err?.message || err}`)
+      } finally {
+        saving.value = false
+      }
+    }
+  } else {
+    console.log('Edge save skipped - pendingDirtyEdge:', !!pendingDirtyEdge.value, 'pendingEdgeFormValue:', !!pendingEdgeFormValue.value)
   }
+  // Clear stored references
+  pendingDirtyNode.value = null
+  pendingDirtyEdge.value = null
+  pendingNodeFormValue.value = null
+  pendingEdgeFormValue.value = null
   showUnsavedChangesDialog.value = false
+
+  // Small delay to let backend sync before navigation
+  await new Promise(resolve => setTimeout(resolve, 100))
+
   if (pendingSelectionAction.value) {
+    console.log('Executing pending selection action')
     pendingSelectionAction.value()
     pendingSelectionAction.value = null
   }
+  // Clear restoring flag after pending action completes
+  nextTick(() => {
+    isRestoringSelection.value = false
+  })
 }
 
 // Lookup modal state
@@ -908,12 +1048,24 @@ const saveConfiguration = async () => {
   try {
     // Serialize the modified schema (includes any configurable changes made by the user)
     const schemaStr = settingsSchema.value ? JSON.stringify(settingsSchema.value) : ''
+    // Use formValue directly to ensure we save the current form state
+    const configStr = JSON.stringify(formValue.value)
     await flowStore.updateNodeConfiguration(
       selectedNode.value.id,
       '_settings',
-      editorValue.value,
+      configStr,
       schemaStr
     )
+
+    // Update local node data in store so it reflects the new config
+    const localNode = flowStore.getElement(selectedNode.value.id)
+    if (localNode && localNode.data?.handles) {
+      const settingsIdx = localNode.data.handles.findIndex(h => h.id === '_settings')
+      if (settingsIdx !== -1) {
+        localNode.data.handles[settingsIdx].configuration = formValue.value
+      }
+    }
+
     // Reset dirty state after save
     originalNodeConfigValue.value = deepCopy(formValue.value)
     nodeConfigDirty.value = false
@@ -929,13 +1081,22 @@ const saveEdgeConfiguration = async () => {
   saving.value = true
   try {
     const targetTo = `${selectedEdge.value.target}:${selectedEdge.value.targetHandle}`
+    // Use edgeFormValue directly to ensure we save the current form state
+    const configStr = JSON.stringify(edgeFormValue.value)
     await flowStore.updateEdgeConfiguration(
       selectedEdge.value.source,
       selectedEdge.value.sourceHandle,
       targetTo,
-      edgeEditorValue.value,
+      configStr,
       selectedEdge.value.data?.flowID || flowStore.flowResourceName
     )
+
+    // Update local edge data in store so it reflects the new config
+    const localEdge = flowStore.getElement(selectedEdge.value.id)
+    if (localEdge && localEdge.data) {
+      localEdge.data.configuration = edgeFormValue.value
+    }
+
     // Reset dirty state after save
     originalEdgeConfigValue.value = deepCopy(edgeFormValue.value)
     edgeConfigDirty.value = false
@@ -984,7 +1145,7 @@ const saveEdgeConfiguration = async () => {
     <div class="flex-1 flex overflow-hidden">
       <!-- Left column: Source data (1/4) -->
       <div class="w-1/3 flex-shrink-0 flex flex-col border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
-        <div class="px-2 py-1.5 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+        <div class="px-2 py-1.5 border-b border-gray-200 dark:border-gray-700 ">
           <h3 class="text-xs font-semibold text-gray-600 dark:text-gray-300">{{ edgeSourceLabel }}</h3>
           <p class="text-xs text-gray-400 dark:text-gray-500 truncate">{{ selectedEdge.sourceHandle }}</p>
         </div>
@@ -1064,7 +1225,7 @@ const saveEdgeConfiguration = async () => {
 
       <!-- Right column: Preview result (1/4) -->
       <div class="w-1/3 flex-shrink-0 flex flex-col border-l border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
-        <div class="px-2 py-1.5 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+        <div class="px-2 py-1.5 border-b border-gray-200 dark:border-gray-700 ">
           <h3 class="text-xs font-semibold text-gray-600 dark:text-gray-300">{{ edgeTargetLabel }}</h3>
           <p class="text-xs text-gray-400 dark:text-gray-500 truncate">{{ selectedEdge.targetHandle }}</p>
         </div>
@@ -1389,7 +1550,7 @@ const saveEdgeConfiguration = async () => {
             :handles="selectedNodeHandles"
             :selected-handle-id="selectedHandle?.id"
             @select="selectedHandleId = $event"
-            class="flex-1 min-h-0"
+            class="flex-1 min-h-[250px]"
           >
             <div class="relative bg-white dark:bg-gray-900 dark:text-gray-300 shadow rounded-none text-xs h-full flex flex-col border border-gray-300 dark:border-gray-600">
               <!-- Copy button -->

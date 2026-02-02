@@ -3,7 +3,7 @@
 import {main} from '../models';
 import {kubernetes} from '../models';
 
-export function AddNode(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string,arg6:string,arg7:string,arg8:number,arg9:number):Promise<Record<string, any>>;
+export function AddNode(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string,arg6:string,arg7:string,arg8:string,arg9:number,arg10:number):Promise<Record<string, any>>;
 
 export function ApplyTraceToFlow(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string):Promise<main.ApplyTraceToFlowResponse>;
 
@@ -72,6 +72,8 @@ export function ImportProject(arg1:string,arg2:string,arg3:string,arg4:string):P
 export function InspectNodePort(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string,arg6:string):Promise<Record<string, any>>;
 
 export function OpenFile():Promise<string>;
+
+export function PreviewEdgeMapping(arg1:string,arg2:string):Promise<main.PreviewEdgeMappingResult>;
 
 export function RefreshAuth():Promise<void>;
 

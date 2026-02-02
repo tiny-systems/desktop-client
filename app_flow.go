@@ -570,17 +570,23 @@ func (a *App) GetAvailableComponents(contextName, namespace string) ([]Component
 }
 
 // AddNode adds a new component node to a flow.
-func (a *App) AddNode(contextName, namespace, projectName, flowResourceName, componentName, moduleName, moduleVersion string, posX, posY float64) (map[string]interface{}, error) {
+func (a *App) AddNode(contextName, namespace, projectName, flowResourceName, componentName, componentDescription, moduleName, moduleVersion string, posX, posY float64) (map[string]interface{}, error) {
 	mgr, err := a.getManager(contextName, namespace)
 	if err != nil {
 		return nil, err
 	}
 
-	nodeName := utils.SanitizeResourceName(componentName) + "-" + uuid.New().String()[:8]
+	nodeGenerateName := utils.GetNodeGenerateName(projectName, flowResourceName, moduleName, componentName)
+
+	// Use description for label if available, otherwise use component name
+	nodeLabel := componentDescription
+	if nodeLabel == "" {
+		nodeLabel = componentName
+	}
 
 	node := &v1alpha1.TinyNode{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      nodeName,
+			GenerateName: nodeGenerateName,
 			Namespace: namespace,
 			Labels: map[string]string{
 				v1alpha1.FlowNameLabel:    flowResourceName,
@@ -589,7 +595,7 @@ func (a *App) AddNode(contextName, namespace, projectName, flowResourceName, com
 			Annotations: map[string]string{
 				v1alpha1.ComponentPosXAnnotation: strconv.Itoa(int(posX)),
 				v1alpha1.ComponentPosYAnnotation: strconv.Itoa(int(posY)),
-				v1alpha1.NodeLabelAnnotation:     componentName,
+				v1alpha1.NodeLabelAnnotation:     nodeLabel,
 			},
 		},
 		Spec: v1alpha1.TinyNodeSpec{
@@ -603,7 +609,7 @@ func (a *App) AddNode(contextName, namespace, projectName, flowResourceName, com
 		return nil, fmt.Errorf("create node: %w", err)
 	}
 
-	createdNode, err := mgr.GetNode(a.ctx, nodeName, namespace)
+	createdNode, err := mgr.GetNode(a.ctx, node.Name, namespace)
 	if err != nil {
 		return nil, fmt.Errorf("get created node: %w", err)
 	}
@@ -1174,6 +1180,28 @@ func (a *App) RunExpression(expression, data, schema string) (*RunExpressionResu
 		Result:          resp.Result,
 		ValidSchema:     resp.ValidSchema,
 		ValidationError: resp.ValidationError,
+	}, nil
+}
+
+// PreviewEdgeMappingResult is the response from PreviewEdgeMapping.
+type PreviewEdgeMappingResult struct {
+	Result string   `json:"result"`
+	Errors []string `json:"errors"`
+}
+
+// PreviewEdgeMapping evaluates an edge configuration (with {{expression}} patterns) against source data.
+func (a *App) PreviewEdgeMapping(configuration, sourceData string) (*PreviewEdgeMappingResult, error) {
+	resp, err := utils.PreviewEdgeMapping(&utils.PreviewEdgeMappingRequest{
+		Configuration: configuration,
+		SourceData:    sourceData,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &PreviewEdgeMappingResult{
+		Result: resp.Result,
+		Errors: resp.Errors,
 	}, nil
 }
 

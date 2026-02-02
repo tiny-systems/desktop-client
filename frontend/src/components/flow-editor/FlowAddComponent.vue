@@ -99,6 +99,7 @@ const createInstance = async (component) => {
   try {
     await flowStore.addNode(
       component.name,
+      component.description,
       component.module,
       component.version,
       props.position.x,

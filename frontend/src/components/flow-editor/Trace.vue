@@ -112,9 +112,9 @@ watch(() => props.trace, () => {
 </script>
 
 <template>
-  <div class="absolute z-50 top-2 left-2 text-white text-sm" v-if="props.trace">
+  <div class="absolute z-50 top-2 left-2 text-sm" v-if="props.trace">
     <!-- Collapsed header -->
-    <div class="border border-gray-700 rounded bg-sky-600 p-1 px-2 flex items-center gap-2">
+    <div class="border border-gray-300 dark:border-gray-700 rounded bg-sky-600 p-1 px-2 flex items-center gap-2 text-white">
       <a href="#" @click.prevent="toggleExpand" class="hover:underline font-mono text-xs">
         trace#{{ props.trace.substring(0, 16) }}...
       </a>
@@ -123,14 +123,14 @@ watch(() => props.trace, () => {
     </div>
 
     <!-- Expanded content -->
-    <div v-if="expanded" class="mt-1 bg-gray-900 border border-gray-700 rounded shadow-lg max-w-3xl max-h-[32rem] overflow-auto">
-      <div class="sticky top-0 z-10 bg-gray-800 px-3 py-2 border-b border-gray-700 flex justify-between items-center gap-4">
-        <span class="text-gray-300 font-mono text-xs truncate">{{ traceData?.traceId || props.trace }}</span>
+    <div v-if="expanded" class="mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded shadow-lg max-w-3xl max-h-[32rem] overflow-auto">
+      <div class="sticky top-0 z-10 bg-gray-100 dark:bg-gray-800 px-3 py-2 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center gap-4">
+        <span class="text-gray-700 dark:text-gray-300 font-mono text-xs truncate">{{ traceData?.traceId || props.trace }}</span>
         <div class="flex items-center gap-3 flex-shrink-0">
           <span class="text-gray-500 text-xs whitespace-nowrap">{{ traceData?.spans?.length || 0 }} spans</span>
           <button
             @click="copyTrace"
-            class="text-gray-400 hover:text-gray-200 text-xs px-1.5 py-0.5 rounded border border-gray-600 hover:bg-gray-700 transition-colors"
+            class="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 text-xs px-1.5 py-0.5 rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
             :title="copied ? 'Copied!' : 'Copy trace JSON'"
           >
             {{ copied ? 'Copied!' : 'Copy' }}
@@ -138,9 +138,9 @@ watch(() => props.trace, () => {
         </div>
       </div>
       <div class="p-2" v-if="traceData">
-        <VueJsonPretty :data="formattedTraceData" theme="dark" :deep="2" />
+        <VueJsonPretty :data="formattedTraceData" :deep="2" />
       </div>
-      <div v-else-if="error" class="p-3 text-red-400 text-xs">
+      <div v-else-if="error" class="p-3 text-red-500 dark:text-red-400 text-xs">
         {{ error }}
       </div>
       <div v-else class="p-3 text-gray-500 text-xs">
@@ -154,5 +154,39 @@ watch(() => props.trace, () => {
 :deep(.vjs-tree) {
   font-size: 10px !important;
   line-height: 1.4 !important;
+}
+
+/* Light mode text colors for VueJsonPretty */
+:deep(.vjs-key) {
+  color: #374151;
+}
+:deep(.vjs-value-string) {
+  color: #059669;
+}
+:deep(.vjs-value-number) {
+  color: #2563eb;
+}
+:deep(.vjs-value-boolean) {
+  color: #dc2626;
+}
+:deep(.vjs-value-null) {
+  color: #9ca3af;
+}
+
+/* Dark mode overrides */
+.dark :deep(.vjs-key) {
+  color: #d1d5db;
+}
+.dark :deep(.vjs-value-string) {
+  color: #34d399;
+}
+.dark :deep(.vjs-value-number) {
+  color: #60a5fa;
+}
+.dark :deep(.vjs-value-boolean) {
+  color: #f87171;
+}
+.dark :deep(.vjs-value-null) {
+  color: #6b7280;
 }
 </style>

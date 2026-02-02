@@ -376,12 +376,19 @@ const handleAutoLayout = async () => {
     background-color: #333 !important;
   }
 
+  .vue-flow__minimap rect {
+    fill: #222 !important;
+  }
+
   .vue-flow__minimap-node {
-    fill: #666 !important;
+    fill: #60a5fa !important;
+    stroke: #3b82f6 !important;
+    stroke-width: 1px !important;
   }
 
   .vue-flow__minimap-mask {
     fill: #111 !important;
+    opacity: 0.6 !important;
   }
 
   /* Handle styles */
