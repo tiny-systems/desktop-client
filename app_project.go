@@ -1365,9 +1365,9 @@ func (a *App) ImportProject(contextName string, namespace string, projectName st
 		return fmt.Errorf("unable to get existing nodes: %w", err)
 	}
 
-	existingNodeNames := make(map[string]bool)
+	existingNodesMap := make(map[string]v1alpha1.TinyNode)
 	for _, node := range existingNodes {
-		existingNodeNames[node.Name] = true
+		existingNodesMap[node.Name] = node
 	}
 
 	// Create flows that don't exist
@@ -1404,11 +1404,14 @@ func (a *App) ImportProject(contextName string, namespace string, projectName st
 		}
 
 		oldNodeID, _ := elem["id"].(string)
-		if oldNodeID == "" || existingNodeNames[oldNodeID] {
-			// If node already exists, map it to itself
-			if existingNodeNames[oldNodeID] {
-				nodeIDMap[oldNodeID] = oldNodeID
-			}
+		if oldNodeID == "" {
+			continue
+		}
+
+		// Check if node already exists — update it instead of skipping
+		if existing, exists := existingNodesMap[oldNodeID]; exists {
+			nodeIDMap[oldNodeID] = oldNodeID
+			a.updateExistingNode(ctx, &existing, elem, mgr)
 			continue
 		}
 
@@ -1691,26 +1694,39 @@ func (a *App) ImportProject(contextName string, namespace string, projectName st
 		existingPortsCount := len(node.Spec.Ports)
 		existingEdgesCount := len(node.Spec.Edges)
 
-		// Add edges if this node is a source
+		// Merge edges: replace existing by ID, append new
 		if edges, ok := edgesBySourceNode[nodeName]; ok {
-			node.Spec.Edges = append(node.Spec.Edges, edges...)
-			a.logger.Info("adding edges to node", "node", nodeName, "newEdgeCount", len(edges))
+			existingEdgeMap := make(map[string]int) // edgeID -> index
+			for i, e := range node.Spec.Edges {
+				existingEdgeMap[e.ID] = i
+			}
+			for _, edge := range edges {
+				if idx, exists := existingEdgeMap[edge.ID]; exists {
+					node.Spec.Edges[idx] = edge
+				} else {
+					node.Spec.Edges = append(node.Spec.Edges, edge)
+				}
+			}
+			a.logger.Info("merged edges on node", "node", nodeName, "importedEdgeCount", len(edges))
 		}
 
-		// Add port configs if this node is a target
+		// Merge port configs: replace existing by From+Port key, append new
 		if portConfigs, ok := portConfigsByTargetNode[nodeName]; ok {
-			// Log details of port configs being added
-			for _, pc := range portConfigs {
-				a.logger.Info("adding port config detail",
-					"node", nodeName,
-					"from", pc.From,
-					"port", pc.Port,
-					"configLen", len(pc.Configuration),
-					"schemaLen", len(pc.Schema),
-					"flowID", pc.FlowID)
+			existingPortMap := make(map[string]int) // "from|port" -> index
+			for i, pc := range node.Spec.Ports {
+				if pc.From != "" {
+					existingPortMap[pc.From+"|"+pc.Port] = i
+				}
 			}
-			node.Spec.Ports = append(node.Spec.Ports, portConfigs...)
-			a.logger.Info("adding port configs to node", "node", nodeName, "newPortConfigCount", len(portConfigs))
+			for _, pc := range portConfigs {
+				key := pc.From + "|" + pc.Port
+				if idx, exists := existingPortMap[key]; exists {
+					node.Spec.Ports[idx] = pc
+				} else {
+					node.Spec.Ports = append(node.Spec.Ports, pc)
+				}
+			}
+			a.logger.Info("merged port configs on node", "node", nodeName, "importedPortConfigCount", len(portConfigs))
 		}
 
 		if err := mgr.UpdateNode(ctx, node); err != nil {
@@ -1879,6 +1895,109 @@ func (a *App) ImportProject(contextName string, namespace string, projectName st
 	}
 
 	return nil
+}
+
+// updateExistingNode updates an existing node with imported data (position, label, module version, port configs from handles)
+func (a *App) updateExistingNode(ctx context.Context, node *v1alpha1.TinyNode, elem map[string]interface{}, mgr resource.ManagerInterface) {
+	data, _ := elem["data"].(map[string]interface{})
+	if data == nil {
+		a.logger.Info("import element has no data, skipping update", "node", node.Name)
+		return
+	}
+
+	if node.Annotations == nil {
+		node.Annotations = make(map[string]string)
+	}
+
+	// Update position
+	if position, _ := elem["position"].(map[string]interface{}); position != nil {
+		if x, ok := position["x"].(float64); ok {
+			node.Annotations[v1alpha1.ComponentPosXAnnotation] = strconv.Itoa(int(x))
+		}
+		if y, ok := position["y"].(float64); ok {
+			node.Annotations[v1alpha1.ComponentPosYAnnotation] = strconv.Itoa(int(y))
+		}
+	}
+
+	// Update spin
+	if spinVal, ok := data["spin"].(float64); ok {
+		node.Annotations[v1alpha1.ComponentPosSpinAnnotation] = strconv.Itoa(int(spinVal))
+	}
+
+	// Update label
+	if label, ok := data["label"].(string); ok && label != "" {
+		node.Annotations[v1alpha1.NodeLabelAnnotation] = label
+	}
+
+	// Update module version
+	if version, ok := data["module_version"].(string); ok && version != "" {
+		node.Spec.ModuleVersion = version
+	}
+
+	// Rebuild port configs from handles (same logic as node creation)
+	var handlePorts []v1alpha1.TinyNodePortConfig
+	if handles, ok := data["handles"].([]interface{}); ok {
+		for _, h := range handles {
+			handle, ok := h.(map[string]interface{})
+			if !ok {
+				continue
+			}
+			portID, _ := handle["id"].(string)
+			if portID == "" {
+				continue
+			}
+
+			config := handle["configuration"]
+			schema := handle["schema"]
+
+			var configBytes []byte
+			if config != nil {
+				var err error
+				configBytes, err = json.Marshal(config)
+				if err != nil {
+					a.logger.Error(err, "failed to marshal port config", "port", portID)
+					continue
+				}
+				if string(configBytes) == "{}" || string(configBytes) == "null" {
+					configBytes = nil
+				}
+			}
+
+			var schemaBytes []byte
+			if schema != nil {
+				var err error
+				schemaBytes, err = json.Marshal(schema)
+				if err != nil {
+					a.logger.Error(err, "failed to marshal port schema", "port", portID)
+				}
+			}
+
+			if len(configBytes) == 0 && len(schemaBytes) == 0 {
+				continue
+			}
+
+			handlePorts = append(handlePorts, v1alpha1.TinyNodePortConfig{
+				Port:          portID,
+				Configuration: configBytes,
+				Schema:        schemaBytes,
+			})
+		}
+	}
+
+	// Replace handle-level port configs (From=""), keep edge-level port configs (From!="")
+	var edgePorts []v1alpha1.TinyNodePortConfig
+	for _, pc := range node.Spec.Ports {
+		if pc.From != "" {
+			edgePorts = append(edgePorts, pc)
+		}
+	}
+	node.Spec.Ports = append(handlePorts, edgePorts...)
+
+	if err := mgr.UpdateNode(ctx, node); err != nil {
+		a.logger.Error(err, "failed to update existing node", "node", node.Name)
+	} else {
+		a.logger.Info("updated existing node", "node", node.Name, "handlePorts", len(handlePorts))
+	}
 }
 
 // getMapKeys returns the keys of a map for logging purposes
