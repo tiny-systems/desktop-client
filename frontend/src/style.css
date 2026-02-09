@@ -40,32 +40,38 @@ select {
   }
 }
 
-/* Scrollbar styling */
+/* Scrollbar styling - use raw colors since @apply may not work with pseudo-elements in Tailwind v4 */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  @apply bg-transparent;
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  @apply bg-gray-400 rounded-full;
+  background: #9ca3af;
+  border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  @apply bg-gray-500;
+  background: #6b7280;
 }
 
-/* Dark mode scrollbar - media query based (matches darkMode: 'media' in tailwind config) */
 @media (prefers-color-scheme: dark) {
+  /* Tell the browser to use dark-themed UI controls (scrollbars, etc.) */
+  html {
+    color-scheme: dark;
+  }
+
   ::-webkit-scrollbar-thumb {
-    @apply bg-gray-600;
+    background: #4b5563;
+    border-radius: 9999px;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    @apply bg-gray-500;
+    background: #6b7280;
   }
 }
 
