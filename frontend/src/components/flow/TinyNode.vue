@@ -93,25 +93,26 @@ watch(() => props.data, () => {
 
 function calculateHandlerClass(h: HandleProps, nodeData: NodeData): string {
   if (h.error) {
-    return 'bg-red-300 dark:border-gray-400 dark:bg-red-800'
+    return 'bg-red-300 border-red-400 dark:border-red-700 dark:bg-red-800 text-red-600 dark:text-red-400'
   }
   if (nodeData?.blocked) {
-    return 'bg-gray-100 dark:border-gray-400 dark:bg-gray-600'
+    return 'bg-gray-200 border-gray-300 dark:border-gray-500 dark:bg-gray-600 text-gray-400 dark:text-gray-500'
   }
-  return 'bg-gray-300 dark:border-gray-400 dark:bg-gray-700'
+  return 'bg-gray-200 border-gray-300 dark:border-gray-500 dark:bg-gray-600 text-gray-500 dark:text-gray-400'
 }
 
 function calculateHandlerStyle(h: HandleProps, nodeData: NodeData): CSSProperties {
   const style: CSSProperties = {
     height: '15px',
     width: '15px',
+    textWrap: 'nowrap',
   }
 
   let idx = 0
   let i = 0
   const handles = nodeData?.handles || []
   const sameSideHandles = handles.filter(
-    a => a.rotated_position === h.rotated_position && !a.virtual
+    a => a.rotated_position === h.rotated_position && !a.virtual && !a.id?.startsWith('_')
   )
 
   for (const ha of sameSideHandles) {
@@ -185,7 +186,8 @@ function calculateBoxStyle(data: NodeData): CSSProperties {
   return {
     minWidth: `${(topBottomElementCount || 1) * 30 + 70}px`,
     textAlign: 'center',
-    padding: '14px',
+    padding: '14px 16px',
+    borderRadius: '10px',
     minHeight: `${(leftRightElementCount || 1) * 30 + 50}px`,
   }
 }
@@ -193,27 +195,27 @@ function calculateBoxStyle(data: NodeData): CSSProperties {
 function calcBoxClass(): string {
   if (props.data?.trace?.error) {
     if (props.selected) {
-      return 'bg-red-200 dark:bg-red-950 border border-gray-400'
+      return 'node-box bg-red-50 dark:bg-red-950 border border-red-300 dark:border-red-800 ring-2 ring-red-400 dark:ring-red-700'
     }
-    return 'bg-red-100 dark:bg-red-800 border border-gray-300'
+    return 'node-box bg-red-50 dark:bg-red-900/50 border border-red-200 dark:border-red-800'
   }
   if (props.data?.blocked) {
     if (props.selected) {
-      return 'bg-gray-300 border border-indigo-200 dark:bg-gray-800 blocked'
+      return 'node-box bg-gray-50 border border-gray-200 dark:bg-gray-800 dark:border-gray-600 ring-2 ring-gray-400 dark:ring-gray-500 blocked'
     }
-    return 'bg-gray-100 border border-gray-300 dark:bg-gray-700 blocked'
+    return 'node-box bg-gray-50 border border-gray-200 dark:bg-gray-800 dark:border-gray-700 blocked'
   }
 
   if (props.selected) {
-    return 'bg-sky-500 border border-gray-700 dark:border-gray-600 dark:bg-gray-900 text-white'
+    return 'node-box bg-white dark:bg-gray-900 border border-sky-400 dark:border-sky-600 ring-2 ring-sky-400 dark:ring-sky-600 text-gray-800 dark:text-gray-200'
   }
-  return 'bg-sky-100 border border-solid dark:border-gray-600 dark:bg-gray-800 border-sky-300'
+  return 'node-box bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-sky-300 dark:hover:border-sky-700 transition-colors duration-150'
 }
 </script>
 
 <template>
-  <div :style="calculateBoxStyle(props.data)" :class="['dark:text-gray-300', calcBoxClass()]">
-    {{ props.data?.label || props.id }}
+  <div :style="calculateBoxStyle(props.data)" :class="[calcBoxClass()]">
+    <div class="font-medium">{{ props.data?.label || props.id }}</div>
     <span
       v-if="props.data?.emitter"
       class="dot"
@@ -222,7 +224,7 @@ function calcBoxClass(): string {
     <div v-if="props.data?.stats" />
     <div
       v-if="props.data?.trace && props.data.trace.sequence !== undefined && props.data.trace.sequence >= 0"
-      class="text-xs w-full text-center text-sky-500"
+      class="text-xs w-full text-center text-gray-400 dark:text-gray-500"
       :title="'Span# ' + props.data.trace.sequence"
     >
       {{ props.data.trace.port }}: {{ msToTime(props.data.trace.latency || 0) }}
@@ -259,7 +261,7 @@ function calcBoxClass(): string {
   </template>
   <template v-for="h in props.data?.handles || []" :key="h.id">
     <Handle
-      v-if="h.id !== '_settings' && h.id !== '_control'"
+      v-if="!h.id?.startsWith('_')"
       :id="h.id"
       :type="h.type || 'source'"
       :position="posIntToStr(h.rotated_position)"

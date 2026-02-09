@@ -254,7 +254,7 @@ const handleAutoLayout = async () => {
       @pane-click="handlePaneClick"
       @move-end="handleMoveEnd"
       @dblclick="handlePaneDoubleClick"
-      class="bg-gray-50 dark:bg-gray-950"
+      class="bg-gray-50 dark:bg-black"
     >
       <!-- Custom node types -->
       <template #node-tinyNode="nodeProps">
@@ -318,17 +318,19 @@ const handleAutoLayout = async () => {
 /* Handle styling */
 .vue-flow__handle {
   font-size: small;
-  background-color: #d1d5db !important; /* gray-300 - light gray like website */
-  border-color: #9ca3af !important; /* gray-400 */
 }
 
 /* Node styling */
 .vue-flow__node {
-  color: #555;
+  background: transparent;
+  border: none;
+  border-radius: 10px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06);
 }
 
 .vue-flow__node.selected {
-  background-color: #0284c7;
+  background: transparent;
+  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.15), 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 /* Edge styling - match platform */
@@ -391,24 +393,16 @@ const handleAutoLayout = async () => {
     opacity: 0.6 !important;
   }
 
-  /* Handle styles */
-  .vue-flow__handle {
-    background-color: #4b5563 !important; /* gray-600 */
-    border-color: #6b7280 !important; /* gray-500 */
-  }
-
   /* Node styles */
   .vue-flow__node {
-    background: #222 !important;
-    border-color: #333 !important;
-    border-width: 1px;
-    color: #aaa !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
   }
 
   .vue-flow__node.selected {
-    background-color: #075985 !important;
-    color: #fff !important;
-    border-color: #075985 !important;
+    background: transparent !important;
+    box-shadow: 0 4px 12px rgba(14, 165, 233, 0.2), 0 1px 3px rgba(0, 0, 0, 0.3);
   }
 
   /* Background */
