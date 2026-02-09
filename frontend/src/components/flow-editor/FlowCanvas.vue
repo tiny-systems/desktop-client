@@ -410,10 +410,10 @@ const handleAutoLayout = async () => {
     opacity: 0.3;
   }
 
-  /* Edge styles - match platform dark mode */
+  /* Edge styles - no !important so inline trace/error stroke colors can override */
   .vue-flow__edge-path,
   .vue-flow__edge path {
-    stroke: #555 !important;
+    stroke: #555;
   }
 
   .vue-flow__edge button {
