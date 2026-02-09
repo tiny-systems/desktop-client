@@ -58,13 +58,15 @@ select {
   @apply bg-gray-500;
 }
 
-/* Dark mode scrollbar - class based */
-.dark ::-webkit-scrollbar-thumb {
-  @apply bg-gray-600;
-}
+/* Dark mode scrollbar - media query based (matches darkMode: 'media' in tailwind config) */
+@media (prefers-color-scheme: dark) {
+  ::-webkit-scrollbar-thumb {
+    @apply bg-gray-600;
+  }
 
-.dark ::-webkit-scrollbar-thumb:hover {
-  @apply bg-gray-500;
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-gray-500;
+  }
 }
 
 /* Ensure backdrop-filter works in WebKit */
