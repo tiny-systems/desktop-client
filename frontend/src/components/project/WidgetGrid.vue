@@ -250,6 +250,7 @@ const handleUpdateTitle = (data) => {
 }
 
 .grid-stack-item-content {
+  overflow: hidden;
   border-radius: 8px;
 }
 </style>
