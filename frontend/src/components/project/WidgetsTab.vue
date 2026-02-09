@@ -274,34 +274,6 @@ const handleUpdatePages = ({ widget, pages: newPages }) => {
   }
 }
 
-// Calculate next available grid position for a new widget
-const calculateNextGridPosition = () => {
-  const existingWidgets = widgets.value
-  if (existingWidgets.length === 0) {
-    return { gridX: 0, gridY: 0 }
-  }
-
-  // Find the maximum Y position and widgets at that row
-  let maxY = 0
-  let widgetsAtMaxY = 0
-  for (const w of existingWidgets) {
-    if (w.gridY > maxY) {
-      maxY = w.gridY
-      widgetsAtMaxY = 1
-    } else if (w.gridY === maxY) {
-      widgetsAtMaxY++
-    }
-  }
-
-  // If there's room in the current row (2 widgets per row in 6-col grid with w=3)
-  if (widgetsAtMaxY < 2) {
-    return { gridX: 3, gridY: maxY }
-  }
-
-  // Start a new row
-  return { gridX: 0, gridY: maxY + 4 }
-}
-
 // Handle real-time node updates
 const handleNodeUpdate = (update) => {
   if (!update.widget) return
@@ -335,20 +307,10 @@ const handleNodeUpdate = (update) => {
     }
     // Use splice to ensure Vue detects the change
     widgets.value.splice(idx, 1, updatedWidget)
-  } else {
-    // Add new widget with calculated position and current page assignment
-    const { gridX, gridY } = calculateNextGridPosition()
-    const newWidget = {
-      ...update.widget,
-      gridX,
-      gridY,
-      gridW: update.widget.gridW || 3,
-      gridH: update.widget.gridH || 4,
-      pages: [activePage.value], // Assign to current page
-      _updateTime: Date.now(),
-    }
-    widgets.value.push(newWidget)
   }
+  // Don't add new widgets from watch events — they may belong to other pages.
+  // The loadWidgets() API call returns the correct page-filtered set.
+  // New widgets will appear when the user switches tabs or reloads.
 }
 
 // Watch for page changes
