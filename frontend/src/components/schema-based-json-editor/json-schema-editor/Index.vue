@@ -33,7 +33,7 @@
         </select>
       </div>
       <div class="col-span-3">
-        <input v-model="pickValue.title" :disabled="root" :placeholder="local['title']"
+        <input v-model="pickValue.title" :placeholder="local['title']"
                class="schema-input bg-transparent border border-gray-600 text-gray-300 text-xs rounded focus:ring-sky-500 focus:border-sky-500 block w-full px-2 py-1.5 dark:bg-gray-800 dark:border-gray-600 dark:placeholder-gray-500 dark:text-gray-300 disabled:text-gray-500 disabled:bg-gray-800/50"
                autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"/>
       </div>
