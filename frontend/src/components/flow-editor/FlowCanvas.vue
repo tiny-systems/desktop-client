@@ -314,7 +314,7 @@ const handleAutoLayout = async () => {
       >
         <template #top>
           <ControlButton
-            v-if="flowStore.selectedNode"
+            v-if="flowStore.selectedNode && !flowStore.readOnly"
             title="Rotate node"
             @click="handleRotate"
           >
