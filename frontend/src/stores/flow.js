@@ -44,7 +44,8 @@ export const useFlowStore = defineStore('flowStore', {
       lastUpdate: null,
       animationCheckInterval: null,
       watching: false,
-      trace: null // Selected trace ID for using real runtime data
+      trace: null, // Selected trace ID for using real runtime data
+      readOnly: true
     }
   },
   getters: {
@@ -821,6 +822,16 @@ export const useFlowStore = defineStore('flowStore', {
       }
 
       this.highlightTrace(traceId)
+    },
+    toggleReadOnly() {
+      this.readOnly = !this.readOnly
+      localStorage.setItem('flowEditorReadOnly', JSON.stringify(this.readOnly))
+    },
+    initReadOnly() {
+      const stored = localStorage.getItem('flowEditorReadOnly')
+      if (stored !== null) {
+        this.readOnly = JSON.parse(stored)
+      }
     },
     clearTrace() {
       // Clear trace data from all elements

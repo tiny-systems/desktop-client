@@ -9,11 +9,13 @@ import { useLayout } from '../../composables/useLayout'
 import TinyNode from '../flow/TinyNode.vue'
 import TinyEdge from '../flow/TinyEdge.vue'
 import { PlusIcon, ArrowPathIcon, Squares2X2Icon } from '@heroicons/vue/24/outline'
+import { LockClosedIcon, LockOpenIcon } from '@heroicons/vue/24/solid'
 import { debounce } from 'lodash'
 
 const emit = defineEmits(['error', 'add-node', 'delete-node', 'delete-edge'])
 
 const flowStore = useFlowStore()
+flowStore.initReadOnly()
 const { layout } = useLayout()
 
 const {
@@ -39,6 +41,8 @@ const handleKeyDown = (event) => {
     if (tagName === 'input' || tagName === 'textarea' || target?.isContentEditable) {
       return // Let the input handle the keypress
     }
+
+    if (flowStore.readOnly) return
 
     // Prevent default behavior
     event.preventDefault()
@@ -81,6 +85,7 @@ const defaultEdgeOptions = {
 
 // Handle new connections
 onConnect(async (params) => {
+  if (flowStore.readOnly) return
   try {
     await flowStore.connectNodes(
       params.source,
@@ -95,6 +100,7 @@ onConnect(async (params) => {
 
 // Track node drag for position updates
 onNodeDragStop((event) => {
+  if (flowStore.readOnly) return
   const { node } = event
   if (node) {
     draggedNodes.value.set(node.id, { x: node.position.x, y: node.position.y })
@@ -234,8 +240,25 @@ const handleAutoLayout = async () => {
 
 <template>
   <div class="flow-canvas w-full h-full relative">
+    <!-- Read-only toggle -->
+    <button
+      @click="flowStore.toggleReadOnly()"
+      :title="flowStore.readOnly ? 'Switch to editing mode' : 'Switch to read-only mode'"
+      :class="[
+        flowStore.readOnly
+          ? 'bg-amber-100 text-amber-700 border-amber-300 dark:bg-amber-900/40 dark:text-amber-400 dark:border-amber-700'
+          : 'bg-green-100 text-green-700 border-green-300 dark:bg-green-900/40 dark:text-green-400 dark:border-green-700'
+      ]"
+      class="absolute top-2 right-12 z-10 flex items-center gap-1 px-2.5 py-1 rounded-full border text-[11px] font-semibold"
+    >
+      <LockClosedIcon v-if="flowStore.readOnly" class="w-3.5 h-3.5" />
+      <LockOpenIcon v-else class="w-3.5 h-3.5" />
+      {{ flowStore.readOnly ? 'READ ONLY' : 'EDITING' }}
+    </button>
+
     <!-- Floating Add Component Button -->
     <button
+      v-if="!flowStore.readOnly"
       @click="handleAddClick"
       title="Add component"
       class="absolute top-2 right-2 z-10 w-6 h-6 flex items-center justify-center rounded-full border border-sky-500 text-sky-500 bg-white dark:bg-gray-900 hover:bg-sky-50 dark:hover:bg-sky-900/30 transition-colors"
@@ -250,6 +273,8 @@ const handleAutoLayout = async () => {
       :min-zoom="0.5"
       :max-zoom="1"
       :delete-key-code="null"
+      :nodes-draggable="!flowStore.readOnly"
+      :nodes-connectable="!flowStore.readOnly"
       @edge-click="handleEdgeClick"
       @pane-click="handlePaneClick"
       @move-end="handleMoveEnd"

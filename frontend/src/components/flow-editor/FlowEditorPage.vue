@@ -102,6 +102,7 @@ const submitRename = async () => {
 // Handle delete from SidePanel
 const handleDelete = (node) => {
   if (!node) return
+  if (flowStore.readOnly) return
   deleteNode.value = node
   showDeleteDialog.value = true
 }
@@ -128,6 +129,7 @@ const cancelDelete = () => {
 // Handle delete edge from FlowCanvas (keyboard Delete key)
 const handleDeleteEdge = (edge) => {
   if (!edge) return
+  if (flowStore.readOnly) return
   deleteEdge.value = edge
   showDeleteEdgeDialog.value = true
 }
@@ -154,6 +156,7 @@ const cancelDeleteEdge = () => {
 
 // Handle add node from FlowCanvas (double-click or plus button)
 const handleAddNode = (position) => {
+  if (flowStore.readOnly) return
   newNodePosition.value = position
   showAddComponent.value = true
 }

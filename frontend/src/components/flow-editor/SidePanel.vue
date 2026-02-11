@@ -1131,7 +1131,9 @@ const saveEdgeConfiguration = async () => {
       <button
         type="button"
         @click="handleDeleteEdgeClick"
-        class="text-red-400 border-red-400 border px-3 py-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20"
+        :disabled="flowStore.readOnly"
+        :title="flowStore.readOnly ? 'You are in read only mode' : ''"
+        class="text-red-400 border-red-400 border px-3 py-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-50"
       >
         Delete Edge
       </button>
@@ -1183,7 +1185,7 @@ const saveEdgeConfiguration = async () => {
               :model-value="edgeFormValue"
               @update:model-value="updateEdgeFormValue"
               @lookup="handleEdgeLookup"
-              :readonly="selectedEdge.data?.blocked"
+              :readonly="flowStore.readOnly || selectedEdge.data?.blocked"
               :allow-lookup="true"
               :hide-root-lookup="true"
               :no-border="false"
@@ -1214,7 +1216,7 @@ const saveEdgeConfiguration = async () => {
             <p class="text-xs text-orange-600 pb-2 text-left">Do not store sensitive information if you plan sharing your project as a solution.</p>
             <button
               type="submit"
-              :disabled="saving || selectedEdge.data?.blocked"
+              :disabled="flowStore.readOnly || saving || selectedEdge.data?.blocked"
               class="px-4 py-2 text-xs font-medium rounded-md text-sky-700 bg-sky-100 hover:bg-sky-200 focus:outline-none focus:ring-2 focus:ring-sky-500 dark:bg-gray-900 dark:hover:bg-gray-800 dark:text-sky-500 disabled:opacity-50"
             >
               {{ saving ? 'Saving...' : 'Save' }}
@@ -1257,16 +1259,18 @@ const saveEdgeConfiguration = async () => {
       <button
         @click="onTransferNodes"
         type="button"
-        title="Transfer selected nodes to another flow"
-        class="p-1.5 text-sky-600 dark:text-sky-400 hover:bg-sky-50 dark:hover:bg-sky-900/20 rounded"
+        :disabled="flowStore.readOnly"
+        :title="flowStore.readOnly ? 'You are in read only mode' : 'Transfer selected nodes to another flow'"
+        class="p-1.5 text-sky-600 dark:text-sky-400 hover:bg-sky-50 dark:hover:bg-sky-900/20 rounded disabled:opacity-50"
       >
         <Square3Stack3DIcon class="h-5 w-5" />
       </button>
       <button
         @click="showDeleteMultipleModal = true"
         type="button"
-        title="Delete selected nodes"
-        class="p-1.5 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
+        :disabled="flowStore.readOnly"
+        :title="flowStore.readOnly ? 'You are in read only mode' : 'Delete selected nodes'"
+        class="p-1.5 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded disabled:opacity-50"
       >
         <TrashIcon class="h-5 w-5" />
       </button>
@@ -1369,8 +1373,8 @@ const saveEdgeConfiguration = async () => {
             :schema="settingsSchema"
             :model-value="formValue"
             @update:model-value="updateFormValue"
-            :readonly="selectedNode.data?.blocked"
-            :allow-edit-schema="!selectedNode.data?.blocked"
+            :readonly="flowStore.readOnly || selectedNode.data?.blocked"
+            :allow-edit-schema="!flowStore.readOnly && !selectedNode.data?.blocked"
           />
           <div v-else-if="settingsSchema && (settingsSchema.properties || settingsSchema.type || settingsSchema.$ref)" class="text-center text-gray-400 py-4">
             Loading configuration...
@@ -1390,7 +1394,7 @@ const saveEdgeConfiguration = async () => {
           <p class="text-xs text-orange-600 pb-2 text-left">Do not store sensitive information if you plan sharing your project as a solution.</p>
           <button
             type="submit"
-            :disabled="saving || selectedNode.data?.blocked"
+            :disabled="flowStore.readOnly || saving || selectedNode.data?.blocked"
             class="px-4 py-2 text-xs font-medium rounded-md text-sky-700 bg-sky-100 hover:bg-sky-200 focus:outline-none focus:ring-2 focus:ring-sky-500 dark:bg-gray-900 dark:hover:bg-gray-800 dark:text-sky-500 disabled:opacity-50"
           >
             {{ saving ? 'Saving...' : 'Save' }}
@@ -1483,7 +1487,7 @@ const saveEdgeConfiguration = async () => {
                     <div v-if="selectedNode.data?.blocked" class="px-4 py-2 text-xs text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700">
                       This node is shared from another flow. Edit it in the original flow.
                     </div>
-                    <MenuItem v-slot="{ active }" v-if="!selectedNode.data?.blocked">
+                    <MenuItem v-slot="{ active }" v-if="!selectedNode.data?.blocked && !flowStore.readOnly">
                       <button
                         type="button"
                         @click="onTransferSingleNode"
@@ -1493,7 +1497,7 @@ const saveEdgeConfiguration = async () => {
                         <span>Transfer node</span>
                       </button>
                     </MenuItem>
-                    <MenuItem v-slot="{ active }" v-if="!selectedNode.data?.blocked">
+                    <MenuItem v-slot="{ active }" v-if="!selectedNode.data?.blocked && !flowStore.readOnly">
                       <button
                         type="button"
                         @click="handleRenameNode"
@@ -1503,7 +1507,7 @@ const saveEdgeConfiguration = async () => {
                         <span>Rename</span>
                       </button>
                     </MenuItem>
-                    <MenuItem v-slot="{ active }" v-if="!selectedNode.data?.blocked">
+                    <MenuItem v-slot="{ active }" v-if="!selectedNode.data?.blocked && !flowStore.readOnly">
                       <button
                         type="button"
                         @click="handleNodeSettings"
@@ -1513,7 +1517,7 @@ const saveEdgeConfiguration = async () => {
                         <span>Settings</span>
                       </button>
                     </MenuItem>
-                    <MenuItem v-slot="{ active }" v-if="!selectedNode.data?.blocked">
+                    <MenuItem v-slot="{ active }" v-if="!selectedNode.data?.blocked && !flowStore.readOnly">
                       <button
                         type="button"
                         @click="handleDeleteNode"
