@@ -33,6 +33,22 @@ export namespace main {
 	        this.edges = source["edges"];
 	    }
 	}
+	export class BuildInfo {
+	    buildTime: string;
+	    version: string;
+	    sdkVersion: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new BuildInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.buildTime = source["buildTime"];
+	        this.version = source["version"];
+	        this.sdkVersion = source["sdkVersion"];
+	    }
+	}
 	export class ComponentInfo {
 	    name: string;
 	    module: string;

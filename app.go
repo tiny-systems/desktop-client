@@ -6,11 +6,42 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
+	"runtime/debug"
 	"sync"
 
 	"github.com/go-logr/logr"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
+
+var (
+	BuildTime = "dev"
+	Version   = "unknown"
+)
+
+const sdkModulePath = "github.com/tiny-systems/module"
+
+type BuildInfo struct {
+	BuildTime  string `json:"buildTime"`
+	Version    string `json:"version"`
+	SdkVersion string `json:"sdkVersion"`
+}
+
+func (a *App) GetBuildInfo() BuildInfo {
+	sdkVersion := "unknown"
+	if info, ok := debug.ReadBuildInfo(); ok {
+		for _, dep := range info.Deps {
+			if dep.Path == sdkModulePath {
+				sdkVersion = dep.Version
+				break
+			}
+		}
+	}
+	return BuildInfo{
+		BuildTime:  BuildTime,
+		Version:    Version,
+		SdkVersion: sdkVersion,
+	}
+}
 
 // App struct
 type App struct {

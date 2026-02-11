@@ -33,6 +33,8 @@ export function ExportProject(arg1:string,arg2:string,arg3:string):Promise<strin
 
 export function GetAvailableComponents(arg1:string,arg2:string):Promise<Array<main.ComponentInfo>>;
 
+export function GetBuildInfo():Promise<main.BuildInfo>;
+
 export function GetFlowForEditor(arg1:string,arg2:string,arg3:string,arg4:string):Promise<main.FlowEditorData>;
 
 export function GetFlowGraph(arg1:string,arg2:string,arg3:string,arg4:string):Promise<Record<string, any>>;

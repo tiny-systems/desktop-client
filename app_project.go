@@ -1258,6 +1258,9 @@ func (a *App) ExportProject(contextName string, namespace string, projectName st
 			if node, exists := allNodesMap[nodeID]; exists {
 				m["flow"] = node.Labels[v1alpha1.FlowNameLabel]
 			}
+			// Strip _control port configuration — it contains runtime state
+			// that may include sensitive data (tokens, secrets from user input)
+			stripControlPortConfig(m)
 			elements = append(elements, m)
 		}
 	}
@@ -2015,6 +2018,29 @@ func truncateString(s string, maxLen int) string {
 		return s
 	}
 	return s[:maxLen] + "..."
+}
+
+// stripControlPortConfig removes configuration from _control port handles
+// in a node element map. _control ports reflect runtime state and may contain
+// sensitive data (e.g. tokens, secrets passed through the flow).
+func stripControlPortConfig(nodeMap map[string]interface{}) {
+	data, ok := nodeMap["data"].(map[string]interface{})
+	if !ok {
+		return
+	}
+	handles, ok := data["handles"].([]interface{})
+	if !ok {
+		return
+	}
+	for _, h := range handles {
+		handle, ok := h.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		if handle["id"] == v1alpha1.ControlPort {
+			delete(handle, "configuration")
+		}
+	}
 }
 
 // parseNodeToWidget converts a TinyNode to a Widget

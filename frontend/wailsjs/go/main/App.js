@@ -62,6 +62,10 @@ export function GetAvailableComponents(arg1, arg2) {
   return window['go']['main']['App']['GetAvailableComponents'](arg1, arg2);
 }
 
+export function GetBuildInfo() {
+  return window['go']['main']['App']['GetBuildInfo']();
+}
+
 export function GetFlowForEditor(arg1, arg2, arg3, arg4) {
   return window['go']['main']['App']['GetFlowForEditor'](arg1, arg2, arg3, arg4);
 }
