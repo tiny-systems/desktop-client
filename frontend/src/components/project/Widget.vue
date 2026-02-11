@@ -97,7 +97,7 @@ const handleTitleChange = (event) => {
 
 <template>
   <div class="widget-container h-full flex flex-col bg-white dark:bg-gray-900 overflow-hidden group">
-    <div class="widget-header p-1 flex items-center justify-between">
+    <div class="widget-header flex items-center justify-between">
       <template v-if="editMode">
         <input
           type="text"

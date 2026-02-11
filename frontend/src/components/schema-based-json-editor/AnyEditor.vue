@@ -81,7 +81,8 @@
         <p class="text-xs text-sky-400 pt-5" v-if="dirty">Don't forget to apply your recent changes of schema.</p>
     </div>
     <description v-if="(allowEditSchema && schema.configurable) || schema.type" :theme="theme" :message="schema.description"></description>
-    <code v-if="!schema.configure" class="text-xs p-1 bg-blue-50 dark:bg-blue-500 w-full block">{{value}}</code>
+    <vue-json-pretty v-if="!schema.configure && isObject" :data="value" :deep="2" :show-length="true" class="text-xs p-1 bg-blue-50 dark:bg-gray-800 w-full block overflow-auto max-h-96" />
+    <code v-if="!schema.configure && !isObject" class="text-xs p-1 bg-blue-50 dark:bg-blue-500 w-full block">{{value}}</code>
   </div>
 </template>
 <script lang="ts">
@@ -91,6 +92,8 @@ import * as common from './common'
 import Optional from './Optional.vue'
 import Description from './Description.vue'
 import JsonSchemaEditor from './JsonSchemaEditor.vue'
+import VueJsonPretty from 'vue-json-pretty'
+import 'vue-json-pretty/lib/styles.css'
 import {
   XCircleIcon,
   XMarkIcon,
@@ -160,6 +163,9 @@ export default {
     },
     hasDeleteButtonFunction(): boolean {
       return this.hasDeleteButton && !this.isReadOnly
+    },
+    isObject(): boolean {
+      return this.value !== null && this.value !== undefined && typeof this.value === 'object'
     },
     localChangesStr: {
       get() {
@@ -321,6 +327,7 @@ export default {
     Optional,
     Description,
     JsonSchemaEditor,
+    VueJsonPretty,
   }
 }
 </script>
