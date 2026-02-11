@@ -4,6 +4,7 @@ import ProjectHeader from './ProjectHeader.vue'
 import ProjectStatsBar from './ProjectStatsBar.vue'
 import WidgetsTab from './WidgetsTab.vue'
 import FlowsTab from './FlowsTab.vue'
+import DescriptionTab from './DescriptionTab.vue'
 import FlowEditorPage from '../flow-editor/FlowEditorPage.vue'
 import ProjectExportModal from './ProjectExportModal.vue'
 import ProjectImportModal from './ProjectImportModal.vue'
@@ -187,6 +188,12 @@ onMounted(async () => {
           :project-name="name"
           @error="handleError"
           @open-flow="handleOpenFlow"
+        />
+        <DescriptionTab
+          v-else-if="activeTab === 'description'"
+          :ctx="ctx"
+          :ns="ns"
+          :project-name="name"
         />
       </div>
     </template>

@@ -276,6 +276,7 @@ export namespace main {
 	export class ProjectDetails {
 	    name: string;
 	    title: string;
+	    description: string;
 	    resourceName: string;
 	    clusterName: string;
 	
@@ -287,6 +288,7 @@ export namespace main {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.name = source["name"];
 	        this.title = source["title"];
+	        this.description = source["description"];
 	        this.resourceName = source["resourceName"];
 	        this.clusterName = source["clusterName"];
 	    }

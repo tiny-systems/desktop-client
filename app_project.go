@@ -18,7 +18,6 @@ import (
 	"gomodules.xyz/jsonpatch/v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/util/duration"
 	"k8s.io/apimachinery/pkg/watch"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -33,6 +32,7 @@ type Project struct {
 type ProjectDetails struct {
   Name         string `json:"name"`
   Title        string `json:"title"`
+  Description  string `json:"description"`
   ResourceName string `json:"resourceName"`
   ClusterName  string `json:"clusterName"`
 }
@@ -170,7 +170,7 @@ func (a *App) GetProjects(contextName string, namespace string) ([]Project, erro
     projectsApi = append(projectsApi, Project{
       Name:        project.Name,
       Title:       title,
-      Description: fmt.Sprintf("Created %s ago", duration.ShortHumanDuration(time.Since(project.CreationTimestamp.Time))),
+      Description: project.Spec.Description,
     })
 
   }
@@ -290,6 +290,7 @@ func (a *App) GetProjectDetails(contextName string, namespace string, projectNam
   return &ProjectDetails{
     Name:         project.Annotations[v1alpha1.ProjectNameAnnotation],
     Title:        project.Annotations[v1alpha1.ProjectNameAnnotation],
+    Description:  project.Spec.Description,
     ResourceName: project.Name,
     ClusterName:  contextName,
   }, nil
@@ -844,6 +845,16 @@ func (a *App) RenameProject(contextName string, namespace string, projectName st
   return mgr.RenameProject(a.ctx, projectName, namespace, newName)
 }
 
+// SaveProjectDescription saves a project's description to the CRD
+func (a *App) SaveProjectDescription(contextName string, namespace string, projectName string, description string) error {
+  mgr, err := a.getManager(contextName, namespace)
+  if err != nil {
+    return err
+  }
+
+  return mgr.UpdateProjectDescription(a.ctx, projectName, namespace, description)
+}
+
 // CreateDashboardPage creates a new dashboard page for a project
 func (a *App) CreateDashboardPage(contextName string, namespace string, projectName string, title string) (*WidgetPage, error) {
   if title == "" {
@@ -1311,12 +1322,20 @@ func (a *App) ExportProject(contextName string, namespace string, projectName st
 		})
 	}
 
+	// Get project description from CRD
+	var projectDescription string
+	project, err := mgr.GetProject(a.ctx, projectName, namespace)
+	if err == nil {
+		projectDescription = project.Spec.Description
+	}
+
 	// Build export object
 	export := utils.ProjectExport{
-		Version:   utils.CurrentExportVersion,
-		TinyFlows: exportFlows,
-		Elements:  elements,
-		Pages:     exportPages,
+		Version:     utils.CurrentExportVersion,
+		Description: projectDescription,
+		TinyFlows:   exportFlows,
+		Elements:    elements,
+		Pages:       exportPages,
 	}
 
 	data, err := json.MarshalIndent(export, "", "  ")
@@ -1349,6 +1368,13 @@ func (a *App) ImportProject(contextName string, namespace string, projectName st
 	mgr, err := a.getManager(contextName, namespace)
 	if err != nil {
 		return err
+	}
+
+	// Save project description from import if present
+	if importData.Description != "" {
+		if descErr := mgr.UpdateProjectDescription(ctx, projectName, namespace, importData.Description); descErr != nil {
+			a.logger.Error(descErr, "failed to save project description from import")
+		}
 	}
 
 	// Get existing flows

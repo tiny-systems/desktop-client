@@ -95,6 +95,8 @@ export function SaveFlowMeta(arg1:string,arg2:string,arg3:string,arg4:number,arg
 
 export function SavePreferences(arg1:string,arg2:string):Promise<void>;
 
+export function SaveProjectDescription(arg1:string,arg2:string,arg3:string,arg4:string):Promise<void>;
+
 export function SaveWidgets(arg1:string,arg2:string,arg3:string,arg4:string,arg5:Array<main.Widget>):Promise<void>;
 
 export function SendSignal(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string):Promise<void>;
