@@ -1198,7 +1198,7 @@ func (a *App) CreateContentWidget() (*Widget, error) {
     DefaultSchema: schema,
     Data:          map[string]interface{}{"content": ""},
     GridW:         6,
-    GridH:         6,
+    GridH:         8,
   }, nil
 }
 
