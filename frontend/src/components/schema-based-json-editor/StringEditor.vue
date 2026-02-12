@@ -479,6 +479,7 @@ export default {
         && (this.schema.enum === undefined || this.isReadOnly)
         && !this.useTextArea
         && !this.useCodeEditor
+        && !this.useMarkdownPreview
     },
     useSelect(): boolean {
       return this.value !== undefined && this.schema.enum !== undefined && !this.isReadOnly
