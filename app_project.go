@@ -777,45 +777,6 @@ func (a *App) GetWidgets(contextName string, namespace string, projectName strin
     widgetIndex++
   }
 
-  // Add content widgets from page
-  for _, page := range pages {
-    if page.Name != pageResourceName {
-      continue
-    }
-    for _, w := range page.Spec.Widgets {
-      if w.Port != "" || len(w.Schema) == 0 {
-        continue // Not a content widget
-      }
-
-      var schema map[string]interface{}
-      if len(w.Schema) > 0 {
-        schema = make(map[string]interface{})
-        _ = json.Unmarshal(w.Schema, &schema)
-      }
-
-      var data map[string]interface{}
-      if len(w.Data) > 0 {
-        data = make(map[string]interface{})
-        _ = json.Unmarshal(w.Data, &data)
-      }
-      if data == nil {
-        data = make(map[string]interface{})
-      }
-
-      result = append(result, Widget{
-        ID:            w.Name,
-        Title:         w.Name,
-        DefaultSchema: schema,
-        Data:          data,
-        GridX:         w.GridX,
-        GridY:         w.GridY,
-        GridW:         w.GridW,
-        GridH:         w.GridH,
-        Pages:         []string{pageResourceName},
-      })
-    }
-  }
-
   return result, nil
 }
 
@@ -994,25 +955,6 @@ func (a *App) SaveWidgets(contextName string, namespace string, projectName stri
 
   // Process each widget from the save request
   for _, widget := range widgets {
-    // Content widgets: Port is empty, Schema/Data stored directly on TinyWidget
-    if widget.Port == "" {
-      w := v1alpha1.TinyWidget{
-        Name:  widget.ID,
-        GridX: widget.GridX,
-        GridY: widget.GridY,
-        GridW: widget.GridW,
-        GridH: widget.GridH,
-      }
-      if widget.DefaultSchema != nil {
-        w.Schema, _ = json.Marshal(widget.DefaultSchema)
-      }
-      if widget.Data != nil {
-        w.Data, _ = json.Marshal(widget.Data)
-      }
-      currentPageWidgets = append(currentPageWidgets, w)
-      continue
-    }
-
     portFullName := utils.GetPortFullName(widget.NodeName, widget.Port)
 
     // Determine which pages this widget should be on
@@ -1167,39 +1109,6 @@ func (a *App) SaveWidgets(contextName string, namespace string, projectName stri
   }
 
   return nil
-}
-
-// CreateContentWidget creates a new content widget with default markdown schema
-func (a *App) CreateContentWidget() (*Widget, error) {
-  id := fmt.Sprintf("content-markdown-%x", time.Now().UnixNano())
-
-  schema := map[string]interface{}{
-    "$defs": map[string]interface{}{
-      "Content": map[string]interface{}{
-        "type": "object",
-        "path": "$",
-        "properties": map[string]interface{}{
-          "content": map[string]interface{}{
-            "type":          "string",
-            "title":         "Content",
-            "format":        "code",
-            "language":      "markdown",
-            "propertyOrder": 1,
-          },
-        },
-      },
-    },
-    "$ref": "#/$defs/Content",
-  }
-
-  return &Widget{
-    ID:            id,
-    Title:         id,
-    DefaultSchema: schema,
-    Data:          map[string]interface{}{"content": ""},
-    GridW:         6,
-    GridH:         8,
-  }, nil
 }
 
 // SendSignal sends a signal to a node's control port
@@ -1402,8 +1311,6 @@ func (a *App) ExportProject(contextName string, namespace string, projectName st
 				GridW:       w.GridW,
 				GridH:       w.GridH,
 				SchemaPatch: w.SchemaPatch,
-				Schema:      w.Schema,
-				Data:        w.Data,
 			}
 			widgets = append(widgets, ew)
 		}
@@ -1914,22 +1821,6 @@ func (a *App) ImportProject(contextName string, namespace string, projectName st
 		// Build widgets with translated port references first
 		var widgets []v1alpha1.TinyWidget
 		for _, importWidget := range importPage.Widgets {
-			// Content widgets: Port is empty, Schema/Data present — store directly, no port translation needed
-			if importWidget.Port == "" && len(importWidget.Schema) > 0 {
-				widget := v1alpha1.TinyWidget{
-					Name:   importWidget.Name,
-					Schema: importWidget.Schema,
-					Data:   importWidget.Data,
-					GridX:  importWidget.GridX,
-					GridY:  importWidget.GridY,
-					GridW:  importWidget.GridW,
-					GridH:  importWidget.GridH,
-				}
-				widgets = append(widgets, widget)
-				a.logger.Info("imported content widget", "name", importWidget.Name)
-				continue
-			}
-
 			// Translate port reference: "oldNodeID:portName" -> "newNodeName:portName"
 			portParts := strings.SplitN(importWidget.Port, ":", 2)
 			if len(portParts) != 2 {

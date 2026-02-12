@@ -26,11 +26,7 @@
           @change="onChange($event)" @keyup="onChange($event)" :rows="!!expression ? 3 : 10"
           :disabled="isReadOnly || !!expression" :value="expression || value"
           autocapitalize="off" autocorrect="off" spellcheck="false"></textarea>
-      <div v-if="useMarkdownPreview"
-        class="w-full prose prose-sm dark:prose-invert max-w-none p-3 border border-gray-200 dark:border-gray-700 rounded overflow-y-auto h-full"
-        v-html="renderedMarkdown"
-      ></div>
-      <vue-monaco-editor v-else-if="useCodeEditor"
+      <vue-monaco-editor v-if="useCodeEditor"
         :class="[errorMessage ? theme.errorCodeEditor : theme.codeEditor, !!expression ? theme.expression : '', 'min-h-80']"
         :value="expression || value"
         :language="schema.language"
@@ -173,7 +169,6 @@
 import type { PropType } from 'vue'
 import { defineAsyncComponent } from 'vue'
 import * as common from './common'
-import { marked } from 'marked'
 import {XCircleIcon, ChevronRightIcon, ChevronDownIcon, PencilIcon} from '@heroicons/vue/24/outline'
 import Optional from './Optional.vue'
 import Description from './Description.vue'
@@ -456,18 +451,8 @@ export default {
         && (this.schema.enum === undefined || this.isReadOnly)
         && (this.schema.format === 'textarea')
     },
-    useMarkdownPreview(): boolean | undefined {
-      return this.value !== undefined
-        && this.schema.language === 'markdown'
-        && this.isReadOnly
-        && (this.schema.format === 'code' || this.schema.format === 'json')
-    },
-    renderedMarkdown(): string {
-      return marked(this.value || '') as string
-    },
     useCodeEditor(): boolean | undefined {
       return this.value !== undefined
-        && !this.useMarkdownPreview
         && (this.schema.enum === undefined || this.isReadOnly)
         && (this.schema.format === 'code' || this.schema.format === 'json')
     },
@@ -479,7 +464,6 @@ export default {
         && (this.schema.enum === undefined || this.isReadOnly)
         && !this.useTextArea
         && !this.useCodeEditor
-        && !this.useMarkdownPreview
     },
     useSelect(): boolean {
       return this.value !== undefined && this.schema.enum !== undefined && !this.isReadOnly

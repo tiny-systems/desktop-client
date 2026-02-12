@@ -19,7 +19,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['action', 'layoutChange', 'edit-schema', 'reset-schema', 'update-title', 'update-pages', 'update-content'])
+const emit = defineEmits(['action', 'layoutChange', 'edit-schema', 'reset-schema', 'update-title', 'update-pages'])
 
 let grid = null
 const gridElement = ref(null)
@@ -160,8 +160,7 @@ const addWidget = (widget) => {
         onEditSchema: handleEditSchema,
         onResetSchema: handleResetSchema,
         onUpdateTitle: handleUpdateTitle,
-        onUpdatePages: handleUpdatePages,
-        onUpdateContent: handleUpdateContent
+        onUpdatePages: handleUpdatePages
       })
     }
   })
@@ -203,8 +202,7 @@ const updateWidgetContent = (instance, widget) => {
         onEditSchema: handleEditSchema,
         onResetSchema: handleResetSchema,
         onUpdateTitle: handleUpdateTitle,
-        onUpdatePages: handleUpdatePages,
-        onUpdateContent: handleUpdateContent
+        onUpdatePages: handleUpdatePages
       })
     }
   })
@@ -226,10 +224,6 @@ const handleResetSchema = (widget) => {
 
 const handleUpdatePages = (data) => {
   emit('update-pages', data)
-}
-
-const handleUpdateContent = (data) => {
-  emit('update-content', data)
 }
 
 const handleUpdateTitle = (data) => {

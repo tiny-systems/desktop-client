@@ -25,9 +25,6 @@ const props = defineProps({
 // Local state for page selection dropdown
 const showPagesDropdown = ref(false)
 
-// Is this a content widget (standalone, not bound to a node port)?
-const isContentWidget = computed(() => !!props.widget?.contentType && !props.widget?.port)
-
 // Get the effective schema - use customized schema if available, otherwise defaultSchema
 // Deep clone and mark as raw to prevent Vue reactivity from wrapping it
 const schemaSnapshot = computed(() => {
@@ -46,7 +43,7 @@ const editorKey = computed(() => {
   return props.widget?.id + '-' + (props.widget?._updateTime || 0)
 })
 
-const emit = defineEmits(['action', 'update', 'edit-schema', 'reset-schema', 'update-title', 'update-pages', 'update-content'])
+const emit = defineEmits(['action', 'update', 'edit-schema', 'reset-schema', 'update-title', 'update-pages'])
 
 // Computed: which pages is this widget currently on
 const widgetPages = computed(() => props.widget.pages || [])
@@ -69,15 +66,6 @@ const togglePage = (pageName) => {
 }
 
 const handleUpdateValue = (event) => {
-  // Content widgets emit update-content instead of sending signals
-  if (isContentWidget.value) {
-    emit('update-content', {
-      widgetId: props.widget.id,
-      data: event.value
-    })
-    return
-  }
-
   if (event.isAction) {
     // This is an action button press - send signal
     emit('action', {
@@ -177,7 +165,7 @@ const handleTitleChange = (event) => {
         :key="editorKey"
         :schema="schemaSnapshot"
         :initial-value="widget.data"
-        :readonly="isContentWidget ? !editMode : readonly"
+        :readonly="readonly"
         theme="small"
         no-border
         disable-collapse

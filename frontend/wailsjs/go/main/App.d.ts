@@ -15,8 +15,6 @@ export function ConnectNodes(arg1:string,arg2:string,arg3:string,arg4:string,arg
 
 export function ConnectToCluster(arg1:string):Promise<kubernetes.Clientset>;
 
-export function CreateContentWidget():Promise<main.Widget>;
-
 export function CreateDashboardPage(arg1:string,arg2:string,arg3:string,arg4:string):Promise<main.WidgetPage>;
 
 export function CreateFlow(arg1:string,arg2:string,arg3:string,arg4:string):Promise<main.Flow>;
