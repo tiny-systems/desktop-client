@@ -535,6 +535,47 @@ func (a *App) GetWidgetPages(contextName string, namespace string, projectName s
     return nil, fmt.Errorf("unable to get widget pages: %w", err)
   }
 
+  // Auto-create README page from project description if no README page exists
+  project, projectErr := mgr.GetProject(a.ctx, projectName, namespace)
+  if projectErr == nil && project.Spec.Description != "" {
+    hasReadme := false
+    for _, p := range pages {
+      if p.Annotations[v1alpha1.PageTitleAnnotation] == "README" {
+        hasReadme = true
+        break
+      }
+    }
+    if !hasReadme {
+      if _, err := mgr.CreatePage(a.ctx, "README", projectName, namespace, -1); err != nil {
+        a.logger.Error(err, "failed to auto-create README page")
+      } else {
+        // Re-fetch pages to include the new README page
+        pages, err = mgr.GetProjectPageWidgets(a.ctx, projectName)
+        if err != nil {
+          return nil, fmt.Errorf("unable to get widget pages: %w", err)
+        }
+        // Find the newly created README page and add a markdown content widget
+        for i, p := range pages {
+          if p.Annotations[v1alpha1.PageTitleAnnotation] == "README" {
+            descData, _ := json.Marshal(map[string]string{"content": project.Spec.Description})
+            pages[i].Spec.Widgets = []v1alpha1.TinyWidget{{
+              Name:        "content-readme",
+              ContentType: "markdown",
+              Schema:      []byte(`{"$defs":{"Content":{"type":"object","path":"$","properties":{"content":{"type":"string","title":"Content","format":"code","language":"markdown","propertyOrder":1}}}},"$ref":"#/$defs/Content"}`),
+              Data:        descData,
+              GridW:       12,
+              GridH:       8,
+            }}
+            if err := mgr.UpdatePage(a.ctx, &pages[i]); err != nil {
+              a.logger.Error(err, "failed to save README page content widget")
+            }
+            break
+          }
+        }
+      }
+    }
+  }
+
   var result []WidgetPage
   for _, page := range pages {
     sortIdx, _ := strconv.Atoi(page.Annotations[v1alpha1.PageSortIdxAnnotation])
