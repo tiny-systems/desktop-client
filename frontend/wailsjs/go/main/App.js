@@ -26,6 +26,10 @@ export function ConnectToCluster(arg1) {
   return window['go']['main']['App']['ConnectToCluster'](arg1);
 }
 
+export function CreateContentWidget() {
+  return window['go']['main']['App']['CreateContentWidget']();
+}
+
 export function CreateDashboardPage(arg1, arg2, arg3, arg4) {
   return window['go']['main']['App']['CreateDashboardPage'](arg1, arg2, arg3, arg4);
 }

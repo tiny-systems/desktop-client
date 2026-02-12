@@ -4,7 +4,7 @@ import { EventsOn, EventsOff } from '../../../wailsjs/runtime/runtime'
 import PageTabs from './PageTabs.vue'
 import WidgetGrid from './WidgetGrid.vue'
 import JsonSchemaEditor from '../json-schema-editor'
-import { PencilIcon, CheckIcon, XMarkIcon, ArrowUturnLeftIcon } from '@heroicons/vue/24/outline'
+import { PencilIcon, CheckIcon, XMarkIcon, ArrowUturnLeftIcon, DocumentTextIcon } from '@heroicons/vue/24/outline'
 
 const GoApp = window.go.main.App
 
@@ -274,6 +274,33 @@ const handleUpdatePages = ({ widget, pages: newPages }) => {
   }
 }
 
+// Handle content widget data update - store locally, save on Done
+const handleUpdateContent = ({ widgetId, data }) => {
+  const idx = widgets.value.findIndex(w => w.id === widgetId)
+  if (idx >= 0) {
+    widgets.value[idx] = { ...widgets.value[idx], data }
+  }
+  // Mark as having changes
+  if (!pendingLayoutChanges.value.find(c => c.id === widgetId)) {
+    pendingLayoutChanges.value.push({ id: widgetId })
+  }
+}
+
+// Add a new content widget (markdown)
+const addContentWidget = async () => {
+  if (!GoApp) return
+  try {
+    const widget = await GoApp.CreateContentWidget()
+    if (widget) {
+      widgets.value.push({ ...widget, _updateTime: Date.now() })
+      // Mark as having changes so it gets saved
+      pendingLayoutChanges.value.push({ id: widget.id })
+    }
+  } catch (err) {
+    emit('error', `Failed to create content widget: ${err}`)
+  }
+}
+
 // Handle real-time node updates
 const handleNodeUpdate = (update) => {
   if (!update.widget) return
@@ -372,6 +399,15 @@ defineExpose({ refresh })
       <div class="flex items-center space-x-2 px-4 py-2">
         <button
           v-if="editMode"
+          @click="addContentWidget"
+          class="flex items-center space-x-1 px-3 py-1.5 rounded-lg text-sm transition-colors text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"
+          title="Add text widget"
+        >
+          <DocumentTextIcon class="w-4 h-4" />
+          <span>Add Text</span>
+        </button>
+        <button
+          v-if="editMode"
           @click="resetLayout"
           class="flex items-center space-x-1 px-3 py-1.5 rounded-lg text-sm transition-colors text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"
           title="Discard changes"
@@ -409,6 +445,7 @@ defineExpose({ refresh })
         @reset-schema="handleResetSchema"
         @update-title="handleUpdateTitle"
         @update-pages="handleUpdatePages"
+        @update-content="handleUpdateContent"
       />
     </div>
 
