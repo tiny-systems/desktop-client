@@ -58,7 +58,6 @@ type Widget struct {
   Title         string                 `json:"title"`
   NodeName      string                 `json:"nodeName"`
   Port          string                 `json:"port"`
-  ContentType   string                 `json:"contentType,omitempty"`
   DefaultSchema map[string]interface{} `json:"defaultSchema"`
   Schema        map[string]interface{} `json:"schema,omitempty"`
   Data          map[string]interface{} `json:"data"`
@@ -559,12 +558,11 @@ func (a *App) GetWidgetPages(contextName string, namespace string, projectName s
           if p.Annotations[v1alpha1.PageTitleAnnotation] == "README" {
             descData, _ := json.Marshal(map[string]string{"content": project.Spec.Description})
             pages[i].Spec.Widgets = []v1alpha1.TinyWidget{{
-              Name:        "content-readme",
-              ContentType: "markdown",
-              Schema:      []byte(`{"$defs":{"Content":{"type":"object","path":"$","properties":{"content":{"type":"string","title":"Content","format":"code","language":"markdown","propertyOrder":1}}}},"$ref":"#/$defs/Content"}`),
-              Data:        descData,
-              GridW:       12,
-              GridH:       8,
+              Name:   "content-readme",
+              Schema: []byte(`{"$defs":{"Content":{"type":"object","path":"$","properties":{"content":{"type":"string","title":"Content","format":"code","language":"markdown","propertyOrder":1}}}},"$ref":"#/$defs/Content"}`),
+              Data:   descData,
+              GridW:  12,
+              GridH:  8,
             }}
             if err := mgr.UpdatePage(a.ctx, &pages[i]); err != nil {
               a.logger.Error(err, "failed to save README page content widget")
@@ -825,7 +823,7 @@ func (a *App) GetWidgets(contextName string, namespace string, projectName strin
       continue
     }
     for _, w := range page.Spec.Widgets {
-      if w.Port != "" || w.ContentType == "" {
+      if w.Port != "" || len(w.Schema) == 0 {
         continue // Not a content widget
       }
 
@@ -847,7 +845,6 @@ func (a *App) GetWidgets(contextName string, namespace string, projectName strin
       result = append(result, Widget{
         ID:            w.Name,
         Title:         w.Name,
-        ContentType:   w.ContentType,
         DefaultSchema: schema,
         Data:          data,
         GridX:         w.GridX,
@@ -1037,15 +1034,14 @@ func (a *App) SaveWidgets(contextName string, namespace string, projectName stri
 
   // Process each widget from the save request
   for _, widget := range widgets {
-    // Content widgets: store Schema, Data, ContentType directly on TinyWidget
-    if widget.ContentType != "" {
+    // Content widgets: Port is empty, Schema/Data stored directly on TinyWidget
+    if widget.Port == "" {
       w := v1alpha1.TinyWidget{
-        Name:        widget.ID,
-        ContentType: widget.ContentType,
-        GridX:       widget.GridX,
-        GridY:       widget.GridY,
-        GridW:       widget.GridW,
-        GridH:       widget.GridH,
+        Name:  widget.ID,
+        GridX: widget.GridX,
+        GridY: widget.GridY,
+        GridW: widget.GridW,
+        GridH: widget.GridH,
       }
       if widget.DefaultSchema != nil {
         w.Schema, _ = json.Marshal(widget.DefaultSchema)
@@ -1239,7 +1235,6 @@ func (a *App) CreateContentWidget() (*Widget, error) {
   return &Widget{
     ID:            id,
     Title:         id,
-    ContentType:   "markdown",
     DefaultSchema: schema,
     Data:          map[string]interface{}{"content": ""},
     GridW:         6,
@@ -1447,7 +1442,6 @@ func (a *App) ExportProject(contextName string, namespace string, projectName st
 				GridW:       w.GridW,
 				GridH:       w.GridH,
 				SchemaPatch: w.SchemaPatch,
-				ContentType: w.ContentType,
 				Schema:      w.Schema,
 				Data:        w.Data,
 			}
@@ -1960,20 +1954,19 @@ func (a *App) ImportProject(contextName string, namespace string, projectName st
 		// Build widgets with translated port references first
 		var widgets []v1alpha1.TinyWidget
 		for _, importWidget := range importPage.Widgets {
-			// Content widgets: store directly, no port translation needed
-			if importWidget.ContentType != "" {
+			// Content widgets: Port is empty, Schema/Data present — store directly, no port translation needed
+			if importWidget.Port == "" && len(importWidget.Schema) > 0 {
 				widget := v1alpha1.TinyWidget{
-					Name:        importWidget.Name,
-					ContentType: importWidget.ContentType,
-					Schema:      importWidget.Schema,
-					Data:        importWidget.Data,
-					GridX:       importWidget.GridX,
-					GridY:       importWidget.GridY,
-					GridW:       importWidget.GridW,
-					GridH:       importWidget.GridH,
+					Name:   importWidget.Name,
+					Schema: importWidget.Schema,
+					Data:   importWidget.Data,
+					GridX:  importWidget.GridX,
+					GridY:  importWidget.GridY,
+					GridW:  importWidget.GridW,
+					GridH:  importWidget.GridH,
 				}
 				widgets = append(widgets, widget)
-				a.logger.Info("imported content widget", "name", importWidget.Name, "contentType", importWidget.ContentType)
+				a.logger.Info("imported content widget", "name", importWidget.Name)
 				continue
 			}
 

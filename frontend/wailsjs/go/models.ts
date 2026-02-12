@@ -415,7 +415,6 @@ export namespace main {
 	    title: string;
 	    nodeName: string;
 	    port: string;
-	    contentType?: string;
 	    defaultSchema: Record<string, any>;
 	    schema?: Record<string, any>;
 	    data: Record<string, any>;
@@ -435,7 +434,6 @@ export namespace main {
 	        this.title = source["title"];
 	        this.nodeName = source["nodeName"];
 	        this.port = source["port"];
-	        this.contentType = source["contentType"];
 	        this.defaultSchema = source["defaultSchema"];
 	        this.schema = source["schema"];
 	        this.data = source["data"];
