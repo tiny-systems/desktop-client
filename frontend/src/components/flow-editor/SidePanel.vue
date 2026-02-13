@@ -68,7 +68,7 @@ const hasSelection = computed(() => flowStore.selectedNode || flowStore.selected
 const panelWidthClass = computed(() => {
   if (flowStore.selectedNodes.length > 1) return 'w-1/4' // Multi-node selection - smaller panel
   if (flowStore.selectedEdge) return 'w-2/3' // Edge configuration - wider panel
-  if (hasSelection.value) return 'w-1/3' // Single node selection
+  if (hasSelection.value) return 'w-1/2' // Single node selection
   return 'w-1/5 min-w-[300px]'
 })
 
@@ -1156,7 +1156,7 @@ const saveEdgeConfiguration = async () => {
           <VueJsonPretty
             v-else-if="edgeSourceData && Object.keys(edgeSourceData).length > 0"
             :data="edgeSourceData"
-            :deep="1"
+            :deep="2"
             :show-length="true"
             class="text-xs"
           />
@@ -1237,7 +1237,7 @@ const saveEdgeConfiguration = async () => {
           <VueJsonPretty
             v-else-if="edgePreviewResult && Object.keys(edgePreviewResult).length > 0"
             :data="edgePreviewResult"
-            :deep="1"
+            :deep="2"
             :show-length="true"
             class="text-xs"
           />
@@ -1469,7 +1469,7 @@ const saveEdgeConfiguration = async () => {
             </div>
 
             <!-- Actions menu -->
-            <Menu as="div" class="ml-3 relative inline-block text-left">
+            <Menu v-if="!flowStore.readOnly" as="div" class="ml-3 relative inline-block text-left">
               <MenuButton class="-my-2 p-2 rounded-full flex items-center text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 focus:outline-none">
                 <EllipsisVerticalIcon class="h-5 w-5" />
               </MenuButton>
@@ -1576,7 +1576,7 @@ const saveEdgeConfiguration = async () => {
                 <VueJsonPretty
                   v-else-if="inspect?.data !== undefined"
                   :data="inspect.data"
-                  :deep="1"
+                  :deep="2"
                   :show-length="true"
                   class="text-xs"
                 />
