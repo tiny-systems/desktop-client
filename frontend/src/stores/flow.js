@@ -428,6 +428,8 @@ export const useFlowStore = defineStore('flowStore', {
       this.stopAnimationCheck()
       this.stopWatching()
       this.ready = false
+      this.readOnly = true
+      localStorage.removeItem('flowEditorReadOnly')
     },
     setMeta(meta) {
       this.meta = meta
