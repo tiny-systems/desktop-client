@@ -218,13 +218,6 @@ export default {
     lookup(data, schema, cb) {
       this.$emit('lookup', data, schema, cb)
     },
-    toggleOptional() {
-      // Don't pass initialValue if it's an expression - we don't want the expression string as fallback value
-      const fallbackValue = this.extractExpression(this.initialValue) ? undefined : this.initialValue
-      this.value = common.toggleOptional(this.value, this.schema, fallbackValue) as common.ValueType[] | undefined
-      this.validate()
-      this.emitValue()
-    },
     addItem() {
       this.value!.push(common.getDefaultValue(true, this.schema.items, undefined)!)
       this.validate()

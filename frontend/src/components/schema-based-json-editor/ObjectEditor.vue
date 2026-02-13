@@ -272,16 +272,6 @@ export default {
     isRequired(property: string) {
       return common.isRequired(this.schema.required, this.value, this.schema, property)
     },
-    toggleOptional() {
-      // Don't pass initialValue if it's an expression - we don't want the expression string as fallback value
-      const fallbackValue = this.extractExpression(this.initialValue) ? undefined : this.initialValue
-      this.value = common.toggleOptional(this.value, this.schema, fallbackValue) as {
-        [name: string]: common.ValueType
-        [name: string]: common.ValueType
-      } | undefined
-      this.validate()
-      this.emitValue()
-    },
     onChangeExpression(expression: string) {
       this.expression = expression
       this.emitValue()

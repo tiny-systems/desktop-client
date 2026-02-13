@@ -176,13 +176,6 @@ export default {
       this.expression = expression
       this.emitValue()
     },
-    toggleOptional() {
-      // Don't pass initialValue if it's an expression - we don't want the expression string as fallback value
-      const fallbackValue = this.extractExpression(this.initialValue) ? undefined : this.initialValue
-      //@ts-ignore
-      this.value = common.toggleOptional(this.value, this.schema, fallbackValue) as boolean | undefined
-      this.emitValue()
-    },
     emitValue() {
       //@ts-ignore
       this.$emit('update-value', { value: this.getAllValue(), isValid: true })

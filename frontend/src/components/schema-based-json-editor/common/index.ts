@@ -20,14 +20,6 @@ export function isBase64Image(value?: string) {
     && value.indexOf(`;base64,`) !== -1
 }
 
-export function toggleOptional(value: ValueType | undefined, schema: Schema, initialValue: any) {
-  if (value === undefined) {
-    return getDefaultValue(true, schema, initialValue)
-  } else {
-    return undefined
-  }
-}
-
 export interface CommonSchema {
   $schema?: string;
   $id?: string,
@@ -380,10 +372,6 @@ export function getDefaultValue(required: boolean | undefined = undefined, schem
           return initialValue
         }
     }
-  }
-
-  if (!required) {
-    return undefined
   }
 
   if (schema.default !== undefined) {

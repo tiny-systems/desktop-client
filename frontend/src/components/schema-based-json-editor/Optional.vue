@@ -1,8 +1,5 @@
 <template>
-  <label :class="theme.label" v-if="hasOptionalCheckbox && !isReadOnly">
-    <input type="checkbox" :class="theme.checkboxInput" @change="$emit('toggleOptional')" :checked="value === undefined" :disabled="isReadOnly" />
-    {{locale.info.notExists}}
-  </label>
+  <!-- removed -->
 </template>
 <script lang="ts">
 import type { PropType } from 'vue'

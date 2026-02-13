@@ -188,13 +188,6 @@ export default {
       this.validate()
       this.emitValue()
     },
-    toggleOptional() {
-      // Don't pass initialValue if it's an expression - we don't want the expression string as fallback value
-      const fallbackValue = this.extractExpression(this.initialValue) ? undefined : this.initialValue
-      this.value = common.toggleOptional(this.value, this.schema, fallbackValue) as number | undefined
-      this.validate()
-      this.emitValue()
-    },
     validate() {
       if (!!this.expression) {
         this.errorMessage = ''
