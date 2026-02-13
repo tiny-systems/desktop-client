@@ -1486,8 +1486,16 @@ func (a *App) ImportProject(contextName string, namespace string, projectName st
 		}
 
 		// Create node with proper naming: {hash}.{module}.{component}-{suffix}
+		// Use suffix from original node ID if available to preserve uniqueness
+		// when multiple nodes share the same component type (e.g., two Tickers)
 		nodeGenerateName := utils.GetNodeGenerateName(projectName, newFlowName, module, component)
-		nodeName := nodeGenerateName + strconv.FormatInt(time.Now().UnixNano(), 36)[:5]
+		suffix := strconv.FormatInt(time.Now().UnixNano(), 36)[:5]
+		if oldNodeID != "" {
+			if idx := strings.LastIndex(oldNodeID, "-"); idx >= 0 && idx < len(oldNodeID)-1 {
+				suffix = oldNodeID[idx+1:]
+			}
+		}
+		nodeName := nodeGenerateName + suffix
 
 		// Get label from data
 		label, _ := data["label"].(string)
