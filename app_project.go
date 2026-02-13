@@ -1534,6 +1534,13 @@ func (a *App) ImportProject(contextName string, namespace string, projectName st
 					continue
 				}
 
+				// Skip source ports — they are runtime-generated and their bare
+				// configurable definitions would overwrite richer definitions from
+				// target ports (like _settings) in GetConfigurableDefinitions()
+				if portType, _ := handle["type"].(string); portType == "source" {
+					continue
+				}
+
 				// Get configuration and schema from handle
 				config := handle["configuration"]
 				schema := handle["schema"]
@@ -1982,6 +1989,11 @@ func (a *App) updateExistingNode(ctx context.Context, node *v1alpha1.TinyNode, e
 			}
 			portID, _ := handle["id"].(string)
 			if portID == "" {
+				continue
+			}
+
+			// Skip source ports — runtime-generated, bare configurable defs overwrite richer ones
+			if portType, _ := handle["type"].(string); portType == "source" {
 				continue
 			}
 
