@@ -5,7 +5,7 @@
         <div class="pl-1" v-if="titleToShow != ''">{{titleToShow}}</div>
         <div v-if="(allowEditSchema && schema.configurable) || schema.type">
           <div class="flex space-x-1 w-full relative">
-            <button v-if="allowEditSchema && schema.configurable && !schema.configure && value !== undefined" @click="configureSchema()" title="Configure type" type="button" class="w-6 h-6 border border-sky-500 dark:border-sky-800  rounded p-1 button inline-block cursor-pointer hover:bg-sky-300 dark:hover:bg-sky-800">
+            <button v-if="allowEditSchema && schema.configurable && !schema.configure && value !== undefined && !isReadOnly" @click="configureSchema()" title="Configure type" type="button" class="w-6 h-6 border border-sky-500 dark:border-sky-800  rounded p-1 button inline-block cursor-pointer hover:bg-sky-300 dark:hover:bg-sky-800">
               <PencilIcon></PencilIcon>
             </button>
             <button @click="applySchema" type="button" class="w-6 h-6 border border-sky-500 dark:border-sky-800  rounded p-1 button inline-block cursor-pointer hover:bg-sky-300 dark:hover:bg-sky-800" title="Apply schema changes" v-if="schema.configure && schema.configurable && allowEditSchema && dirty">

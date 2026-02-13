@@ -31,7 +31,7 @@
     <div :class="[theme.title, !titleToShow ? 'border-none' : '']">
       <div class="flex space-x-1 w-full">
         <div class="pl-1" v-if="titleToShow != ''">{{ titleToShow }}</div>
-        <button v-if="allowEditSchema && schema.configurable && value !== undefined" @click="configureSchema()"
+        <button v-if="allowEditSchema && schema.configurable && value !== undefined && !isReadOnly" @click="configureSchema()"
                 title="Configure type" type="button"
                 class="w-6 h-6 border border-sky-500 dark:border-sky-800  rounded p-1 button inline-block cursor-pointer hover:bg-sky-300 dark:hover:bg-sky-800">
           <PencilIcon></PencilIcon>
@@ -63,7 +63,7 @@
         <div :class="['grid grid-flow-row-dense grid-cols-12 w-full']">
           <div v-if="!!expression" class="text-indigo-500 text-xs pb-1 col-span-12">{{ expression }}</div>
           <p class="text-xs col-span-12 text-center p-2 dark:text-gray-500 flex justify-center"
-             v-if="properties.length === 0 && !expression">Object is empty. <span v-if="schema.configurable">You can adapt it with your own properties by clicking</span><PencilIcon class="w-3 mx-2 h-3" v-if="schema.configurable"></PencilIcon>
+             v-if="properties.length === 0 && !expression">Object is empty. <span v-if="schema.configurable && !isReadOnly">You can adapt it with your own properties by clicking</span><PencilIcon class="w-3 mx-2 h-3" v-if="schema.configurable && !isReadOnly"></PencilIcon>
           </p>
             <div v-for="(p, i) in properties"
                  :class="[(tabs.length > 0 ? ( getMerged(p.schema).tab == current ? 'block' : 'hidden') : 'block'),  'break-inside-avoid-column' + (getMerged(p.schema.align) ? ' text-' + getMerged(p.schema).align : '') + (getMerged(p.schema).colSpan ? ' ' + getMerged(p.schema).colSpan : ' col-span-12')]">
