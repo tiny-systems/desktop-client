@@ -732,10 +732,6 @@ func (a *App) GetWidgets(contextName string, namespace string, projectName strin
             if err == nil {
               customSchema = make(map[string]interface{})
               _ = json.Unmarshal(patchedBytes, &customSchema)
-              // Merge new properties from the current enriched schema that the
-              // stale SchemaPatch may have removed. This happens when fields are
-              // added to the Context (via edge config) after the widget was saved.
-              mergeNewSchemaProperties(customSchema, controlSchema)
             }
           }
         }
@@ -782,43 +778,6 @@ func (a *App) GetWidgets(contextName string, namespace string, projectName strin
   }
 
   return result, nil
-}
-
-// mergeNewSchemaProperties adds properties from the original (enriched) schema
-// that are missing in the patched schema. This handles stale SchemaPatch scenarios
-// where new fields were added to the schema after the widget was last saved.
-func mergeNewSchemaProperties(patched, original map[string]interface{}) {
-  patchedDefs, ok1 := patched["$defs"].(map[string]interface{})
-  originalDefs, ok2 := original["$defs"].(map[string]interface{})
-  if !ok1 || !ok2 {
-    return
-  }
-
-  for defName, origDef := range originalDefs {
-    origDefMap, ok := origDef.(map[string]interface{})
-    if !ok {
-      continue
-    }
-    patchedDef, ok := patchedDefs[defName].(map[string]interface{})
-    if !ok {
-      // Entire definition missing from patched — add it
-      patchedDefs[defName] = origDef
-      continue
-    }
-
-    origProps, ok1 := origDefMap["properties"].(map[string]interface{})
-    patchedProps, ok2 := patchedDef["properties"].(map[string]interface{})
-    if !ok1 || !ok2 {
-      continue
-    }
-
-    // Add missing properties from original to patched
-    for propName, propVal := range origProps {
-      if _, exists := patchedProps[propName]; !exists {
-        patchedProps[propName] = propVal
-      }
-    }
-  }
 }
 
 // DeleteProject deletes a project and all its resources
