@@ -297,6 +297,16 @@ func buildEdgeElementFull(ctx context.Context, sourceNodeName string, sourceNode
 	from := utils.GetPortFullName(sourceNodeName, edge.Port)
 	defs := utils.GetConfigurableDefinitions(targetNode, &from)
 
+	// Also get configurable definitions from the SOURCE node.
+	// The source node has the most up-to-date configurable definitions
+	// (e.g. user-configured Context schema). The target node's stored
+	// edge schema may be stale if the user changed the schema after
+	// configuring the edge.
+	sourceDefs := utils.GetConfigurableDefinitions(*sourceNode, nil)
+	for k, v := range sourceDefs {
+		defs[k] = v
+	}
+
 	// Platform lines 193-208
 	for _, pc := range targetPortConfigs {
 		if pc.From == from && pc.Port == targetPort {
