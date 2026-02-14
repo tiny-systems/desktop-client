@@ -1465,10 +1465,6 @@ func (a *App) ImportProject(contextName string, namespace string, projectName st
 
 		component, _ := data["component"].(string)
 		module, _ := data["module"].(string)
-		version, _ := data["module_version"].(string)
-		if version == "" {
-			version, _ = data["version"].(string)
-		}
 		if component == "" || module == "" {
 			continue
 		}
@@ -1599,10 +1595,9 @@ func (a *App) ImportProject(contextName string, namespace string, projectName st
 				},
 			},
 			Spec: v1alpha1.TinyNodeSpec{
-				Module:        module,
-				ModuleVersion: version,
-				Component:     component,
-				Ports:         ports,
+				Module:    module,
+				Component: component,
+				Ports:     ports,
 			},
 		}
 
@@ -1972,11 +1967,6 @@ func (a *App) updateExistingNode(ctx context.Context, node *v1alpha1.TinyNode, e
 	// Update label
 	if label, ok := data["label"].(string); ok && label != "" {
 		node.Annotations[v1alpha1.NodeLabelAnnotation] = label
-	}
-
-	// Update module version
-	if version, ok := data["module_version"].(string); ok && version != "" {
-		node.Spec.ModuleVersion = version
 	}
 
 	// Rebuild port configs from handles (same logic as node creation)

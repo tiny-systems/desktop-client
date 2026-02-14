@@ -609,9 +609,8 @@ func (a *App) AddNode(contextName, namespace, projectName, flowResourceName, com
 			},
 		},
 		Spec: v1alpha1.TinyNodeSpec{
-			Module:        moduleName,
-			ModuleVersion: moduleVersion,
-			Component:     componentName,
+			Module:    moduleName,
+			Component: componentName,
 		},
 	}
 
