@@ -1146,7 +1146,7 @@ const saveEdgeConfiguration = async () => {
     <!-- 3-column layout: Source Node | Edge Configuration | Target Node -->
     <div class="flex-1 flex overflow-hidden">
       <!-- Left column: Source data (1/4) -->
-      <div class="w-1/4 flex-shrink-0 flex flex-col border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
+      <div class="w-1/4 flex-shrink-0 flex flex-col border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
         <div class="px-2 py-1.5 border-b border-gray-200 dark:border-gray-700 ">
           <h3 class="text-xs font-semibold text-gray-600 dark:text-gray-300">{{ edgeSourceLabel }}</h3>
           <p class="text-xs text-gray-400 dark:text-gray-500 truncate">{{ selectedEdge.sourceHandle }}</p>
@@ -1226,7 +1226,7 @@ const saveEdgeConfiguration = async () => {
       </div>
 
       <!-- Right column: Preview result (1/4) -->
-      <div class="w-1/4 flex-shrink-0 flex flex-col border-l border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
+      <div class="w-1/4 flex-shrink-0 flex flex-col border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
         <div class="px-2 py-1.5 border-b border-gray-200 dark:border-gray-700 ">
           <h3 class="text-xs font-semibold text-gray-600 dark:text-gray-300">{{ edgeTargetLabel }}</h3>
           <p class="text-xs text-gray-400 dark:text-gray-500 truncate">{{ selectedEdge.targetHandle }}</p>
@@ -1453,7 +1453,8 @@ const saveEdgeConfiguration = async () => {
               <!-- Module/Component info -->
               <div class="font-light px-2 dark:text-gray-300 text-gray-600">
                 <p v-if="selectedNode.data?.description">{{ decodeHtmlEntities(selectedNode.data.description) }}</p>
-                <p>Module: <span class="font-semibold">{{ selectedNode.data?.module }}</span></p>
+                <p>Module: <span class="font-semibold">{{ selectedNode.data?.module }}</span><span v-if="selectedNode.data?.module_version">&nbsp;v{{ selectedNode.data.module_version }}</span></p>
+                <p v-if="selectedNode.data?.sdk_version">SDK: <span class="font-semibold">{{ selectedNode.data.sdk_version }}</span></p>
                 <p>Component: <span class="font-semibold">{{ selectedNode.data?.component }}</span></p>
                 <!-- Show source flow for blocked/shared nodes -->
                 <p v-if="selectedNode.data?.blocked && selectedNode.data?.flow_id" class="text-emerald-600 dark:text-emerald-400">

@@ -71,13 +71,6 @@
                     />
                   </div>
                   <div>
-                    <label class="block text-xs font-medium text-sky-500">Module version</label>
-                    <input
-                      v-model="moduleVersion"
-                      class="mt-1 appearance-none bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2 dark:bg-gray-800 dark:border-gray-600 dark:text-white"
-                    />
-                  </div>
-                  <div>
                     <label class="block text-xs font-medium text-sky-500">Component name</label>
                     <input
                       v-model="componentName"
@@ -166,7 +159,6 @@ const otherFlows = computed(() => {
 
 // Advanced settings
 const moduleName = ref(props.node?.data?.module || '')
-const moduleVersion = ref(props.node?.data?.module_version || '')
 const componentName = ref(props.node?.data?.component || '')
 
 // Save settings
@@ -184,7 +176,6 @@ const saveSettings = async () => {
         sharedWithFlows: sharedToggle.value ? sharedFlows.value.join(',') : '',
         dashboard: dashboard.value,
         module: moduleName.value,
-        moduleVersion: moduleVersion.value,
         component: componentName.value
       }
     )
