@@ -290,10 +290,11 @@ const handleNodeUpdate = (update) => {
 
     const updatedWidget = {
       ...existing,
-      // Always update schema from real-time updates (node schema reflects current state)
-      // The node's schema includes dynamic changes like button titles
+      // Always update defaultSchema from real-time updates (node schema reflects current state)
       defaultSchema: newDefaultSchema,
-      schema: newDefaultSchema,  // Use node's schema directly - it has the current state
+      // During edit mode, preserve local schema changes (reset/edit)
+      // so they aren't overwritten before saveLayout() runs on Done
+      schema: editMode.value ? existing.schema : newDefaultSchema,
       data: update.widget.data || existing.data,
       // Preserve these fields (positions, page assignments, custom title)
       gridX: existing.gridX,
