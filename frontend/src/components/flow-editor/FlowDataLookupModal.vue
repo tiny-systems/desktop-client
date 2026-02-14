@@ -144,6 +144,14 @@ watch(dataExpressionResult, () => {
   expressResultValidError.value = null
 })
 
+const onNodeClick = (node) => {
+  // Use @nodeClick instead of v-model:selectedValue so that
+  // bracket clicks (expand/collapse) don't overwrite the expression
+  if (node && node.path) {
+    dataExpressionResult.value = node.path
+  }
+}
+
 const addExpression = async (force = false) => {
   if (expressResultValid.value || force) {
     emit('apply', dataExpressionResult.value, props.portName)
@@ -248,8 +256,8 @@ const buttonText = computed(() => {
                       v-if="sourceData"
                       :highlight-selected-node="true"
                       :theme="isDark ? 'dark' : 'light'"
-                      v-model:selectedValue="dataExpressionResult"
-                      :node-selectable="() => true"
+                      :selected-value="dataExpressionResult"
+                      @nodeClick="onNodeClick"
                       :data="sourceData"
                       root-path="$"
                       selectable-type="single"
