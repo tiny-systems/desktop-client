@@ -216,6 +216,7 @@ function calcBoxClass(): string {
 <template>
   <div :style="calculateBoxStyle(props.data)" :class="[calcBoxClass()]">
     <div class="font-medium">{{ props.data?.label || props.id }}</div>
+    <div v-if="props.data?.component" class="text-[10px] text-gray-400 dark:text-gray-500 leading-tight">{{ props.data.component }}</div>
     <span
       v-if="props.data?.emitter"
       class="dot"

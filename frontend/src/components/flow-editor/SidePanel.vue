@@ -642,7 +642,7 @@ watch(selectedNode, (newNode, oldNode) => {
   const oldId = oldNode?.id || null
 
   // If selection changed and we have unsaved changes
-  if (newId !== oldId && nodeConfigDirty.value && oldId !== null) {
+  if (newId !== oldId && nodeConfigDirty.value && !flowStore.readOnly && oldId !== null) {
     const targetId = newId
     isRestoringSelection.value = true
 
@@ -678,7 +678,7 @@ watch(() => flowStore.selectedEdge, (newEdge, oldEdge) => {
   const oldId = oldEdge?.id || null
 
   // If selection changed and we have unsaved changes
-  if (newId !== oldId && edgeConfigDirty.value && oldId !== null) {
+  if (newId !== oldId && edgeConfigDirty.value && !flowStore.readOnly && oldId !== null) {
     const targetId = newId
     isRestoringSelection.value = true
 
