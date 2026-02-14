@@ -65,7 +65,7 @@
           <p class="text-xs col-span-12 text-center p-2 dark:text-gray-500 flex justify-center"
              v-if="properties.length === 0 && !expression">Object is empty. <span v-if="schema.configurable && !isReadOnly">You can adapt it with your own properties by clicking</span><PencilIcon class="w-3 mx-2 h-3" v-if="schema.configurable && !isReadOnly"></PencilIcon>
           </p>
-            <div v-for="(p, i) in properties"
+            <div v-for="(p, i) in properties" v-show="!expression"
                  :class="[(tabs.length > 0 ? ( getMerged(p.schema).tab == current ? 'block' : 'hidden') : 'block'),  'break-inside-avoid-column' + (getMerged(p.schema.align) ? ' text-' + getMerged(p.schema).align : '') + (getMerged(p.schema).colSpan ? ' ' + getMerged(p.schema).colSpan : ' col-span-12')]">
               <editor
                 v-if="isRequired(p.property) !== false"
