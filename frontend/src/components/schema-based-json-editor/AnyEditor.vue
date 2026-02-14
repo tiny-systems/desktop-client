@@ -62,7 +62,7 @@
         </button>
       </div>
     </div>
-    <div v-if="allowLookup && (value !== undefined)" :class="['w-full text-left flex justify-between', deleteHover ? 'bg-red-100 dark:bg-red-900/50 border-0 rounded' : (hover ? 'bg-indigo-100 dark:bg-indigo-800 border-0 rounded' : '')]">
+    <div v-if="allowLookup && (value !== undefined) && !isReadOnly" :class="['w-full text-left flex justify-between', deleteHover ? 'bg-red-100 dark:bg-red-900/50 border-0 rounded' : (hover ? 'bg-indigo-100 dark:bg-indigo-800 border-0 rounded' : '')]">
       <label class="text-indigo-500 text-xs pb-1 pl-1">{{expression}}</label>
       <div class="flex">
         <button @mouseover="hover = true" @mouseleave="hover = false" type="button" class="w-4 inline-block text-indigo-500 cursor-pointer" :title="expression ? 'Edit expression' : 'Apply expression'" @click="$emit('lookup', getAllValue(), schema, onChangeExpression)">

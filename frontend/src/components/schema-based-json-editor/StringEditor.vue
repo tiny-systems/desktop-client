@@ -139,19 +139,19 @@
       <button  v-if="hasDeleteButtonFunction" type="button" class="ml-1 w-4 text-indigo-500 inline-block cursor-pointer ml-1"  @click="$emit('delete')" title="Delete">
         <XCircleIcon></XCircleIcon>
       </button>
-      <button v-if="allowLookup && value !== undefined && !isMixedExpression" @mouseover="hover = true" @mouseleave="hover = false" type="button" class="w-4 block text-indigo-500 cursor-pointer mx-1" @click="$emit('lookup', getAllValue(), schema, onChangeExpression)" :title="expression ? 'Edit expression' : 'Apply expression'">
+      <button v-if="allowLookup && value !== undefined && !isMixedExpression && !isReadOnly" @mouseover="hover = true" @mouseleave="hover = false" type="button" class="w-4 block text-indigo-500 cursor-pointer mx-1" @click="$emit('lookup', getAllValue(), schema, onChangeExpression)" :title="expression ? 'Edit expression' : 'Apply expression'">
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" >
           <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 7.5l3 2.25-3 2.25m4.5 0h3m-9 8.25h13.5A2.25 2.25 0 0021 18V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 6v12a2.25 2.25 0 002.25 2.25z" />
         </svg>
       </button>
-      <button v-if="expression" type="button" class="w-4 block text-red-500 cursor-pointer mx-1" @mouseover="deleteHover = true" @mouseleave="deleteHover = false" @click="clearExpression" title="Clear expression">
+      <button v-if="expression && !isReadOnly" type="button" class="w-4 block text-red-500 cursor-pointer mx-1" @mouseover="deleteHover = true" @mouseleave="deleteHover = false" @click="clearExpression" title="Clear expression">
         <XCircleIcon></XCircleIcon>
       </button>
     </div>
     <description :theme="theme" :message="schema.description" ></description>
     <description :theme="theme" :message="errorMessage" :error="true"></description>
     <!-- Expression chips for mixed expressions -->
-    <div v-if="allowLookup && embeddedExpressions.length > 0" class="flex flex-wrap gap-1 mt-1">
+    <div v-if="allowLookup && !isReadOnly && embeddedExpressions.length > 0" class="flex flex-wrap gap-1 mt-1">
       <button
         v-for="(expr, idx) in embeddedExpressions"
         :key="idx"

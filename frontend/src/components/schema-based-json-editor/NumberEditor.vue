@@ -46,12 +46,12 @@
           </label>
         </span>
       </div>
-      <button type="button" @mouseover="hover = true" @mouseleave="hover = false" class="mx-1 w-4 text-indigo-500 block cursor-pointer" v-if="allowLookup && value !== undefined" @click="$emit('lookup', getAllValue(), schema, onChangeExpression)" :title="expression ? 'Edit expression' : 'Apply expression'">
+      <button type="button" @mouseover="hover = true" @mouseleave="hover = false" class="mx-1 w-4 text-indigo-500 block cursor-pointer" v-if="allowLookup && value !== undefined && !isReadOnly" @click="$emit('lookup', getAllValue(), schema, onChangeExpression)" :title="expression ? 'Edit expression' : 'Apply expression'">
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 7.5l3 2.25-3 2.25m4.5 0h3m-9 8.25h13.5A2.25 2.25 0 0021 18V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 6v12a2.25 2.25 0 002.25 2.25z" />
         </svg>
       </button>
-      <button v-if="expression" type="button" class="mx-1 w-4 text-red-500 block cursor-pointer" @mouseover="deleteHover = true" @mouseleave="deleteHover = false" @click="clearExpression" title="Clear expression">
+      <button v-if="expression && !isReadOnly" type="button" class="mx-1 w-4 text-red-500 block cursor-pointer" @mouseover="deleteHover = true" @mouseleave="deleteHover = false" @click="clearExpression" title="Clear expression">
         <XCircleIcon></XCircleIcon>
       </button>
       <button  v-if="hasDeleteButtonFunction" type="button" class="ml-1 w-4 text-indigo-500 inline-block cursor-pointer ml-1"  @click="$emit('delete')" title="Delete">

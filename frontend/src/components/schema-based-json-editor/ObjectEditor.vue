@@ -90,7 +90,7 @@
           </div>
         </div>
       </div>
-      <div v-if="allowLookup && !hideRootLookup && value !== undefined">
+      <div v-if="allowLookup && !hideRootLookup && value !== undefined && !isReadOnly">
         <button type="button" @mouseover="hover = true" @mouseleave="hover = false"
                 class="w-4 text-indigo-500 cursor-pointer"
                 @click="$emit('lookup', getAllValue(), schema, onChangeExpression)" :title="expression ? 'Edit expression' : 'Apply expression'">
