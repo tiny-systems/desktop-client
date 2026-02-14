@@ -135,14 +135,11 @@ export default {
   },
   beforeMount() {
     //@ts-ignore
-    this.value = this.getValue()
+    this.value = this.getValue() ?? false
     //@ts-ignore
     this.expression = this.extractExpression(this.initialValue)
     //@ts-ignore
-    if (this.value !== undefined) {
-      //@ts-ignore
-      this.emitValue()
-    }
+    this.emitValue()
   },
   computed: {
     isReadOnly(): boolean | undefined {
