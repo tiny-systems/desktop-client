@@ -60,7 +60,7 @@
             </a>
           </nav>
         </div>
-        <div :class="['grid grid-flow-row-dense grid-cols-12 w-full']">
+        <div :class="['grid grid-flow-row-dense grid-cols-12 w-full gap-1']">
           <div v-if="!!expression" class="text-indigo-500 text-xs pb-1 col-span-12">{{ expression }}</div>
           <p class="text-xs col-span-12 text-center p-2 dark:text-gray-500 flex justify-center"
              v-if="properties.length === 0 && !expression">Object is empty. <span v-if="schema.configurable && !isReadOnly">You can adapt it with your own properties by clicking</span><PencilIcon class="w-3 mx-2 h-3" v-if="schema.configurable && !isReadOnly"></PencilIcon>
