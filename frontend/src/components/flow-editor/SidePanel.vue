@@ -40,6 +40,7 @@ const showUnsavedChangesDialog = ref(false)
 const pendingSelectionAction = ref(null)
 const isRestoringSelection = ref(false)
 const configurationResetKey = ref(0) // Incremented on discard to force SchemaForm remount
+const configurationInitializing = ref(false) // True after editor remount, cleared on first emit
 // Store the dirty element reference when dialog shows (because selection might not restore properly)
 const pendingDirtyNode = ref(null)
 const pendingDirtyEdge = ref(null)
@@ -338,6 +339,12 @@ watch(settingsConfigObject, (val, oldVal) => {
 const updateFormValue = (newValue) => {
   formValue.value = newValue
   editorValue.value = JSON.stringify(newValue, null, 2)
+  // First emit after editor remount is normalization, not a user edit
+  if (configurationInitializing.value) {
+    configurationInitializing.value = false
+    originalNodeConfigValue.value = deepCopy(newValue)
+    return
+  }
   // Track dirty state
   nodeConfigDirty.value = JSON.stringify(newValue) !== JSON.stringify(originalNodeConfigValue.value)
 }
@@ -621,6 +628,12 @@ watch(edgeConfigObject, (val) => {
 const updateEdgeFormValue = (newValue) => {
   edgeFormValue.value = newValue
   edgeEditorValue.value = JSON.stringify(newValue, null, 2)
+  // First emit after editor remount is normalization, not a user edit
+  if (configurationInitializing.value) {
+    configurationInitializing.value = false
+    originalEdgeConfigValue.value = deepCopy(newValue)
+    return
+  }
   // Track dirty state
   edgeConfigDirty.value = JSON.stringify(newValue) !== JSON.stringify(originalEdgeConfigValue.value)
 }
@@ -715,9 +728,10 @@ watch(() => selectedNode.value?.id, (newId, oldId) => {
     return
   }
   if (newId && newId !== oldId) {
-    // New node selected - save original config
+    // New node selected - save original config; next emit is normalization
     originalNodeConfigValue.value = deepCopy(settingsConfigObject.value)
     nodeConfigDirty.value = false
+    configurationInitializing.value = true
   }
 }, { immediate: true })
 
@@ -728,9 +742,10 @@ watch(() => selectedEdge.value?.id, (newId, oldId) => {
     return
   }
   if (newId && newId !== oldId) {
-    // New edge selected - save original config
+    // New edge selected - save original config; next emit is normalization
     originalEdgeConfigValue.value = deepCopy(edgeConfigObject.value)
     edgeConfigDirty.value = false
+    configurationInitializing.value = true
   }
 }, { immediate: true })
 
@@ -758,7 +773,8 @@ const handleUnsavedDiscard = () => {
     edgeFormValue.value = deepCopy(originalEdgeConfigValue.value)
     edgeEditorValue.value = JSON.stringify(edgeFormValue.value, null, 2)
   }
-  // Increment reset key to force SchemaForm remount
+  // Increment reset key to force SchemaForm remount — next emit is normalization
+  configurationInitializing.value = true
   configurationResetKey.value++
   nodeConfigDirty.value = false
   edgeConfigDirty.value = false
