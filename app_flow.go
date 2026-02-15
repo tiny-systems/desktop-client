@@ -357,15 +357,6 @@ func buildEdgeElementFull(ctx context.Context, sourceNodeName string, sourceNode
 		data["valid"] = true
 	}
 
-	// Cross-validate edge schema property names against target port's native schema
-	if schemaMismatchErr := utils.ValidateEdgeSchemaKeys(edgeSchema, statusPortSchemaMap[edge.To]); schemaMismatchErr != "" {
-		data["valid"] = false
-		data["error"] = schemaMismatchErr
-		data["errors"] = map[string]interface{}{
-			"schema mismatch": schemaMismatchErr,
-		}
-	}
-
 	// Platform line 267
 	edgeMap, err := utils.ApiEdgeToProtoMap(sourceNode, edge, data)
 	if err != nil {
