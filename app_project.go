@@ -1669,6 +1669,7 @@ func (a *App) ImportProject(contextName string, namespace string, projectName st
 		}
 
 		var configBytes []byte
+		var schemaBytes []byte
 
 		config := edgeData["configuration"]
 		a.logger.Info("edge configuration check", "edge", newEdgeID, "hasConfig", config != nil, "configType", fmt.Sprintf("%T", config))
@@ -1683,18 +1684,25 @@ func (a *App) ImportProject(contextName string, namespace string, projectName st
 			}
 		}
 
-		// Only add port config if there's actual configuration data
-		// Schema is not stored on edges — always derived from target port's native schema
+		if edgeSchema := edgeData["schema"]; edgeSchema != nil {
+			var err error
+			schemaBytes, err = json.Marshal(edgeSchema)
+			if err != nil {
+				a.logger.Error(err, "failed to marshal edge schema", "edge", newEdgeID)
+			}
+		}
+
 		if len(configBytes) > 0 {
 			sourcePortFullName := newSourceName + ":" + sourceHandle
 			portConfig := v1alpha1.TinyNodePortConfig{
 				From:          sourcePortFullName,
 				Port:          targetHandle,
 				Configuration: configBytes,
+				Schema:        schemaBytes,
 				FlowID:        newFlowName,
 			}
 			portConfigsByTargetNode[newTargetName] = append(portConfigsByTargetNode[newTargetName], portConfig)
-			a.logger.Info("prepared edge port config", "target", newTargetName, "port", targetHandle, "from", sourcePortFullName, "configLen", len(configBytes))
+			a.logger.Info("prepared edge port config", "target", newTargetName, "port", targetHandle, "from", sourcePortFullName, "configLen", len(configBytes), "schemaLen", len(schemaBytes))
 		}
 	}
 
