@@ -40,7 +40,14 @@ const showUnsavedChangesDialog = ref(false)
 const pendingSelectionAction = ref(null)
 const isRestoringSelection = ref(false)
 const configurationResetKey = ref(0) // Incremented on discard to force SchemaForm remount
-const configurationInitializing = ref(false) // True after editor remount, cleared on first emit
+const configurationInitializing = ref(false) // True after editor remount, cleared after mount-time emits settle
+let initEndTimer = null
+const scheduleInitEnd = () => {
+  if (initEndTimer) clearTimeout(initEndTimer)
+  initEndTimer = setTimeout(() => {
+    configurationInitializing.value = false
+  }, 100)
+}
 // Store the dirty element reference when dialog shows (because selection might not restore properly)
 const pendingDirtyNode = ref(null)
 const pendingDirtyEdge = ref(null)
@@ -339,10 +346,10 @@ watch(settingsConfigObject, (val, oldVal) => {
 const updateFormValue = (newValue) => {
   formValue.value = newValue
   editorValue.value = JSON.stringify(newValue, null, 2)
-  // First emit after editor remount is normalization, not a user edit
+  // Mount-time emits (ObjectEditor + each child editor) are normalization, not user edits
   if (configurationInitializing.value) {
-    configurationInitializing.value = false
     originalNodeConfigValue.value = deepCopy(newValue)
+    scheduleInitEnd()
     return
   }
   // Track dirty state
@@ -628,10 +635,10 @@ watch(edgeConfigObject, (val) => {
 const updateEdgeFormValue = (newValue) => {
   edgeFormValue.value = newValue
   edgeEditorValue.value = JSON.stringify(newValue, null, 2)
-  // First emit after editor remount is normalization, not a user edit
+  // Mount-time emits (ObjectEditor + each child editor) are normalization, not user edits
   if (configurationInitializing.value) {
-    configurationInitializing.value = false
     originalEdgeConfigValue.value = deepCopy(newValue)
+    scheduleInitEnd()
     return
   }
   // Track dirty state
