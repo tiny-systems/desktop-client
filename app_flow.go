@@ -366,6 +366,9 @@ func buildEdgeElementFull(ctx context.Context, sourceNodeName string, sourceNode
 	if schemaMismatchErr := utils.ValidateEdgeSchemaKeys(edgeSchema, statusPortSchemaMap[edge.To]); schemaMismatchErr != "" {
 		data["valid"] = false
 		data["error"] = schemaMismatchErr
+		data["errors"] = map[string]interface{}{
+			"schema mismatch": schemaMismatchErr,
+		}
 	}
 
 	// Platform line 267

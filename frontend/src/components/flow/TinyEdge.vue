@@ -156,7 +156,7 @@ const msToTime = (ms) => {
       <!-- Edit button - shows when noConfigure is not set -->
       <button
         v-if="!noConfigure"
-        :title="data?.valid === false ? data?.error : 'Configure'"
+        v-tooltip="data?.valid === false && data?.error ? data.error : 'Configure'"
         @click="handleEdgeSelect"
       >
         <PencilSquareIcon
