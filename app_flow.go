@@ -307,17 +307,12 @@ func buildEdgeElementFull(ctx context.Context, sourceNodeName string, sourceNode
 		defs[k] = v
 	}
 
-	// Platform lines 193-208
+	// Always use target port's native schema as base.
+	// Only configurable definitions get overlaid via UpdateWithDefinitions.
 	for _, pc := range targetPortConfigs {
 		if pc.From == from && pc.Port == targetPort {
 			edgeConfiguration = pc.Configuration
-			edgeSchema = pc.Schema
-
-			if len(edgeSchema) == 0 {
-				// Edge has no custom schema - use port's status schema (platform line 200)
-				edgeSchema = statusPortSchemaMap[edge.To]
-			}
-			// CRITICAL: Update schema with configurable definitions (platform line 202)
+			edgeSchema = statusPortSchemaMap[edge.To]
 			var err error
 			edgeSchema, err = schema.UpdateWithDefinitions(edgeSchema, defs)
 			if err != nil {
