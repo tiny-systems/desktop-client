@@ -339,10 +339,8 @@ func buildEdgeElementFull(ctx context.Context, sourceNodeName string, sourceNode
 	}
 
 	// Platform lines 242-265 - validation
-	// Pass nil for runtimeData so validation uses pure schema-based simulation.
-	// Runtime data can contain nulls from specific execution paths, causing false failures.
 	sourcePortFullName := utils.GetPortFullName(sourceNodeName, edge.Port)
-	err := utils.ValidateEdgeWithSchemaAndRuntimeData(ctx, allNodesMap, sourcePortFullName, edgeConfiguration, edgeSchema, nil)
+	err := utils.ValidateEdgeWithSchemaAndRuntimeData(ctx, allNodesMap, sourcePortFullName, edgeConfiguration, edgeSchema, runtimeData)
 	if err != nil {
 		data["error"] = err.Error()
 		data["errors"] = map[string]interface{}{"error": data["error"]}
