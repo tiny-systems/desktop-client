@@ -7,26 +7,26 @@
           <chevron-down-icon v-else class="h-3 w-3 text-sky-500 inline-block cursor-pointer"/>
         </button>
         <input type="text" :disabled="disabled || root" :value="pickKey" @blur="onInputName"
-               class="schema-input bg-transparent border border-gray-600 text-gray-300 text-xs rounded focus:ring-sky-500 focus:border-sky-500 block w-full px-2 py-1.5 dark:bg-gray-800 dark:border-gray-600 dark:placeholder-gray-500 dark:text-gray-300 disabled:text-gray-500 disabled:bg-gray-800/50"
+               class="schema-input bg-gray-50 border border-gray-300 text-gray-900 text-xs rounded focus:ring-sky-500 focus:border-sky-500 block w-full px-2 py-1.5 dark:bg-gray-800 dark:border-gray-600 dark:placeholder-gray-500 dark:text-gray-300 disabled:text-gray-500 disabled:bg-gray-200 dark:disabled:bg-gray-800/50"
                autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"/>
       </div>
       <div v-if="root" class="col-span-2 flex items-center justify-center">
-        <label class="text-gray-400 whitespace-nowrap flex items-center cursor-pointer">
+        <label class="text-gray-500 dark:text-gray-400 whitespace-nowrap flex items-center cursor-pointer">
           <input type="checkbox" :disabled="!isObject && !isArray || !parent" @change="onRootCheck" title="Required"
-                 class="w-3.5 h-3.5 text-sky-600 bg-gray-700 rounded border-gray-600 focus:ring-sky-500 focus:ring-offset-gray-800 focus:ring-1"/>
+                 class="w-3.5 h-3.5 text-sky-600 bg-gray-100 dark:bg-gray-700 rounded border-gray-300 dark:border-gray-600 focus:ring-sky-500 focus:ring-offset-white dark:focus:ring-offset-gray-800 focus:ring-1"/>
           <span class="text-xs pl-1">Required</span>
         </label>
       </div>
       <div v-else class="col-span-2 flex items-center justify-center">
-        <label class="text-gray-400 whitespace-nowrap flex items-center cursor-pointer">
+        <label class="text-gray-500 dark:text-gray-400 whitespace-nowrap flex items-center cursor-pointer">
           <input type="checkbox" :disabled="isItem || !parent" :checked="checked" @change="onCheck" title="Required"
-                 class="w-3.5 h-3.5 text-sky-600 bg-gray-700 rounded border-gray-600 focus:ring-sky-500 focus:ring-offset-gray-800 focus:ring-1"/>
+                 class="w-3.5 h-3.5 text-sky-600 bg-gray-100 dark:bg-gray-700 rounded border-gray-300 dark:border-gray-600 focus:ring-sky-500 focus:ring-offset-white dark:focus:ring-offset-gray-800 focus:ring-1"/>
           <span class="text-xs pl-1">Required</span>
         </label>
       </div>
       <div class="col-span-3">
         <select v-model="pickValue.type" @change="onChangeType"
-                class="type-select bg-gray-800 border border-gray-600 text-gray-300 text-xs rounded focus:ring-sky-500 focus:border-sky-500 block w-full px-2 py-1.5">
+                class="type-select bg-gray-50 border border-gray-300 text-gray-900 text-xs rounded focus:ring-sky-500 focus:border-sky-500 block w-full px-2 py-1.5 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300">
           <option v-for="t in TYPE_NAME" :key="t" :value="t">
             {{ t || '(any)' }}
           </option>
@@ -34,17 +34,17 @@
       </div>
       <div class="col-span-3">
         <input v-model="pickValue.title" :placeholder="local['title']"
-               class="schema-input bg-transparent border border-gray-600 text-gray-300 text-xs rounded focus:ring-sky-500 focus:border-sky-500 block w-full px-2 py-1.5 dark:bg-gray-800 dark:border-gray-600 dark:placeholder-gray-500 dark:text-gray-300 disabled:text-gray-500 disabled:bg-gray-800/50"
+               class="schema-input bg-gray-50 border border-gray-300 text-gray-900 text-xs rounded focus:ring-sky-500 focus:border-sky-500 block w-full px-2 py-1.5 dark:bg-gray-800 dark:border-gray-600 dark:placeholder-gray-500 dark:text-gray-300 disabled:text-gray-500 disabled:bg-gray-200 dark:disabled:bg-gray-800/50"
                autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"/>
       </div>
       <div class="col-span-1 flex items-center justify-end space-x-1">
-        <button v-if="isObject" type="button" @click="addChild" :title="local['add_child_node']" class="p-0.5 hover:bg-gray-700 rounded">
+        <button v-if="isObject" type="button" @click="addChild" :title="local['add_child_node']" class="p-0.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded">
           <plus-icon class="w-4 h-4 text-sky-500 cursor-pointer"/>
         </button>
-        <button v-if="pickValue.type" type="button" @click="onSetting" :title="local['adv_setting']" class="p-0.5 hover:bg-gray-700 rounded">
+        <button v-if="pickValue.type" type="button" @click="onSetting" :title="local['adv_setting']" class="p-0.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded">
           <cog-icon class="w-4 h-4 text-sky-500 cursor-pointer"/>
         </button>
-        <button v-if="!root && !isItem" type="button" @click="removeNode" :title="local['remove_node']" class="p-0.5 hover:bg-gray-700 rounded">
+        <button v-if="!root && !isItem" type="button" @click="removeNode" :title="local['remove_node']" class="p-0.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded">
           <XMarkIcon class="w-4 h-4 text-red-400 cursor-pointer"/>
         </button>
       </div>
@@ -324,7 +324,7 @@ export default {
 </script>
 
 <style scoped>
-/* Fix native select dropdown styling in dark mode */
+/* Fix native select dropdown styling */
 .type-select,
 .modal-select {
   appearance: none;
@@ -334,24 +334,23 @@ export default {
   background-repeat: no-repeat;
   background-size: 1.5em 1.5em;
   padding-right: 2rem;
-  color-scheme: dark;
 }
 
-.type-select option,
-.modal-select option {
-  background-color: #1f2937;
-  color: #d1d5db;
-  padding: 0.5rem;
-}
+@media (prefers-color-scheme: dark) {
+  .type-select,
+  .modal-select {
+    color-scheme: dark;
+  }
 
-/* Schema input consistent styling */
-.schema-input,
-.modal-input {
-  background-color: #1f2937;
+  .type-select option,
+  .modal-select option {
+    background-color: #1f2937;
+    color: #d1d5db;
+    padding: 0.5rem;
+  }
 }
 
 .schema-input:disabled {
-  background-color: rgba(31, 41, 55, 0.5);
   cursor: not-allowed;
 }
 
