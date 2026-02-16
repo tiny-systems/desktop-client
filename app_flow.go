@@ -290,6 +290,7 @@ func buildEdgeElementFull(ctx context.Context, sourceNodeName string, sourceNode
 
 	targetNode, ok := allNodesMap[targetNodeName]
 	if !ok {
+		data["error"] = fmt.Sprintf("Target node %s does not exist", targetNodeName)
 		return buildEdgeFallback(sourceNode, edge, data)
 	}
 
@@ -633,8 +634,17 @@ func (a *App) DeleteNode(contextName, namespace, nodeResourceName string) error 
 		return fmt.Errorf("get node: %w", err)
 	}
 
+	projectName := node.Labels[v1alpha1.ProjectNameLabel]
+
 	if err := mgr.DeleteNode(a.ctx, node); err != nil {
 		return fmt.Errorf("delete node: %w", err)
+	}
+
+	// Clean up edges and port configs referencing the deleted node from remaining project nodes
+	if projectName != "" {
+		if err := mgr.CleanupNodeReferences(a.ctx, projectName, nodeResourceName); err != nil {
+			a.logger.Error(err, "failed to clean up edges after node deletion")
+		}
 	}
 
 	return nil

@@ -1715,6 +1715,12 @@ func (a *App) ImportProject(contextName string, namespace string, projectName st
 		allNodesToUpdate[nodeName] = true
 	}
 
+	// Build set of imported flow resource names for cleanup filtering
+	importedFlowNames := make(map[string]bool)
+	for _, name := range flowResourceNameMap {
+		importedFlowNames[name] = true
+	}
+
 	a.logger.Info("edge port configs summary",
 		"totalEdges", len(edgesBySourceNode),
 		"totalPortConfigs", len(portConfigsByTargetNode),
@@ -1732,39 +1738,17 @@ func (a *App) ImportProject(contextName string, namespace string, projectName st
 		existingPortsCount := len(node.Spec.Ports)
 		existingEdgesCount := len(node.Spec.Edges)
 
-		// Merge edges: replace existing by ID, append new
+		// Remove old edges belonging to imported flows, then append new ones.
+		// This prevents stale edges from accumulating when node IDs change across re-imports.
 		if edges, ok := edgesBySourceNode[nodeName]; ok {
-			existingEdgeMap := make(map[string]int) // edgeID -> index
-			for i, e := range node.Spec.Edges {
-				existingEdgeMap[e.ID] = i
-			}
-			for _, edge := range edges {
-				if idx, exists := existingEdgeMap[edge.ID]; exists {
-					node.Spec.Edges[idx] = edge
-				} else {
-					node.Spec.Edges = append(node.Spec.Edges, edge)
-				}
-			}
-			a.logger.Info("merged edges on node", "node", nodeName, "importedEdgeCount", len(edges))
+			node.Spec.Edges = utils.ReplaceFlowEdges(node.Spec.Edges, importedFlowNames, edges)
+			a.logger.Info("replaced edges on node", "node", nodeName, "importedEdgeCount", len(edges))
 		}
 
-		// Merge port configs: replace existing by From+Port key, append new
+		// Remove old edge port configs belonging to imported flows, then append new ones.
 		if portConfigs, ok := portConfigsByTargetNode[nodeName]; ok {
-			existingPortMap := make(map[string]int) // "from|port" -> index
-			for i, pc := range node.Spec.Ports {
-				if pc.From != "" {
-					existingPortMap[pc.From+"|"+pc.Port] = i
-				}
-			}
-			for _, pc := range portConfigs {
-				key := pc.From + "|" + pc.Port
-				if idx, exists := existingPortMap[key]; exists {
-					node.Spec.Ports[idx] = pc
-				} else {
-					node.Spec.Ports = append(node.Spec.Ports, pc)
-				}
-			}
-			a.logger.Info("merged port configs on node", "node", nodeName, "importedPortConfigCount", len(portConfigs))
+			node.Spec.Ports = utils.ReplaceFlowPortConfigs(node.Spec.Ports, importedFlowNames, portConfigs)
+			a.logger.Info("replaced port configs on node", "node", nodeName, "importedPortConfigCount", len(portConfigs))
 		}
 
 		if err := mgr.UpdateNode(ctx, node); err != nil {
