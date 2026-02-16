@@ -1,7 +1,7 @@
 <template>
   <Menu as="div" class="relative inline-block text-left">
     <MenuButton
-      class="inline-flex items-center gap-1 text-lg leading-4 font-medium text-gray-900 dark:text-gray-300 px-2 hover:text-sky-600 dark:hover:text-sky-400 cursor-pointer transition-colors"
+      class="inline-flex items-center gap-1 text-lg leading-tight font-medium text-gray-900 dark:text-gray-300 px-2 hover:text-sky-600 dark:hover:text-sky-400 cursor-pointer transition-colors"
     >
       <span class="truncate max-w-64">{{ currentFlowName }}</span>
       <ChevronDownIcon class="w-4 h-4 flex-shrink-0" />
