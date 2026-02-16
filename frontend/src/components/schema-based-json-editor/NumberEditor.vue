@@ -26,7 +26,6 @@
        :value="expression || value"
        :disabled="isReadOnly || !!expression"
        :step="step"
-       autocomplete="one-time-code"
       />
       <select v-if="useSelectComponent"
               :class="[theme.select, !!expression ? theme.expression : theme.staticText]"
