@@ -309,10 +309,11 @@ func buildEdgeElementFull(ctx context.Context, sourceNodeName string, sourceNode
 
 	// Always use target port's native schema as base.
 	// Only configurable definitions get overlaid via UpdateWithDefinitions.
+	nativeSchema := statusPortSchemaMap[edge.To]
 	for _, pc := range targetPortConfigs {
 		if pc.From == from && pc.Port == targetPort {
 			edgeConfiguration = pc.Configuration
-			edgeSchema = statusPortSchemaMap[edge.To]
+			edgeSchema = nativeSchema
 			var err error
 			edgeSchema, err = schema.UpdateWithDefinitions(edgeSchema, defs)
 			if err != nil {
@@ -338,9 +339,11 @@ func buildEdgeElementFull(ctx context.Context, sourceNodeName string, sourceNode
 		}
 	}
 
-	// Platform lines 242-265 - validation
+	// Validate using NATIVE target port schema (without configurable overlays).
+	// The overlaid edgeSchema is for UI form display; native prevents false errors
+	// from propagated required fields (e.g. Ticker Context's "collection").
 	sourcePortFullName := utils.GetPortFullName(sourceNodeName, edge.Port)
-	err := utils.ValidateEdgeWithSchemaAndRuntimeData(ctx, allNodesMap, sourcePortFullName, edgeConfiguration, edgeSchema, runtimeData)
+	err := utils.ValidateEdgeWithSchemaAndRuntimeData(ctx, allNodesMap, sourcePortFullName, edgeConfiguration, nativeSchema, runtimeData)
 	if err != nil {
 		data["error"] = err.Error()
 		data["errors"] = map[string]interface{}{"error": data["error"]}
