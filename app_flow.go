@@ -12,7 +12,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/santhosh-tekuri/jsonschema/v5"
-	"github.com/tiny-systems/ajson"
 	"github.com/tiny-systems/module/api/v1alpha1"
 	"github.com/tiny-systems/module/pkg/schema"
 	"github.com/tiny-systems/module/pkg/utils"
@@ -299,33 +298,23 @@ func buildEdgeElementFull(ctx context.Context, sourceNodeName string, sourceNode
 	defs := utils.GetConfigurableDefinitions(targetNode, &from)
 
 	// Also get configurable definitions from the SOURCE node.
-	// Source defs propagate Context schemas for edge form display.
+	// The source node has the most up-to-date configurable definitions
+	// (e.g. user-configured Context schema). The target node's stored
+	// edge schema may be stale if the user changed the schema after
+	// configuring the edge.
 	sourceDefs := utils.GetConfigurableDefinitions(*sourceNode, nil)
+	for k, v := range sourceDefs {
+		defs[k] = v
+	}
 
 	// Always use target port's native schema as base.
-	nativeSchema := statusPortSchemaMap[edge.To]
-	var validationSchema []byte
+	// Only configurable definitions get overlaid via UpdateWithDefinitions.
 	for _, pc := range targetPortConfigs {
 		if pc.From == from && pc.Port == targetPort {
 			edgeConfiguration = pc.Configuration
-
-			// For validation: overlay only TARGET node's configurable defs.
-			// Target defs include user-customized schemas (e.g. KV Store's Document).
+			edgeSchema = statusPortSchemaMap[edge.To]
 			var err error
-			validationSchema, err = schema.UpdateWithDefinitions(nativeSchema, defs)
-			if err != nil {
-				// Log error but continue
-			}
-
-			// For UI: overlay both target AND source defs.
-			allDefs := make(map[string]*ajson.Node, len(defs)+len(sourceDefs))
-			for k, v := range defs {
-				allDefs[k] = v
-			}
-			for k, v := range sourceDefs {
-				allDefs[k] = v
-			}
-			edgeSchema, err = schema.UpdateWithDefinitions(nativeSchema, allDefs)
+			edgeSchema, err = schema.UpdateWithDefinitions(edgeSchema, defs)
 			if err != nil {
 				// Log error but continue
 			}
@@ -349,11 +338,9 @@ func buildEdgeElementFull(ctx context.Context, sourceNodeName string, sourceNode
 		}
 	}
 
-	// Validate using target-only configurable defs (not source defs).
-	// Source defs propagate Context schemas with requirements from upstream nodes
-	// that cause false validation errors. Target defs are real user-configured schemas.
+	// Validate the edge using the same overlaid schema used for UI display.
 	sourcePortFullName := utils.GetPortFullName(sourceNodeName, edge.Port)
-	err := utils.ValidateEdgeWithSchemaAndRuntimeData(ctx, allNodesMap, sourcePortFullName, edgeConfiguration, validationSchema, runtimeData)
+	err := utils.ValidateEdgeWithSchemaAndRuntimeData(ctx, allNodesMap, sourcePortFullName, edgeConfiguration, edgeSchema, runtimeData)
 	if err != nil {
 		data["error"] = err.Error()
 		data["errors"] = map[string]interface{}{"error": data["error"]}
