@@ -1476,8 +1476,7 @@ const saveEdgeConfiguration = async () => {
               <!-- Module/Component info -->
               <div class="font-light px-2 dark:text-gray-300 text-gray-600">
                 <p v-if="selectedNode.data?.description">{{ decodeHtmlEntities(selectedNode.data.description) }}</p>
-                <p>Module: <span class="font-semibold">{{ selectedNode.data?.module }}</span><span v-if="selectedNode.data?.module_version">&nbsp;v{{ selectedNode.data.module_version }}</span></p>
-                <p v-if="selectedNode.data?.sdk_version">SDK: <span class="font-semibold">{{ selectedNode.data.sdk_version }}</span></p>
+                <p>Module: <span class="font-semibold">{{ selectedNode.data?.module }}</span></p>
                 <p>Component: <span class="font-semibold">{{ selectedNode.data?.component }}</span></p>
                 <!-- Show source flow for blocked/shared nodes -->
                 <p v-if="selectedNode.data?.blocked && selectedNode.data?.flow_id" class="text-emerald-600 dark:text-emerald-400">
