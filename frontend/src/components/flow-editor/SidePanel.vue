@@ -800,6 +800,26 @@ const handleUnsavedDiscard = () => {
   })
 }
 
+const discardEdgeChanges = () => {
+  if (originalEdgeConfigValue.value !== null) {
+    edgeFormValue.value = deepCopy(originalEdgeConfigValue.value)
+    edgeEditorValue.value = JSON.stringify(edgeFormValue.value, null, 2)
+  }
+  configurationInitializing.value = true
+  configurationResetKey.value++
+  edgeConfigDirty.value = false
+}
+
+const discardNodeChanges = () => {
+  if (originalNodeConfigValue.value !== null) {
+    formValue.value = deepCopy(originalNodeConfigValue.value)
+    editorValue.value = JSON.stringify(formValue.value, null, 2)
+  }
+  configurationInitializing.value = true
+  configurationResetKey.value++
+  nodeConfigDirty.value = false
+}
+
 const handleUnsavedSave = async () => {
   console.log('handleUnsavedSave called')
   console.log('pendingDirtyNode:', pendingDirtyNode.value)
@@ -1137,6 +1157,12 @@ const saveEdgeConfiguration = async () => {
     v-if="selectedEdge && selectedNodes.length === 0"
     :class="['relative text-sm flex flex-col dark:text-gray-300 flex-shrink-0 bg-gray-50 dark:bg-black border-l-2 border-gray-300 dark:border-gray-600 h-full', panelWidthClass]"
   >
+    <!-- Readonly lock watermark -->
+    <div v-if="flowStore.readOnly || selectedEdge.data?.blocked" class="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-96 h-96 text-gray-400 dark:text-gray-500 opacity-[0.07]">
+        <path fill-rule="evenodd" d="M12 1.5a5.25 5.25 0 00-5.25 5.25v3a3 3 0 00-3 3v6.75a3 3 0 003 3h10.5a3 3 0 003-3v-6.75a3 3 0 00-3-3v-3c0-2.9-2.35-5.25-5.25-5.25zm3.75 8.25v-3a3.75 3.75 0 10-7.5 0v3h7.5z" clip-rule="evenodd" />
+      </svg>
+    </div>
     <!-- Header -->
     <nav class="relative border-b border-gray-200 dark:border-gray-700 flex divide-x divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-900">
       <a
@@ -1209,6 +1235,7 @@ const saveEdgeConfiguration = async () => {
               @update:model-value="updateEdgeFormValue"
               @lookup="handleEdgeLookup"
               :readonly="flowStore.readOnly || selectedEdge.data?.blocked"
+              :allow-edit-schema="!flowStore.readOnly && !selectedEdge.data?.blocked"
               :allow-lookup="true"
               :hide-root-lookup="true"
               :no-border="false"
@@ -1234,16 +1261,26 @@ const saveEdgeConfiguration = async () => {
               </div>
             </div>
           </div>
-          <!-- Warning message and Save button -->
+          <!-- Warning message and Save/Discard buttons -->
           <div class="text-right px-2 pt-2 pb-3 border-t border-gray-200 dark:border-gray-700">
             <p class="text-xs text-orange-600 pb-2 text-left">Do not store sensitive information if you plan sharing your project as a solution.</p>
-            <button
-              type="submit"
-              :disabled="flowStore.readOnly || saving || selectedEdge.data?.blocked"
-              class="px-4 py-2 text-xs font-medium rounded-md text-sky-700 bg-sky-100 hover:bg-sky-200 focus:outline-none focus:ring-2 focus:ring-sky-500 dark:bg-gray-900 dark:hover:bg-gray-800 dark:text-sky-500 disabled:opacity-50"
-            >
-              {{ saving ? 'Saving...' : 'Save' }}
-            </button>
+            <div class="flex justify-end space-x-2">
+              <button
+                v-if="edgeConfigDirty"
+                type="button"
+                @click="discardEdgeChanges"
+                class="px-4 py-2 text-xs font-medium rounded-md text-red-600 bg-red-50 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-500 dark:bg-red-900/20 dark:hover:bg-red-900/40 dark:text-red-400"
+              >
+                Discard
+              </button>
+              <button
+                type="submit"
+                :disabled="flowStore.readOnly || saving || selectedEdge.data?.blocked"
+                class="px-4 py-2 text-xs font-medium rounded-md text-sky-700 bg-sky-100 hover:bg-sky-200 focus:outline-none focus:ring-2 focus:ring-sky-500 dark:bg-gray-900 dark:hover:bg-gray-800 dark:text-sky-500 disabled:opacity-50"
+              >
+                {{ saving ? 'Saving...' : 'Save' }}
+              </button>
+            </div>
           </div>
         </form>
       </div>
@@ -1342,6 +1379,12 @@ const saveEdgeConfiguration = async () => {
     :class="['relative text-sm flex flex-col flex-shrink-0 bg-gray-50 dark:bg-black h-full', panelWidthClass]"
     style="border-left: 1px solid #4b5563;"
   >
+    <!-- Readonly lock watermark -->
+    <div v-if="flowStore.readOnly || selectedNode.data?.blocked" class="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-96 h-96 text-gray-400 dark:text-gray-500 opacity-[0.07]">
+        <path fill-rule="evenodd" d="M12 1.5a5.25 5.25 0 00-5.25 5.25v3a3 3 0 00-3 3v6.75a3 3 0 003 3h10.5a3 3 0 003-3v-6.75a3 3 0 00-3-3v-3c0-2.9-2.35-5.25-5.25-5.25zm3.75 8.25v-3a3.75 3.75 0 10-7.5 0v3h7.5z" clip-rule="evenodd" />
+      </svg>
+    </div>
     <!-- Configuration tab active -->
     <div
       v-if="configurationTab.current"
@@ -1412,16 +1455,26 @@ const saveEdgeConfiguration = async () => {
             />
           </div>
         </div>
-        <!-- Warning message and Save button -->
+        <!-- Warning message and Save/Discard buttons -->
         <div class="flex-shrink-0 text-right px-2 pt-2 pb-4">
           <p class="text-xs text-orange-600 pb-2 text-left">Do not store sensitive information if you plan sharing your project as a solution.</p>
-          <button
-            type="submit"
-            :disabled="flowStore.readOnly || saving || selectedNode.data?.blocked"
-            class="px-4 py-2 text-xs font-medium rounded-md text-sky-700 bg-sky-100 hover:bg-sky-200 focus:outline-none focus:ring-2 focus:ring-sky-500 dark:bg-gray-900 dark:hover:bg-gray-800 dark:text-sky-500 disabled:opacity-50"
-          >
-            {{ saving ? 'Saving...' : 'Save' }}
-          </button>
+          <div class="flex justify-end space-x-2">
+            <button
+              v-if="nodeConfigDirty"
+              type="button"
+              @click="discardNodeChanges"
+              class="px-4 py-2 text-xs font-medium rounded-md text-red-600 bg-red-50 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-500 dark:bg-red-900/20 dark:hover:bg-red-900/40 dark:text-red-400"
+            >
+              Discard
+            </button>
+            <button
+              type="submit"
+              :disabled="flowStore.readOnly || saving || selectedNode.data?.blocked"
+              class="px-4 py-2 text-xs font-medium rounded-md text-sky-700 bg-sky-100 hover:bg-sky-200 focus:outline-none focus:ring-2 focus:ring-sky-500 dark:bg-gray-900 dark:hover:bg-gray-800 dark:text-sky-500 disabled:opacity-50"
+            >
+              {{ saving ? 'Saving...' : 'Save' }}
+            </button>
+          </div>
         </div>
       </form>
       <div v-else class="p-4 pt-5 text-center dark:text-gray-400">
