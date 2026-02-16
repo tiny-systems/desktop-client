@@ -236,6 +236,10 @@ const refresh = () => {
         </span>
       </div>
       <div class="flex items-center gap-2">
+        <button class="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300">
+          <ChevronDownIcon v-if="collapsed" class="w-4 h-4" />
+          <ChevronUpIcon v-else class="w-4 h-4" />
+        </button>
         <button
           @click.stop="refresh"
           class="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 p-0.5"
@@ -243,10 +247,6 @@ const refresh = () => {
           title="Refresh traces"
         >
           <ArrowPathIcon class="w-4 h-4" />
-        </button>
-        <button class="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300">
-          <ChevronDownIcon v-if="collapsed" class="w-4 h-4" />
-          <ChevronUpIcon v-else class="w-4 h-4" />
         </button>
       </div>
     </div>
