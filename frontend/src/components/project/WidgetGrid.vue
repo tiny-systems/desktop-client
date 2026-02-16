@@ -62,13 +62,13 @@ watch(() => props.editMode, (newEditMode) => {
 const initGrid = () => {
   if (!gridElement.value) return
 
-  // Initialize empty GridStack
+  // Initialize empty GridStack (match platform config)
   grid = GridStack.init({
     column: 6,
-    cellHeight: 80,
+    cellHeight: 90,
+    minRow: 1,
     margin: 6,
     disableOneColumnMode: true,
-    float: true,
     staticGrid: !props.editMode,
   }, gridElement.value)
 
@@ -133,7 +133,7 @@ const syncWidgets = (widgets) => {
         x: widget.gridX,
         y: widget.gridY,
         w: widget.gridW || 3,
-        h: widget.gridH || 4
+        h: widget.gridH || 3
       })
     }
   })
@@ -172,7 +172,7 @@ const addWidget = (widget) => {
     x: widget.gridX,
     y: widget.gridY,
     w: widget.gridW || 3,
-    h: widget.gridH || 4,
+    h: widget.gridH || 3,
     content: ''
   })
 
@@ -232,7 +232,7 @@ const handleUpdateTitle = (data) => {
 </script>
 
 <template>
-  <div class="widget-grid-container h-full overflow-auto p-4">
+  <div class="widget-grid-container h-full overflow-auto p-2">
     <div ref="gridElement" class="grid-stack"></div>
     <div v-if="widgets.length === 0" class="flex items-center justify-center h-64 text-gray-400 dark:text-gray-500">
       No widgets on this page

@@ -712,8 +712,8 @@ func (a *App) GetWidgets(contextName string, namespace string, projectName strin
     // Get grid position from widget page or calculate default positions
     // Widget positions are stored by port full name "nodeName:portName"
     // Default layout: 2 widgets per row (each width 3 in a 6-column grid)
-    // Default height 4 units to fit form fields without scrolling
-    gridX, gridY, gridW, gridH := 0, 0, 3, 4
+    // Default height 3 units (matching platform defaults)
+    gridX, gridY, gridW, gridH := 0, 0, 3, 3
     var customSchema map[string]interface{}
     var customTitle string
     if pos, ok := widgetPositions[portFullName]; ok {
@@ -739,9 +739,9 @@ func (a *App) GetWidgets(contextName string, namespace string, projectName strin
     } else {
       // Calculate default position based on widget index
       // Alternating x: 0, 3, 0, 3, ...
-      // Incrementing y every 2 widgets: 0, 0, 4, 4, 8, 8, ...
+      // Incrementing y every 2 widgets: 0, 0, 3, 3, 6, 6, ...
       gridX = (widgetIndex % 2) * 3
-      gridY = (widgetIndex / 2) * 4
+      gridY = (widgetIndex / 2) * 3
     }
 
     // Get title: use custom title from widget page, fall back to node annotation, then component name
