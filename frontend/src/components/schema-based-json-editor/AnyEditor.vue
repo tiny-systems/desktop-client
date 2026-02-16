@@ -81,8 +81,9 @@
         <p class="text-xs text-sky-400 pt-5" v-if="dirty">Don't forget to apply your recent changes of schema.</p>
     </div>
     <description v-if="(allowEditSchema && schema.configurable) || schema.type" :theme="theme" :message="schema.description"></description>
-    <vue-json-pretty v-if="!schema.configure && isObject" :data="value" :deep="2" :show-length="true" class="text-xs p-1 bg-blue-50 dark:bg-gray-800 w-full block overflow-auto max-h-96" />
-    <code v-if="!schema.configure && !isObject" class="text-xs p-1 bg-blue-50 dark:bg-blue-500 w-full block">{{value}}</code>
+    <code v-if="!schema.configure && !!expression" class="text-xs p-1 bg-indigo-50 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-300 w-full block font-mono">{{"{{" + expression + "}}"}}</code>
+    <vue-json-pretty v-else-if="!schema.configure && isObject" :data="value" :deep="2" :show-length="true" class="text-xs p-1 bg-blue-50 dark:bg-gray-800 w-full block overflow-auto max-h-96" />
+    <code v-else-if="!schema.configure" class="text-xs p-1 bg-blue-50 dark:bg-blue-500 w-full block">{{value}}</code>
   </div>
 </template>
 <script lang="ts">
