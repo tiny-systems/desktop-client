@@ -27,7 +27,7 @@
           :disabled="isReadOnly || !!expression" :value="expression || value"
           autocapitalize="off" autocorrect="off" spellcheck="false"></textarea>
       <vue-monaco-editor v-if="useCodeEditor"
-        :class="[errorMessage ? theme.errorCodeEditor : theme.codeEditor, !!expression ? theme.expression : '', 'min-h-80']"
+        :class="[errorMessage ? theme.errorCodeEditor : theme.codeEditor, !!expression ? theme.expression : '', 'min-h-[32rem]']"
         :value="expression || value"
         :language="schema.language"
         :theme="codeEditorTheme"
