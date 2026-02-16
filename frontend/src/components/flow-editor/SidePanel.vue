@@ -1387,8 +1387,8 @@ const saveEdgeConfiguration = async () => {
       </div>
 
       <!-- Settings form -->
-      <form v-if="settingsHandle" @submit.prevent="saveConfiguration">
-        <div class="overflow-y-auto">
+      <form v-if="settingsHandle" @submit.prevent="saveConfiguration" class="flex-1 flex flex-col overflow-hidden">
+        <div class="flex-1 overflow-y-auto overflow-x-hidden">
           <!-- Schema-based form when both schema and configuration are available -->
           <SchemaForm
             v-if="settingsSchema && (settingsSchema.properties || settingsSchema.type || settingsSchema.$ref) && configurationReady"
@@ -1413,7 +1413,7 @@ const saveEdgeConfiguration = async () => {
           </div>
         </div>
         <!-- Warning message and Save button -->
-        <div class="text-right px-2 pt-2 pb-4">
+        <div class="flex-shrink-0 text-right px-2 pt-2 pb-4">
           <p class="text-xs text-orange-600 pb-2 text-left">Do not store sensitive information if you plan sharing your project as a solution.</p>
           <button
             type="submit"
