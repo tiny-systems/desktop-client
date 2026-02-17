@@ -1,5 +1,6 @@
 <script setup>
-import { ref, watch, nextTick } from 'vue'
+import { ref, watch, nextTick, onUnmounted } from 'vue'
+import { EventsOn, EventsOff } from '../../../wailsjs/runtime/runtime'
 
 const props = defineProps({
   modelValue: Boolean,
@@ -13,7 +14,21 @@ const emit = defineEmits(['update:modelValue', 'error', 'success'])
 const importJSON = ref('')
 const parseError = ref('')
 const loading = ref(false)
+const importMessage = ref('')
 const textareaRef = ref(null)
+
+// Listen for progress events from Go backend
+const startListening = () => {
+  EventsOn('import:progress', (msg) => {
+    importMessage.value = msg
+  })
+}
+
+const stopListening = () => {
+  EventsOff('import:progress')
+}
+
+onUnmounted(stopListening)
 
 // Focus textarea when modal opens
 watch(() => props.modelValue, (newVal) => {
@@ -30,11 +45,15 @@ const closeModal = () => {
   emit('update:modelValue', false)
   importJSON.value = ''
   parseError.value = ''
+  importMessage.value = ''
+  stopListening()
 }
 
 const importProject = async () => {
   parseError.value = ''
+  importMessage.value = ''
   loading.value = true
+  startListening()
   try {
     // Validate JSON format
     const data = JSON.parse(importJSON.value)
@@ -50,6 +69,7 @@ const importProject = async () => {
     emit('error', parseError.value)
   } finally {
     loading.value = false
+    stopListening()
   }
 }
 
@@ -91,12 +111,22 @@ const importFromFile = async () => {
           v-model="importJSON"
           placeholder="Paste project JSON here..."
           class="mt-1 border-sky-600 h-56 max-w-full placeholder-gray-400 focus:ring-sky-600 appearance-none border rounded w-full py-3 px-3 text-gray-700 leading-tight transition duration-150 ease-in-out sm:text-sm sm:leading-5 dark:bg-gray-900 dark:text-gray-300"
+          :disabled="loading"
         ></textarea>
       </div>
 
       <!-- Error message -->
-      <div v-if="parseError" class="text-red-500 text-sm py-2 px-1">
+      <div v-if="parseError" class="text-red-500 text-sm py-2 px-1 whitespace-pre-wrap">
         {{ parseError }}
+      </div>
+
+      <!-- Progress display -->
+      <div v-if="loading && importMessage" class="flex items-center py-2 px-1">
+        <svg class="animate-spin h-4 w-4 mr-2 text-sky-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        <span class="text-sm text-gray-700 dark:text-gray-300">{{ importMessage }}</span>
       </div>
 
       <!-- Buttons -->

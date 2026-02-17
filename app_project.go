@@ -1353,6 +1353,12 @@ func (a *App) ImportProject(contextName string, namespace string, projectName st
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 
+	emitProgress := func(msg string) {
+		wailsruntime.EventsEmit(a.ctx, "import:progress", msg)
+	}
+
+	emitProgress("Validating import data...")
+
 	// Parse import data
 	var importData utils.ProjectExport
 	if err := json.Unmarshal([]byte(jsonData), &importData); err != nil {
@@ -1371,6 +1377,8 @@ func (a *App) ImportProject(contextName string, namespace string, projectName st
 	if len(validationErrors) > 0 {
 		return fmt.Errorf("import validation failed (%d errors):\n%s", len(validationErrors), strings.Join(validationErrors, "\n"))
 	}
+
+	emitProgress("Connecting to cluster...")
 
 	mgr, err := a.getManager(contextName, namespace)
 	if err != nil {
@@ -1406,6 +1414,8 @@ func (a *App) ImportProject(contextName string, namespace string, projectName st
 		existingNodesMap[node.Name] = node
 	}
 
+	emitProgress(fmt.Sprintf("Creating flows... (%d flows)", len(importData.TinyFlows)))
+
 	// Create flows that don't exist
 	flowResourceNameMap := make(map[string]string) // old name -> new name
 	for _, importFlow := range importData.TinyFlows {
@@ -1431,6 +1441,8 @@ func (a *App) ImportProject(contextName string, namespace string, projectName st
 
 	// Map old node IDs to new node names (for edge translation)
 	nodeIDMap := make(map[string]string) // oldID -> newName
+
+	emitProgress(fmt.Sprintf("Importing nodes... (%d elements)", len(importData.Elements)))
 
 	// Import nodes
 	for _, elem := range importData.Elements {
@@ -1626,9 +1638,12 @@ func (a *App) ImportProject(contextName string, namespace string, projectName st
 
 	// Wait for nodes to be created before adding edges
 	if len(nodeIDMap) > 0 {
+		emitProgress(fmt.Sprintf("Waiting for %d nodes to be ready...", len(nodeIDMap)))
 		a.logger.Info("waiting for nodes to be ready before adding edges", "nodeCount", len(nodeIDMap))
 		time.Sleep(3 * time.Second)
 	}
+
+	emitProgress("Processing edges...")
 
 	// Import edges - collect all updates per node to do a single update
 	// This prevents race conditions where controller reconciliation between updates could reset data
@@ -1738,6 +1753,8 @@ func (a *App) ImportProject(contextName string, namespace string, projectName st
 		"totalPortConfigs", len(portConfigsByTargetNode),
 		"nodesToUpdate", len(allNodesToUpdate))
 
+	emitProgress(fmt.Sprintf("Updating %d nodes with edge configurations...", len(allNodesToUpdate)))
+
 	// Update each node ONCE with all its changes (both edges and port configs)
 	// This prevents race conditions with controller reconciliation
 	for nodeName := range allNodesToUpdate {
@@ -1795,6 +1812,10 @@ func (a *App) ImportProject(contextName string, namespace string, projectName st
 		a.logger.Info("verification result", "node", nodeName,
 			"totalPorts", len(verifyNode.Spec.Ports),
 			"edgePortConfigs", edgePortConfigCount)
+	}
+
+	if len(importData.Pages) > 0 {
+		emitProgress(fmt.Sprintf("Creating dashboard pages... (%d pages)", len(importData.Pages)))
 	}
 
 	// Import pages with widgets
@@ -1921,6 +1942,8 @@ func (a *App) ImportProject(contextName string, namespace string, projectName st
 	}
 	summary.WriteString(fmt.Sprintf(", nodeIDMap has %d entries", len(nodeIDMap)))
 	a.logger.Info(summary.String())
+
+	emitProgress(fmt.Sprintf("Import complete! (%d nodes, %d edges, %d pages)", importedNodes, len(edgesBySourceNode), len(importData.Pages)))
 
 	// Return error summary if any failures
 	if len(failedNodes) > 0 || len(failedPages) > 0 {
