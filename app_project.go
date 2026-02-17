@@ -1590,17 +1590,7 @@ func (a *App) ImportProject(contextName string, namespace string, projectName st
 		}
 
 		if sharedWith, _ := data["shared_with_flows"].(string); sharedWith != "" {
-			// Resolve import flow names to actual cluster flow resource names
-			var resolvedFlows []string
-			for _, f := range strings.Split(sharedWith, ",") {
-				f = strings.TrimSpace(f)
-				if mapped := flowResourceNameMap[f]; mapped != "" {
-					resolvedFlows = append(resolvedFlows, mapped)
-				} else {
-					resolvedFlows = append(resolvedFlows, f)
-				}
-			}
-			annotations[v1alpha1.SharedWithFlowsAnnotation] = strings.Join(resolvedFlows, ",")
+			annotations[v1alpha1.SharedWithFlowsAnnotation] = utils.ResolveSharedFlows(sharedWith, flowResourceNameMap)
 		}
 
 		node := &v1alpha1.TinyNode{
@@ -1969,16 +1959,7 @@ func (a *App) updateExistingNode(ctx context.Context, node *v1alpha1.TinyNode, e
 
 	// Update shared_with_flows annotation (resolve import flow names to cluster names)
 	if sharedWith, _ := data["shared_with_flows"].(string); sharedWith != "" {
-		var resolvedFlows []string
-		for _, f := range strings.Split(sharedWith, ",") {
-			f = strings.TrimSpace(f)
-			if mapped := flowResourceNameMap[f]; mapped != "" {
-				resolvedFlows = append(resolvedFlows, mapped)
-			} else {
-				resolvedFlows = append(resolvedFlows, f)
-			}
-		}
-		node.Annotations[v1alpha1.SharedWithFlowsAnnotation] = strings.Join(resolvedFlows, ",")
+		node.Annotations[v1alpha1.SharedWithFlowsAnnotation] = utils.ResolveSharedFlows(sharedWith, flowResourceNameMap)
 	} else {
 		delete(node.Annotations, v1alpha1.SharedWithFlowsAnnotation)
 	}
