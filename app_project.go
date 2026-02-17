@@ -1441,7 +1441,7 @@ func (a *App) ImportProject(contextName string, namespace string, projectName st
 		// Check if node already exists — update it instead of skipping
 		if existing, exists := existingNodesMap[oldNodeID]; exists {
 			nodeIDMap[oldNodeID] = oldNodeID
-			a.updateExistingNode(ctx, &existing, elem, mgr)
+			a.updateExistingNode(ctx, &existing, elem, mgr, flowResourceNameMap)
 			continue
 		}
 
@@ -1590,7 +1590,17 @@ func (a *App) ImportProject(contextName string, namespace string, projectName st
 		}
 
 		if sharedWith, _ := data["shared_with_flows"].(string); sharedWith != "" {
-			annotations[v1alpha1.SharedWithFlowsAnnotation] = sharedWith
+			// Resolve import flow names to actual cluster flow resource names
+			var resolvedFlows []string
+			for _, f := range strings.Split(sharedWith, ",") {
+				f = strings.TrimSpace(f)
+				if mapped := flowResourceNameMap[f]; mapped != "" {
+					resolvedFlows = append(resolvedFlows, mapped)
+				} else {
+					resolvedFlows = append(resolvedFlows, f)
+				}
+			}
+			annotations[v1alpha1.SharedWithFlowsAnnotation] = strings.Join(resolvedFlows, ",")
 		}
 
 		node := &v1alpha1.TinyNode{
@@ -1926,7 +1936,7 @@ func (a *App) ImportProject(contextName string, namespace string, projectName st
 }
 
 // updateExistingNode updates an existing node with imported data (position, label, module version, port configs from handles)
-func (a *App) updateExistingNode(ctx context.Context, node *v1alpha1.TinyNode, elem map[string]interface{}, mgr resource.ManagerInterface) {
+func (a *App) updateExistingNode(ctx context.Context, node *v1alpha1.TinyNode, elem map[string]interface{}, mgr resource.ManagerInterface, flowResourceNameMap map[string]string) {
 	data, _ := elem["data"].(map[string]interface{})
 	if data == nil {
 		a.logger.Info("import element has no data, skipping update", "node", node.Name)
@@ -1957,9 +1967,18 @@ func (a *App) updateExistingNode(ctx context.Context, node *v1alpha1.TinyNode, e
 		node.Annotations[v1alpha1.NodeLabelAnnotation] = label
 	}
 
-	// Update shared_with_flows annotation
+	// Update shared_with_flows annotation (resolve import flow names to cluster names)
 	if sharedWith, _ := data["shared_with_flows"].(string); sharedWith != "" {
-		node.Annotations[v1alpha1.SharedWithFlowsAnnotation] = sharedWith
+		var resolvedFlows []string
+		for _, f := range strings.Split(sharedWith, ",") {
+			f = strings.TrimSpace(f)
+			if mapped := flowResourceNameMap[f]; mapped != "" {
+				resolvedFlows = append(resolvedFlows, mapped)
+			} else {
+				resolvedFlows = append(resolvedFlows, f)
+			}
+		}
+		node.Annotations[v1alpha1.SharedWithFlowsAnnotation] = strings.Join(resolvedFlows, ",")
 	} else {
 		delete(node.Annotations, v1alpha1.SharedWithFlowsAnnotation)
 	}
