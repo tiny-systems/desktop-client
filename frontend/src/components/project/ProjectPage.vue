@@ -193,6 +193,7 @@ onMounted(async () => {
           :project-name="name"
           @error="handleError"
           @open-flow="handleOpenFlow"
+          @change="loadStats"
         />
         <DescriptionTab
           v-else-if="activeTab === 'description'"

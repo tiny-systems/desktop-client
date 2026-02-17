@@ -11,7 +11,7 @@ const props = defineProps({
   projectName: String,
 })
 
-const emit = defineEmits(['error', 'open-flow'])
+const emit = defineEmits(['error', 'open-flow', 'change'])
 
 const flows = ref([])
 const loading = ref(true)
@@ -65,6 +65,7 @@ const createFlow = async () => {
 
 const handleUndeploy = (resourceName) => {
   flows.value = flows.value.filter(f => f.resourceName !== resourceName)
+  emit('change')
 }
 
 const handleRename = (resourceName, newName) => {
