@@ -46,7 +46,7 @@ const importProject = async () => {
     emit('success')
     closeModal()
   } catch (e) {
-    parseError.value = e.message || 'Invalid JSON'
+    parseError.value = e?.message || (typeof e === 'string' ? e : 'Invalid JSON')
     emit('error', parseError.value)
   } finally {
     loading.value = false
