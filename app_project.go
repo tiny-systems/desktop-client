@@ -1363,8 +1363,14 @@ func (a *App) ImportProject(contextName string, namespace string, projectName st
 		return fmt.Errorf("unsupported import version: %d", importData.Version)
 	}
 
-	// Validate import data and log warnings
-	utils.ValidateProjectExport(&importData)
+	// Validate import data strictly — block import if errors found
+	validationErrors, validationWarnings := utils.ValidateProjectImport(&importData)
+	for _, w := range validationWarnings {
+		a.logger.Info("import warning: " + w)
+	}
+	if len(validationErrors) > 0 {
+		return fmt.Errorf("import validation failed (%d errors):\n%s", len(validationErrors), strings.Join(validationErrors, "\n"))
+	}
 
 	mgr, err := a.getManager(contextName, namespace)
 	if err != nil {
