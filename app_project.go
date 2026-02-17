@@ -452,8 +452,9 @@ func (a *App) CreateFlow(contextName string, namespace string, projectName strin
   }, nil
 }
 
-// UndeployFlow deletes a flow and all its nodes from the cluster
-func (a *App) UndeployFlow(contextName string, namespace string, flowResourceName string) error {
+// UndeployFlow deletes a flow and all its nodes from the cluster.
+// It cleans up widgets referencing the flow's nodes before deletion.
+func (a *App) UndeployFlow(contextName string, namespace string, projectName string, flowResourceName string) error {
   if flowResourceName == "" {
     return fmt.Errorf("flow resource name is required")
   }
@@ -461,6 +462,13 @@ func (a *App) UndeployFlow(contextName string, namespace string, flowResourceNam
   mgr, err := a.getManager(contextName, namespace)
   if err != nil {
     return err
+  }
+
+  // Clean up widgets referencing nodes in this flow before deletion
+  if projectName != "" {
+    if err := mgr.CleanupFlowWidgetReferences(a.ctx, projectName, flowResourceName); err != nil {
+      a.logger.Error(err, "failed to clean up widgets before flow deletion")
+    }
   }
 
   if err := mgr.DeleteFlow(a.ctx, flowResourceName); err != nil {

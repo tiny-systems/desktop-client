@@ -86,7 +86,7 @@ const undeployFlow = async () => {
 
   undeploying.value = true
   try {
-    await GoApp.UndeployFlow(props.ctx, props.ns, props.flow.resourceName)
+    await GoApp.UndeployFlow(props.ctx, props.ns, props.projectName, props.flow.resourceName)
     emit('undeploy', props.flow.resourceName)
     closeUndeployDialog()
   } catch (err) {
