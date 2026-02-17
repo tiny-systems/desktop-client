@@ -214,8 +214,8 @@ export function TransferNodes(arg1, arg2, arg3) {
   return window['go']['main']['App']['TransferNodes'](arg1, arg2, arg3);
 }
 
-export function UndeployFlow(arg1, arg2, arg3) {
-  return window['go']['main']['App']['UndeployFlow'](arg1, arg2, arg3);
+export function UndeployFlow(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['App']['UndeployFlow'](arg1, arg2, arg3, arg4);
 }
 
 export function UpdateEdgeConfiguration(arg1, arg2, arg3, arg4, arg5, arg6, arg7) {

@@ -299,14 +299,10 @@ func buildEdgeElementFull(ctx context.Context, sourceNodeName string, sourceNode
 	defs := utils.GetConfigurableDefinitions(targetNode, &from)
 
 	// Also get configurable definitions from the SOURCE node.
-	// The source node has the most up-to-date configurable definitions
-	// (e.g. user-configured Context schema). The target node's stored
-	// edge schema may be stale if the user changed the schema after
-	// configuring the edge.
+	// Merge prefers richer definitions — bare source defs don't
+	// overwrite typed/rich target defs.
 	sourceDefs := utils.GetConfigurableDefinitions(*sourceNode, nil)
-	for k, v := range sourceDefs {
-		defs[k] = v
-	}
+	utils.MergeConfigurableDefinitions(defs, sourceDefs)
 
 	// Always use target port's native schema as base.
 	// Only configurable definitions get overlaid via UpdateWithDefinitions.

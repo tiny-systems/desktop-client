@@ -1347,6 +1347,9 @@ func (a *App) ExportProject(contextName string, namespace string, projectName st
 		Pages:       exportPages,
 	}
 
+	// Strip runtime-internal schema fields before export
+	utils.StripSchemaInternalFields(&export)
+
 	data, err := json.MarshalIndent(export, "", "  ")
 	if err != nil {
 		return "", err
@@ -1376,6 +1379,9 @@ func (a *App) ImportProject(contextName string, namespace string, projectName st
 	if importData.Version != utils.CurrentExportVersion {
 		return fmt.Errorf("unsupported import version: %d", importData.Version)
 	}
+
+	// Strip runtime-internal schema fields that may have been left in the JSON
+	utils.StripSchemaInternalFields(&importData)
 
 	// Validate import data strictly — block import if errors found
 	validationErrors, validationWarnings := utils.ValidateProjectImport(&importData)

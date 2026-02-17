@@ -97,7 +97,7 @@
                 {{ p.title }}
               </h3>
             </div>
-            <p class="mt-3 text-gray-500 dark:text-gray-400 text-sm" v-if="p.description">
+            <p class="mt-3 text-gray-500 dark:text-gray-400 text-sm line-clamp-3" v-if="p.description">
               {{ p.description }}
             </p>
           </div>

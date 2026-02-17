@@ -109,7 +109,7 @@ export function ToggleNodeDashboard(arg1:string,arg2:string,arg3:string,arg4:boo
 
 export function TransferNodes(arg1:string,arg2:string,arg3:main.TransferNodesRequest):Promise<void>;
 
-export function UndeployFlow(arg1:string,arg2:string,arg3:string):Promise<void>;
+export function UndeployFlow(arg1:string,arg2:string,arg3:string,arg4:string):Promise<void>;
 
 export function UpdateEdgeConfiguration(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string,arg6:string,arg7:string):Promise<void>;
 
