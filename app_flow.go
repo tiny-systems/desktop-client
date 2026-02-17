@@ -645,6 +645,9 @@ func (a *App) DeleteNode(contextName, namespace, nodeResourceName string) error 
 		if err := mgr.CleanupNodeReferences(a.ctx, projectName, nodeResourceName); err != nil {
 			a.logger.Error(err, "failed to clean up edges after node deletion")
 		}
+		if err := mgr.CleanupWidgetReferences(a.ctx, projectName, nodeResourceName); err != nil {
+			a.logger.Error(err, "failed to clean up widgets after node deletion")
+		}
 	}
 
 	return nil
