@@ -82,7 +82,6 @@ const importProject = async () => {
     importMessage.value = importMessage.value || 'Import complete!'
   } catch (e) {
     parseError.value = e?.message || (typeof e === 'string' ? e : 'Invalid JSON')
-    emit('error', parseError.value)
   } finally {
     loading.value = false
     stopListening()
