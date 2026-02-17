@@ -123,6 +123,13 @@ const handleImportSuccess = async () => {
   }
 }
 
+const handleRefreshProject = async () => {
+  loading.value = true
+  await Promise.all([loadProjectDetails(), loadStats()])
+  loading.value = false
+  // Tabs will re-mount after loading flips back to false
+}
+
 onMounted(async () => {
   loading.value = true
   await Promise.all([loadProjectDetails(), loadStats()])
@@ -158,6 +165,7 @@ onMounted(async () => {
         :cluster-name="projectDetails?.clusterName"
         :project-name="name"
         @close="emit('close')"
+        @refresh="handleRefreshProject"
         @delete-project="handleDeleteProject"
         @rename-project="handleRenameProject"
         @export-project="handleExportProject"

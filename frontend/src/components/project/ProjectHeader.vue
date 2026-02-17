@@ -1,6 +1,6 @@
 <script setup>
 import { ref, nextTick } from 'vue'
-import { ArrowLeftIcon, EllipsisVerticalIcon, PencilIcon, TrashIcon, XMarkIcon, ArrowUpTrayIcon, ArrowDownTrayIcon } from '@heroicons/vue/24/outline'
+import { ArrowLeftIcon, ArrowPathIcon, EllipsisVerticalIcon, PencilIcon, TrashIcon, XMarkIcon, ArrowUpTrayIcon, ArrowDownTrayIcon } from '@heroicons/vue/24/outline'
 
 const props = defineProps({
   title: String,
@@ -8,7 +8,7 @@ const props = defineProps({
   projectName: String,
 })
 
-const emit = defineEmits(['close', 'delete-project', 'rename-project', 'export-project', 'import-project'])
+const emit = defineEmits(['close', 'refresh', 'delete-project', 'rename-project', 'export-project', 'import-project'])
 
 const showMoreMenu = ref(false)
 const showDeleteConfirm = ref(false)
@@ -78,15 +78,24 @@ const confirmRename = () => {
       </span>
     </div>
 
-    <!-- More menu -->
-    <div class="relative">
+    <div class="flex items-center space-x-1">
       <button
-        @click="showMoreMenu = !showMoreMenu"
+        @click="emit('refresh')"
         class="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full"
-        title="More options"
+        title="Refresh project"
       >
-        <EllipsisVerticalIcon class="w-5 h-5 text-gray-500 dark:text-gray-400" />
+        <ArrowPathIcon class="w-5 h-5 text-gray-500 dark:text-gray-400" />
       </button>
+
+      <!-- More menu -->
+      <div class="relative">
+        <button
+          @click="showMoreMenu = !showMoreMenu"
+          class="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full"
+          title="More options"
+        >
+          <EllipsisVerticalIcon class="w-5 h-5 text-gray-500 dark:text-gray-400" />
+        </button>
 
       <!-- Backdrop to close menu -->
       <div
@@ -129,6 +138,7 @@ const confirmRename = () => {
           <TrashIcon class="w-4 h-4" />
           <span>Delete Project</span>
         </button>
+      </div>
       </div>
     </div>
   </div>
