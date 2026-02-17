@@ -34,6 +34,7 @@ const error = ref('')
 const showExportModal = ref(false)
 const showImportModal = ref(false)
 const widgetsTabRef = ref(null)
+const flowsTabRef = ref(null)
 
 const loadProjectDetails = async () => {
   if (!GoApp) {
@@ -112,10 +113,13 @@ const handleImportProject = () => {
 }
 
 const handleImportSuccess = async () => {
-  // Reload stats and refresh the widgets tab
+  // Reload stats and refresh all tabs
   await loadStats()
-  if (widgetsTabRef.value && typeof widgetsTabRef.value.refresh === 'function') {
+  if (widgetsTabRef.value?.refresh) {
     await widgetsTabRef.value.refresh()
+  }
+  if (flowsTabRef.value?.refresh) {
+    await flowsTabRef.value.refresh()
   }
 }
 
@@ -183,6 +187,7 @@ onMounted(async () => {
         />
         <FlowsTab
           v-else-if="activeTab === 'flows'"
+          ref="flowsTabRef"
           :ctx="ctx"
           :ns="ns"
           :project-name="name"

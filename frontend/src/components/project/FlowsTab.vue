@@ -74,6 +74,8 @@ const handleRename = (resourceName, newName) => {
   }
 }
 
+defineExpose({ refresh: loadFlows })
+
 onMounted(() => {
   loadFlows()
 })
