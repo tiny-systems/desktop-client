@@ -1582,17 +1582,23 @@ func (a *App) ImportProject(contextName string, namespace string, projectName st
 			a.logger.Info("no handles found for node", "component", component, "dataKeys", getMapKeys(data))
 		}
 
+		annotations := map[string]string{
+			v1alpha1.ComponentPosXAnnotation:    strconv.Itoa(posX),
+			v1alpha1.ComponentPosYAnnotation:    strconv.Itoa(posY),
+			v1alpha1.ComponentPosSpinAnnotation: strconv.Itoa(spin),
+			v1alpha1.NodeLabelAnnotation:        label,
+		}
+
+		if sharedWith, _ := data["shared_with_flows"].(string); sharedWith != "" {
+			annotations[v1alpha1.SharedWithFlowsAnnotation] = sharedWith
+		}
+
 		node := &v1alpha1.TinyNode{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      nodeName,
-				Namespace: namespace,
-				Labels:    labels,
-				Annotations: map[string]string{
-					v1alpha1.ComponentPosXAnnotation:   strconv.Itoa(posX),
-					v1alpha1.ComponentPosYAnnotation:   strconv.Itoa(posY),
-					v1alpha1.ComponentPosSpinAnnotation: strconv.Itoa(spin),
-					v1alpha1.NodeLabelAnnotation:       label,
-				},
+				Name:        nodeName,
+				Namespace:   namespace,
+				Labels:      labels,
+				Annotations: annotations,
 			},
 			Spec: v1alpha1.TinyNodeSpec{
 				Module:    module,
@@ -1949,6 +1955,13 @@ func (a *App) updateExistingNode(ctx context.Context, node *v1alpha1.TinyNode, e
 	// Update label
 	if label, ok := data["label"].(string); ok && label != "" {
 		node.Annotations[v1alpha1.NodeLabelAnnotation] = label
+	}
+
+	// Update shared_with_flows annotation
+	if sharedWith, _ := data["shared_with_flows"].(string); sharedWith != "" {
+		node.Annotations[v1alpha1.SharedWithFlowsAnnotation] = sharedWith
+	} else {
+		delete(node.Annotations, v1alpha1.SharedWithFlowsAnnotation)
 	}
 
 	// Rebuild port configs from handles (same logic as node creation)
