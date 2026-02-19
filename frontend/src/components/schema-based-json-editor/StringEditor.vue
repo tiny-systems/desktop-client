@@ -38,7 +38,7 @@
           readonly: isReadOnly || !!expression
         }"
       />
-      <input v-if="useInput"
+      <input v-if="useInput && (!isSecret || secretVisible)"
              :class="[errorMessage ? theme.errorInput : theme.input, !!expression ? theme.expression : theme.staticText]"
              :type="getInputType(schema.format || 'text')"
              :name="schema.title || 'name'"
@@ -50,6 +50,18 @@
              autocorrect="off"
              spellcheck="false"
              :disabled="isReadOnly || !!expression"/>
+      <div v-if="useInput && isSecret && !secretVisible"
+           :class="[theme.input, 'flex items-center select-none tracking-widest text-gray-400']">
+        ******
+      </div>
+      <button v-if="useInput && isSecret && value"
+              type="button"
+              class="w-5 h-5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 cursor-pointer mx-1 flex-shrink-0"
+              @click="secretVisible = !secretVisible"
+              :title="secretVisible ? 'Hide value' : 'Show value'">
+        <EyeSlashIcon v-if="secretVisible" />
+        <EyeIcon v-else />
+      </button>
       <!-- Standard select for small option lists -->
       <select v-if="useSelectComponent && !useRadioBoxComponent && !useSearchableSelect"
               :class="[errorMessage ? theme.selectError : theme.select, !!expression ? theme.expression : theme.staticText]"
@@ -169,7 +181,7 @@
 import type { PropType } from 'vue'
 import { defineAsyncComponent } from 'vue'
 import * as common from './common'
-import {XCircleIcon, ChevronRightIcon, ChevronDownIcon, PencilIcon} from '@heroicons/vue/24/outline'
+import {XCircleIcon, ChevronRightIcon, ChevronDownIcon, PencilIcon, EyeIcon, EyeSlashIcon} from '@heroicons/vue/24/outline'
 import Optional from './Optional.vue'
 import Description from './Description.vue'
 import { useDark } from "@vueuse/core";
@@ -181,7 +193,7 @@ const VueMonacoEditor = defineAsyncComponent(() =>
 
 export default {
   components: {
-    XCircleIcon, ChevronRightIcon, ChevronDownIcon, PencilIcon,
+    XCircleIcon, ChevronRightIcon, ChevronDownIcon, PencilIcon, EyeIcon, EyeSlashIcon,
     optional: Optional,
     description: Description,
     'vue-monaco-editor': VueMonacoEditor
@@ -219,6 +231,7 @@ export default {
       expression: undefined,
       portName: null,
       hover: false,
+      secretVisible: false,
       deleteHover: false,
       errorMessage: '' as string | undefined,
       buttonGroupStyle: common.buttonGroupStyleString,
@@ -488,6 +501,9 @@ export default {
     },
     isReadOnly(): boolean | undefined {
       return this.readonly || this.schema.readonly
+    },
+    isSecret(): boolean {
+      return this.schema.secret === true
     },
     hasDeleteButtonFunction(): boolean {
       return this.hasDeleteButton && !this.isReadOnly

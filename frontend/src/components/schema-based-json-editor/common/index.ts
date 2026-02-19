@@ -112,6 +112,7 @@ export type StringSchema = CommonSchema & {
   pattern?: string;
   enumTitles?: string[];
   step?: number | 'any';
+  secret?: boolean;
 }
 
 /**

@@ -6,6 +6,7 @@ const value = {
     format:undefined,
     enum:undefined,
     readonly: false,
+    secret: false,
 }
 const attr = {
     description: {
@@ -35,6 +36,10 @@ const attr = {
     },
     readonly: {
       name: 'Readonly',
+      type: 'boolean'
+    },
+    secret: {
+      name: 'Secret',
       type: 'boolean'
     }
 }
