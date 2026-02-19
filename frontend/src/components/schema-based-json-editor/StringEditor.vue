@@ -23,7 +23,7 @@
       </div>
       <div v-if="useTextArea && isSecret && !secretVisible" class="relative w-full">
         <textarea
-          :class="[errorMessage ? theme.errorTextarea : theme.textarea, 'text-transparent select-none']"
+          :class="[errorMessage ? theme.errorTextarea : theme.textarea, 'text-transparent dark:text-transparent select-none']"
           :rows="!!expression ? 3 : 10"
           disabled
           :value="expression || value"></textarea>
