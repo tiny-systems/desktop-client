@@ -14,10 +14,7 @@ func init() {
 	// Parse CLI arg (Windows passes URL as argument)
 	for _, arg := range os.Args[1:] {
 		if strings.HasPrefix(arg, "tinysystems://") {
-			select {
-			case pendingDeepLink <- arg:
-			default:
-			}
+			onDeepLinkReceived(arg)
 			break
 		}
 	}

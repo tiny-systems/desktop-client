@@ -96,12 +96,8 @@ func (a *App) startup(ctx context.Context) {
 		a.logger.Error(err, "Failed to setup PATH")
 	}
 
-	// Deep link handler — forwards URLs from OS to the frontend
-	go func() {
-		for url := range pendingDeepLink {
-			runtime.EventsEmit(a.ctx, "deeplink:deploy", url)
-		}
-	}()
+	// Enable direct deep link event emission for URLs arriving while app is running
+	deepLinkStartup(a.ctx)
 }
 
 // setupPATH adds common CLI tool locations to PATH environment variable
@@ -233,12 +229,11 @@ func (a *App) OpenFile() (string, error) {
 // GetPendingDeepLink returns a deep link URL that arrived before the frontend was ready.
 // Called by the frontend on mount to catch URLs from cold-start launches.
 func (a *App) GetPendingDeepLink() string {
-	select {
-	case url := <-pendingDeepLink:
-		return url
-	default:
-		return ""
-	}
+	deepLinkState.mu.Lock()
+	defer deepLinkState.mu.Unlock()
+	url := deepLinkState.pendingURL
+	deepLinkState.pendingURL = "" // consume it
+	return url
 }
 
 // FetchSolutionJSON downloads solution JSON from the given URL

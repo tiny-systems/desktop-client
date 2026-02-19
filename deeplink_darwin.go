@@ -10,16 +10,7 @@ import "C"
 //export goHandleDeepLinkURL
 func goHandleDeepLinkURL(curl *C.char) {
 	url := C.GoString(curl)
-	select {
-	case pendingDeepLink <- url:
-	default:
-		// Channel full — drop old, send new
-		select {
-		case <-pendingDeepLink:
-		default:
-		}
-		pendingDeepLink <- url
-	}
+	onDeepLinkReceived(url)
 }
 
 func init() {
