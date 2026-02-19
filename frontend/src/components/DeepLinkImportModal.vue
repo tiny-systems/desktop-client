@@ -1,9 +1,10 @@
 <script setup>
-import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
+import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { EventsOn, EventsOff } from '../../wailsjs/runtime/runtime'
 
 const props = defineProps({
-  url: String
+  url: String,
+  ctx: Object // { name: contextName, ns: namespace } from App.vue
 })
 
 const emit = defineEmits(['close', 'success'])
@@ -11,26 +12,47 @@ const emit = defineEmits(['close', 'success'])
 const GoApp = window.go?.main?.App
 
 // Steps: fetch → select → import → done
-const step = ref('fetch') // 'fetch' | 'select' | 'import' | 'done' | 'error'
+const step = ref('fetch') // 'fetch' | 'select' | 'import' | 'done' | 'error' | 'no-context'
 const error = ref('')
 const solutionJSON = ref('')
 const solutionInfo = ref(null)
 const importMessage = ref('')
 
-// Context/namespace/project selection
-const contexts = ref([])
-const selectedContext = ref('')
-const namespaces = ref([])
-const selectedNamespace = ref('')
+// Project selection only — context/namespace comes from parent
 const projects = ref([])
 const selectedProject = ref('')
 const newProjectName = ref('')
 const useNewProject = ref(false)
-const loadingNamespaces = ref(false)
 const loadingProjects = ref(false)
+
+// Custom dropdown state
+const openDropdown = ref('')
+
+const toggleDropdown = (name) => {
+  openDropdown.value = openDropdown.value === name ? '' : name
+}
+
+const selectProject = (name) => {
+  selectedProject.value = name
+  openDropdown.value = ''
+}
+
+const handleClickOutside = (e) => {
+  if (!e.target.closest('.custom-dropdown')) {
+    openDropdown.value = ''
+  }
+}
 
 // Fetch solution JSON on mount
 onMounted(async () => {
+  document.addEventListener('click', handleClickOutside)
+
+  // Check if context is selected
+  if (!props.ctx?.name || !props.ctx?.ns) {
+    step.value = 'no-context'
+    return
+  }
+
   try {
     const json = await GoApp.FetchSolutionJSON(props.url)
     solutionJSON.value = json
@@ -49,19 +71,8 @@ onMounted(async () => {
       pageCount: data.pages?.length || 0,
     }
 
-    // Load contexts
-    const ctxs = await GoApp.GetKubeContexts()
-    contexts.value = ctxs || []
-
-    // Restore saved preferences
-    const prefs = await GoApp.GetPreferences()
-    if (prefs?.lastContext) {
-      selectedContext.value = prefs.lastContext
-      if (prefs.lastNamespace) {
-        selectedNamespace.value = prefs.lastNamespace
-      }
-      await loadNamespaces(prefs.lastContext)
-    }
+    // Load projects for current context/namespace
+    await loadProjects()
 
     step.value = 'select'
   } catch (e) {
@@ -70,32 +81,17 @@ onMounted(async () => {
   }
 })
 
-const loadNamespaces = async (contextName) => {
-  if (!contextName) return
-  loadingNamespaces.value = true
-  namespaces.value = []
-  projects.value = []
-  selectedProject.value = ''
-  try {
-    const nss = await GoApp.GetNamespaces(contextName)
-    namespaces.value = nss || []
-    if (selectedNamespace.value && nss?.includes(selectedNamespace.value)) {
-      await loadProjects(contextName, selectedNamespace.value)
-    }
-  } catch (e) {
-    error.value = `Failed to load namespaces: ${e?.message || e}`
-  } finally {
-    loadingNamespaces.value = false
-  }
-}
+onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside)
+  stopListening()
+})
 
-const loadProjects = async (contextName, namespace) => {
-  if (!contextName || !namespace) return
+const loadProjects = async () => {
   loadingProjects.value = true
   projects.value = []
   selectedProject.value = ''
   try {
-    const projs = await GoApp.GetProjects(contextName, namespace)
+    const projs = await GoApp.GetProjects(props.ctx.name, props.ctx.ns)
     projects.value = projs || []
   } catch (e) {
     // Not critical — user can create a new project
@@ -103,14 +99,6 @@ const loadProjects = async (contextName, namespace) => {
     loadingProjects.value = false
   }
 }
-
-watch(selectedContext, async (val) => {
-  if (val) await loadNamespaces(val)
-})
-
-watch(selectedNamespace, async (val) => {
-  if (val && selectedContext.value) await loadProjects(selectedContext.value, val)
-})
 
 // Import progress listener
 const startListening = () => {
@@ -123,10 +111,7 @@ const stopListening = () => {
   EventsOff('import:progress')
 }
 
-onUnmounted(stopListening)
-
 const canDeploy = () => {
-  if (!selectedContext.value || !selectedNamespace.value) return false
   if (useNewProject.value) return !!newProjectName.value.trim()
   return !!selectedProject.value
 }
@@ -141,10 +126,10 @@ const deploy = async () => {
     const projectName = useNewProject.value ? newProjectName.value.trim() : selectedProject.value
 
     if (useNewProject.value) {
-      await GoApp.CreateProject(selectedContext.value, selectedNamespace.value, projectName)
+      await GoApp.CreateProject(props.ctx.name, props.ctx.ns, projectName)
     }
 
-    await GoApp.ImportProject(selectedContext.value, selectedNamespace.value, projectName, solutionJSON.value)
+    await GoApp.ImportProject(props.ctx.name, props.ctx.ns, projectName, solutionJSON.value)
     step.value = 'done'
     importMessage.value = importMessage.value || 'Deploy complete!'
   } catch (e) {
@@ -172,14 +157,33 @@ const confirmSuccess = () => {
     <div class="fixed inset-0 bg-gray-500/25 dark:bg-black/75 backdrop-blur-sm" @click="close"></div>
 
     <!-- Modal -->
-    <div class="relative transform rounded-lg bg-white text-left shadow-xl w-full max-w-lg mx-auto dark:bg-gray-900 dark:border dark:border-gray-700 dark:text-gray-300">
+    <div class="relative transform rounded-lg bg-white text-left shadow-xl w-full max-w-2xl mx-auto dark:bg-gray-900 dark:border dark:border-gray-700 dark:text-gray-300">
       <!-- Header -->
-      <div class="px-5 pt-5 pb-3 border-b border-gray-200 dark:border-gray-700">
-        <h3 class="text-lg font-medium text-gray-900 dark:text-white">Deploy Solution to Desktop</h3>
+      <div class="px-6 pt-5 pb-3 border-b border-gray-200 dark:border-gray-700">
+        <h3 class="text-lg font-medium text-gray-900 dark:text-white">Deploy Solution to Cluster</h3>
+      </div>
+
+      <!-- No context selected -->
+      <div v-if="step === 'no-context'" class="px-6 py-8">
+        <div class="flex flex-col items-center gap-3">
+          <svg class="h-10 w-10 text-amber-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+          </svg>
+          <p class="text-sm text-gray-700 dark:text-gray-300 text-center">Please select a Kubernetes context and namespace first, then try again.</p>
+        </div>
+        <div class="flex justify-end mt-4">
+          <button
+            @click="close"
+            type="button"
+            class="px-4 py-2 text-sm font-medium text-white bg-sky-600 hover:bg-sky-700 rounded-md transition-colors"
+          >
+            OK
+          </button>
+        </div>
       </div>
 
       <!-- Fetching step -->
-      <div v-if="step === 'fetch'" class="px-5 py-8">
+      <div v-else-if="step === 'fetch'" class="px-6 py-8">
         <div class="flex flex-col items-center gap-3">
           <svg class="animate-spin h-8 w-8 text-sky-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -190,7 +194,7 @@ const confirmSuccess = () => {
       </div>
 
       <!-- Select target step -->
-      <div v-else-if="step === 'select'" class="px-5 py-4 space-y-4">
+      <div v-else-if="step === 'select'" class="px-6 py-5 space-y-4">
         <!-- Solution info -->
         <div v-if="solutionInfo" class="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 border border-gray-200 dark:border-gray-700">
           <p class="font-medium text-gray-900 dark:text-white">{{ solutionInfo.title }}</p>
@@ -202,34 +206,13 @@ const confirmSuccess = () => {
           </div>
         </div>
 
-        <!-- Context selector -->
-        <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Kubernetes Context</label>
-          <select
-            v-model="selectedContext"
-            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
-          >
-            <option value="" disabled>Select context...</option>
-            <option v-for="c in contexts" :key="c.name" :value="c.name">{{ c.name }}</option>
-          </select>
-        </div>
-
-        <!-- Namespace selector -->
-        <div v-if="selectedContext">
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Namespace</label>
-          <div v-if="loadingNamespaces" class="text-sm text-gray-500">Loading namespaces...</div>
-          <select
-            v-else
-            v-model="selectedNamespace"
-            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
-          >
-            <option value="" disabled>Select namespace...</option>
-            <option v-for="ns in namespaces" :key="ns" :value="ns">{{ ns }}</option>
-          </select>
+        <!-- Current context info -->
+        <div class="text-xs text-gray-500 dark:text-gray-400">
+          Deploying to <span class="font-medium text-gray-700 dark:text-gray-300">{{ ctx.name }}</span> / <span class="font-medium text-gray-700 dark:text-gray-300">{{ ctx.ns }}</span>
         </div>
 
         <!-- Project selector -->
-        <div v-if="selectedNamespace">
+        <div>
           <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Project</label>
           <div v-if="loadingProjects" class="text-sm text-gray-500">Loading projects...</div>
           <template v-else>
@@ -247,20 +230,35 @@ const confirmSuccess = () => {
                 New Project
               </button>
             </div>
-            <select
-              v-if="!useNewProject"
-              v-model="selectedProject"
-              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
-            >
-              <option value="" disabled>Select project...</option>
-              <option v-for="p in projects" :key="p.name" :value="p.name">{{ p.title || p.name }}</option>
-            </select>
+            <div v-if="!useNewProject" class="custom-dropdown relative">
+              <button
+                type="button"
+                @click="toggleDropdown('project')"
+                class="w-full flex items-center justify-between px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white hover:border-gray-400 dark:hover:border-gray-500 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition-colors"
+              >
+                <span :class="selectedProject ? '' : 'text-gray-400'">{{ (selectedProject && projects.find(p => p.name === selectedProject)?.title) || selectedProject || 'Select project...' }}</span>
+                <svg class="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+              </button>
+              <div v-if="openDropdown === 'project'" class="absolute z-10 mt-1 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-md shadow-lg max-h-48 overflow-auto">
+                <div
+                  v-for="p in projects"
+                  :key="p.name"
+                  @click="selectProject(p.name)"
+                  :class="['px-3 py-2 text-sm cursor-pointer', p.name === selectedProject ? 'bg-sky-50 dark:bg-sky-900/30 text-sky-700 dark:text-sky-300' : 'text-gray-900 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700']"
+                >
+                  {{ p.title || p.name }}
+                </div>
+                <div v-if="projects.length === 0" class="px-3 py-2 text-sm text-gray-400">
+                  No projects found
+                </div>
+              </div>
+            </div>
             <input
               v-else
               v-model="newProjectName"
               type="text"
               placeholder="New project name"
-              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-sky-500"
+              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
             />
           </template>
         </div>
@@ -270,7 +268,7 @@ const confirmSuccess = () => {
           <button
             @click="close"
             type="button"
-            class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+            class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
           >
             Cancel
           </button>
@@ -278,7 +276,7 @@ const confirmSuccess = () => {
             @click="deploy"
             type="button"
             :disabled="!canDeploy()"
-            class="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            class="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             Deploy
           </button>
@@ -286,7 +284,7 @@ const confirmSuccess = () => {
       </div>
 
       <!-- Importing step -->
-      <div v-else-if="step === 'import'" class="px-5 py-8">
+      <div v-else-if="step === 'import'" class="px-6 py-8">
         <div class="flex flex-col items-center gap-3">
           <svg class="animate-spin h-8 w-8 text-sky-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -297,7 +295,7 @@ const confirmSuccess = () => {
       </div>
 
       <!-- Done step -->
-      <div v-else-if="step === 'done'" class="px-5 py-8">
+      <div v-else-if="step === 'done'" class="px-6 py-8">
         <div class="flex flex-col items-center gap-3">
           <svg class="h-10 w-10 text-green-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -308,7 +306,7 @@ const confirmSuccess = () => {
           <button
             @click="confirmSuccess"
             type="button"
-            class="px-4 py-2 text-sm font-medium text-white bg-sky-600 hover:bg-sky-700 rounded-lg transition-colors"
+            class="px-4 py-2 text-sm font-medium text-white bg-sky-600 hover:bg-sky-700 rounded-md transition-colors"
           >
             OK
           </button>
@@ -316,7 +314,7 @@ const confirmSuccess = () => {
       </div>
 
       <!-- Error step -->
-      <div v-else-if="step === 'error'" class="px-5 py-6">
+      <div v-else-if="step === 'error'" class="px-6 py-6">
         <div class="flex flex-col items-center gap-3">
           <svg class="h-10 w-10 text-red-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
@@ -328,14 +326,14 @@ const confirmSuccess = () => {
             @click="step = 'select'; error = ''"
             type="button"
             v-if="solutionJSON"
-            class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+            class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
           >
             Back
           </button>
           <button
             @click="close"
             type="button"
-            class="px-4 py-2 text-sm font-medium text-white bg-sky-600 hover:bg-sky-700 rounded-lg transition-colors"
+            class="px-4 py-2 text-sm font-medium text-white bg-sky-600 hover:bg-sky-700 rounded-md transition-colors"
           >
             Close
           </button>

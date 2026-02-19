@@ -31,24 +31,32 @@ const parseDeepLinkURL = (rawUrl) => {
 }
 
 const handleDeepLink = (rawUrl) => {
+  console.log('[DEEPLINK] handleDeepLink called with:', rawUrl)
   const exportUrl = parseDeepLinkURL(rawUrl)
+  console.log('[DEEPLINK] parsed exportUrl:', exportUrl)
   if (exportUrl) {
     deepLinkUrl.value = exportUrl
   }
 }
 
 onMounted(async () => {
+  console.log('[DEEPLINK] App.vue onMounted')
   try {
     buildInfo.value = await GetBuildInfo()
   } catch (e) {
     console.error('Failed to get build info:', e)
   }
 
-  EventsOn('deeplink:deploy', handleDeepLink)
+  EventsOn('deeplink:deploy', (url) => {
+    console.log('[DEEPLINK] EventsOn deeplink:deploy received:', url)
+    handleDeepLink(url)
+  })
 
   // Check for deep link that arrived before frontend was ready (cold-start)
   try {
+    console.log('[DEEPLINK] calling GetPendingDeepLink...')
     const pending = await GetPendingDeepLink()
+    console.log('[DEEPLINK] GetPendingDeepLink returned:', pending)
     if (pending) handleDeepLink(pending)
   } catch (e) {
     console.error('Failed to check pending deep link:', e)
@@ -79,6 +87,7 @@ onUnmounted(() => {
     <DeepLinkImportModal
       v-if="deepLinkUrl"
       :url="deepLinkUrl"
+      :ctx="ctx"
       @close="deepLinkUrl = null"
       @success="deepLinkUrl = null"
     />
