@@ -66,6 +66,10 @@ export function ExportProject(arg1, arg2, arg3) {
   return window['go']['main']['App']['ExportProject'](arg1, arg2, arg3);
 }
 
+export function FetchSolutionExport(arg1, arg2) {
+  return window['go']['main']['App']['FetchSolutionExport'](arg1, arg2);
+}
+
 export function FetchSolutionJSON(arg1) {
   return window['go']['main']['App']['FetchSolutionJSON'](arg1);
 }
@@ -98,10 +102,6 @@ export function GetKubeContexts() {
   return window['go']['main']['App']['GetKubeContexts']();
 }
 
-export function GetPendingDeepLink() {
-  return window['go']['main']['App']['GetPendingDeepLink']();
-}
-
 export function GetModules(arg1, arg2) {
   return window['go']['main']['App']['GetModules'](arg1, arg2);
 }
@@ -112,6 +112,10 @@ export function GetNamespaces(arg1) {
 
 export function GetNodeHandles(arg1, arg2, arg3) {
   return window['go']['main']['App']['GetNodeHandles'](arg1, arg2, arg3);
+}
+
+export function GetPendingDeepLink() {
+  return window['go']['main']['App']['GetPendingDeepLink']();
 }
 
 export function GetPreferences() {

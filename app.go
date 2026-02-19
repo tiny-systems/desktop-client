@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
+	api "github.com/tiny-systems/platform-api"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
@@ -233,10 +234,11 @@ func (a *App) GetPendingDeepLink() string {
 	defer deepLinkState.mu.Unlock()
 	url := deepLinkState.pendingURL
 	deepLinkState.pendingURL = "" // consume it
+	fmt.Println("[DEEPLINK] GetPendingDeepLink called, returning:", url)
 	return url
 }
 
-// FetchSolutionJSON downloads solution JSON from the given URL
+// FetchSolutionJSON downloads solution JSON from the given URL (legacy deep links).
 func (a *App) FetchSolutionJSON(url string) (string, error) {
 	client := &http.Client{Timeout: 30 * time.Second}
 	resp, err := client.Get(url)
@@ -254,7 +256,33 @@ func (a *App) FetchSolutionJSON(url string) (string, error) {
 		return "", fmt.Errorf("failed to read response: %w", err)
 	}
 
-	// Validate it's valid JSON
+	if !json.Valid(body) {
+		return "", fmt.Errorf("response is not valid JSON")
+	}
+
+	return string(body), nil
+}
+
+// FetchSolutionExport downloads solution export JSON using a one-time token via the platform-api client.
+func (a *App) FetchSolutionExport(token, apiBase string) (string, error) {
+	client, err := api.NewClientWithResponses(apiBase)
+	if err != nil {
+		return "", fmt.Errorf("failed to create API client: %w", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	resp, err := client.ExportSolutionWithResponse(ctx, &api.ExportSolutionParams{Token: token})
+	if err != nil {
+		return "", fmt.Errorf("failed to fetch solution: %w", err)
+	}
+
+	if resp.StatusCode() != http.StatusOK {
+		return "", fmt.Errorf("server returned %d", resp.StatusCode())
+	}
+
+	body := resp.Body
 	if !json.Valid(body) {
 		return "", fmt.Errorf("response is not valid JSON")
 	}

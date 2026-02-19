@@ -35,6 +35,8 @@ export function DisconnectNodes(arg1:string,arg2:string,arg3:string,arg4:string)
 
 export function ExportProject(arg1:string,arg2:string,arg3:string):Promise<string>;
 
+export function FetchSolutionExport(arg1:string,arg2:string):Promise<string>;
+
 export function FetchSolutionJSON(arg1:string):Promise<string>;
 
 export function GetAvailableComponents(arg1:string,arg2:string):Promise<Array<main.ComponentInfo>>;
@@ -51,13 +53,13 @@ export function GetFlowsWithGraphs(arg1:string,arg2:string,arg3:string):Promise<
 
 export function GetKubeContexts():Promise<Array<main.KubeContext>>;
 
-export function GetPendingDeepLink():Promise<string>;
-
 export function GetModules(arg1:string,arg2:string):Promise<Array<main.Module>>;
 
 export function GetNamespaces(arg1:string):Promise<Array<string>>;
 
 export function GetNodeHandles(arg1:string,arg2:string,arg3:string):Promise<Array<Record<string, any>>>;
+
+export function GetPendingDeepLink():Promise<string>;
 
 export function GetPreferences():Promise<main.Preferences>;
 

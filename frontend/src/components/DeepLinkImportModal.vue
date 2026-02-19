@@ -3,7 +3,7 @@ import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { EventsOn, EventsOff } from '../../wailsjs/runtime/runtime'
 
 const props = defineProps({
-  url: String,
+  deepLinkData: Object, // { token, api } or { legacyUrl }
   ctx: Object // { name: contextName, ns: namespace } from App.vue
 })
 
@@ -54,7 +54,14 @@ onMounted(async () => {
   }
 
   try {
-    const json = await GoApp.FetchSolutionJSON(props.url)
+    let json
+    if (props.deepLinkData?.token && props.deepLinkData?.api) {
+      json = await GoApp.FetchSolutionExport(props.deepLinkData.token, props.deepLinkData.api)
+    } else if (props.deepLinkData?.legacyUrl) {
+      json = await GoApp.FetchSolutionJSON(props.deepLinkData.legacyUrl)
+    } else {
+      throw new Error('Missing token/api or legacy URL in deep link data')
+    }
     solutionJSON.value = json
 
     // Parse to extract info

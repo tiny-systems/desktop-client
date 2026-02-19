@@ -10,7 +10,7 @@ import DeepLinkImportModal from "./components/DeepLinkImportModal.vue";
 const ctx = ref(null)
 const project = ref(null)
 const buildInfo = ref(null)
-const deepLinkUrl = ref(null)
+const deepLinkData = ref(null) // { token, api }
 const initialTab = ref('projects')
 
 const selectProject = (p) => {
@@ -20,11 +20,21 @@ const selectContext = (c) => {
   ctx.value = c
 }
 
-const parseDeepLinkURL = (rawUrl) => {
-  // Extract the export URL from tinysystems://deploy?url=<encoded-url>
+const parseDeepLink = (rawUrl) => {
+  // Extract token and api from tinysystems://deploy?token=<token>&api=<encoded-api-base>
   try {
     const u = new URL(rawUrl)
-    return u.searchParams.get('url')
+    const token = u.searchParams.get('token')
+    const api = u.searchParams.get('api')
+    if (token && api) {
+      return { token, api }
+    }
+    // Backwards compat: support old url= format
+    const url = u.searchParams.get('url')
+    if (url) {
+      return { legacyUrl: url }
+    }
+    return null
   } catch {
     return null
   }
@@ -32,10 +42,10 @@ const parseDeepLinkURL = (rawUrl) => {
 
 const handleDeepLink = (rawUrl) => {
   console.log('[DEEPLINK] handleDeepLink called with:', rawUrl)
-  const exportUrl = parseDeepLinkURL(rawUrl)
-  console.log('[DEEPLINK] parsed exportUrl:', exportUrl)
-  if (exportUrl) {
-    deepLinkUrl.value = exportUrl
+  const data = parseDeepLink(rawUrl)
+  console.log('[DEEPLINK] parsed data:', data)
+  if (data) {
+    deepLinkData.value = data
   }
 }
 
@@ -85,11 +95,11 @@ onUnmounted(() => {
 
     <!-- Deep link import modal (overlays everything) -->
     <DeepLinkImportModal
-      v-if="deepLinkUrl"
-      :url="deepLinkUrl"
+      v-if="deepLinkData"
+      :deep-link-data="deepLinkData"
       :ctx="ctx"
-      @close="deepLinkUrl = null"
-      @success="deepLinkUrl = null"
+      @close="deepLinkData = null"
+      @success="deepLinkData = null"
     />
   </div>
 </template>
