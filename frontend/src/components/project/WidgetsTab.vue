@@ -43,9 +43,9 @@ const loadPages = async () => {
   }
 }
 
-// Load widgets for the active page
+// Load widgets for the active page (or all widgets if no pages exist)
 const loadWidgets = async () => {
-  if (!GoApp || !activePage.value) return
+  if (!GoApp) return
   loading.value = true
   try {
     const result = await GoApp.GetWidgets(props.ctx, props.ns, props.projectName, activePage.value)
@@ -321,9 +321,7 @@ watch(activePage, () => {
 
 onMounted(async () => {
   await loadPages()
-  if (activePage.value) {
-    await loadWidgets()
-  }
+  await loadWidgets()
 
   // Start watching for updates
   if (GoApp) {
@@ -351,9 +349,7 @@ onUnmounted(async () => {
 const refresh = async () => {
   activePage.value = ''
   await loadPages()
-  if (activePage.value) {
-    await loadWidgets()
-  }
+  await loadWidgets()
 }
 
 defineExpose({ refresh })

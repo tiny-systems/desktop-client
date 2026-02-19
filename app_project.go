@@ -585,9 +585,12 @@ func (a *App) GetWidgets(contextName string, namespace string, projectName strin
     return nil, fmt.Errorf("unable to get widget pages: %w", err)
   }
 
+  // If no pages exist at all, show all dashboard widgets (no filtering)
+  noPages := len(pages) == 0
+
   // Determine if current page is the default page (first page by sort index)
   isDefaultPage := false
-  if len(pages) > 0 {
+  if !noPages {
     // Sort pages by sort index to find the default
     sortedPages := make([]v1alpha1.TinyWidgetPage, len(pages))
     copy(sortedPages, pages)
@@ -699,10 +702,11 @@ func (a *App) GetWidgets(contextName string, namespace string, projectName strin
     }
 
     // Widget visibility rules:
-    // 1. If widget is assigned to current page -> show
-    // 2. If widget is NOT assigned to ANY page AND current page is default -> show
-    // 3. Otherwise -> don't show
-    if !isOnCurrentPage {
+    // 1. If no pages exist at all -> show all dashboard widgets
+    // 2. If widget is assigned to current page -> show
+    // 3. If widget is NOT assigned to ANY page AND current page is default -> show
+    // 4. Otherwise -> don't show
+    if !noPages && !isOnCurrentPage {
       if len(assignedPages) > 0 || !isDefaultPage {
         // Widget is assigned to other pages, or we're not on default page
         continue
