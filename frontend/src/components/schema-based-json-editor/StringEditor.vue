@@ -21,11 +21,29 @@
       <div v-if="canUpload">
         Upload
       </div>
-      <textarea v-if="useTextArea"
+      <div v-if="useTextArea && isSecret && !secretVisible" class="relative w-full">
+        <textarea
+          :class="[errorMessage ? theme.errorTextarea : theme.textarea, 'text-transparent select-none']"
+          :rows="!!expression ? 3 : 10"
+          disabled
+          :value="expression || value"></textarea>
+        <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <LockClosedIcon class="w-16 h-16 text-gray-300 dark:text-gray-600" />
+        </div>
+      </div>
+      <textarea v-else-if="useTextArea"
           :class="[errorMessage ? theme.errorTextarea : theme.textarea, !!expression ? theme.expression : '']"
           @change="onChange($event)" @keyup="onChange($event)" :rows="!!expression ? 3 : 10"
           :disabled="isReadOnly || !!expression" :value="expression || value"
           autocapitalize="off" autocorrect="off" spellcheck="false"></textarea>
+      <button v-if="useTextArea && isSecret && value"
+              type="button"
+              class="w-5 h-5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 cursor-pointer mx-1 flex-shrink-0 self-center"
+              @click="secretVisible = !secretVisible"
+              :title="secretVisible ? 'Hide value' : 'Show value'">
+        <EyeSlashIcon v-if="secretVisible" />
+        <EyeIcon v-else />
+      </button>
       <vue-monaco-editor v-if="useCodeEditor"
         :class="[errorMessage ? theme.errorCodeEditor : theme.codeEditor, !!expression ? theme.expression : '', 'min-h-[32rem]']"
         :value="expression || value"
@@ -51,8 +69,9 @@
              spellcheck="false"
              :disabled="isReadOnly || !!expression"/>
       <div v-if="useInput && isSecret && !secretVisible"
-           :class="[theme.input, 'flex items-center select-none tracking-widest text-gray-400']">
-        ******
+           :class="[theme.input, 'flex items-center select-none text-gray-400 gap-2']">
+        <LockClosedIcon class="w-4 h-4 text-gray-300 dark:text-gray-600 flex-shrink-0" />
+        <span class="tracking-widest">******</span>
       </div>
       <button v-if="useInput && isSecret && value"
               type="button"
@@ -181,7 +200,7 @@
 import type { PropType } from 'vue'
 import { defineAsyncComponent } from 'vue'
 import * as common from './common'
-import {XCircleIcon, ChevronRightIcon, ChevronDownIcon, PencilIcon, EyeIcon, EyeSlashIcon} from '@heroicons/vue/24/outline'
+import {XCircleIcon, ChevronRightIcon, ChevronDownIcon, PencilIcon, EyeIcon, EyeSlashIcon, LockClosedIcon} from '@heroicons/vue/24/outline'
 import Optional from './Optional.vue'
 import Description from './Description.vue'
 import { useDark } from "@vueuse/core";
@@ -193,7 +212,7 @@ const VueMonacoEditor = defineAsyncComponent(() =>
 
 export default {
   components: {
-    XCircleIcon, ChevronRightIcon, ChevronDownIcon, PencilIcon, EyeIcon, EyeSlashIcon,
+    XCircleIcon, ChevronRightIcon, ChevronDownIcon, PencilIcon, EyeIcon, EyeSlashIcon, LockClosedIcon,
     optional: Optional,
     description: Description,
     'vue-monaco-editor': VueMonacoEditor
