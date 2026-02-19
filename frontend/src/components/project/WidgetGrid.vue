@@ -128,13 +128,16 @@ const syncWidgets = (widgets) => {
       // Update existing widget data and position
       const instance = widgetInstances.get(widget.id)
       updateWidgetContent(instance, widget)
-      // Also sync GridStack position
-      grid.update(instance.element, {
-        x: widget.gridX,
-        y: widget.gridY,
-        w: widget.gridW || 3,
-        h: widget.gridH || 3
-      })
+      // Only sync GridStack position when NOT in edit mode
+      // During edit mode, user is dragging/resizing — don't overwrite with server data
+      if (!props.editMode) {
+        grid.update(instance.element, {
+          x: widget.gridX,
+          y: widget.gridY,
+          w: widget.gridW || 6,
+          h: widget.gridH || 3
+        })
+      }
     }
   })
 
