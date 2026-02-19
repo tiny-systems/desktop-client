@@ -221,6 +221,9 @@ export default {
           if (s.configurable) {
             reference.configurable = s.configurable
           }
+          if (s.secret) {
+            reference.secret = s.secret
+          }
           return this.getRealSchemaRecursive(reference)
         }
       }
