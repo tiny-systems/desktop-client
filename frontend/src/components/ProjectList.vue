@@ -4,16 +4,26 @@
     <header class="sticky top-0 bg-white dark:bg-gray-900 z-50 border-b border-gray-200 dark:border-gray-700">
       <div class="px-4 py-3 flex items-center justify-between">
         <ContextSelector @select="onSelect" @contexts-loaded="onContextsLoaded" :ctx="ctx"/>
-        <button
-          v-if="ctx && statusClass !== 'error' && activeTab === 'projects'"
-          @click="showCreateDialog = true"
-          class="flex items-center space-x-2 px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white rounded-lg text-sm font-medium transition-colors"
-        >
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-          </svg>
-          <span>New Project</span>
-        </button>
+        <div v-if="ctx && statusClass !== 'error' && activeTab === 'projects'" class="flex items-center space-x-3">
+          <button
+            @click="openSolutionsDirectory"
+            class="flex items-center space-x-2 px-4 py-2 text-sky-600 hover:text-sky-700 dark:text-sky-400 dark:hover:text-sky-300 text-sm font-medium transition-colors"
+          >
+            <span>Solutions</span>
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+            </svg>
+          </button>
+          <button
+            @click="showCreateDialog = true"
+            class="flex items-center space-x-2 px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white rounded-lg text-sm font-medium transition-colors"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+            </svg>
+            <span>New Project</span>
+          </button>
+        </div>
         <button
           v-if="ctx && activeTab === 'modules'"
           @click="openModulesDirectory"
@@ -209,6 +219,10 @@ const moduleListRef = ref(null)
 
 const openModulesDirectory = () => {
   BrowserOpenURL('https://tinysystems.io/modules')
+}
+
+const openSolutionsDirectory = () => {
+  BrowserOpenURL('https://tinysystems.io/solutions')
 }
 
 const ctx = ref(props.ctx)
