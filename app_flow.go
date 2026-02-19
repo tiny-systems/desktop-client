@@ -506,6 +506,7 @@ func (a *App) WatchFlowNodes(contextName, namespace, projectName, flowResourceNa
 				if event.Type != watch.Deleted {
 					update.Graph = buildNodeElement(node, blocked)
 
+					// Re-emit edges FROM this node (source edges)
 					for i := range node.Spec.Edges {
 						edge := &node.Spec.Edges[i]
 						wailsruntime.EventsEmit(a.ctx, "flowNodeUpdate", FlowNodeEvent{
@@ -513,6 +514,26 @@ func (a *App) WatchFlowNodes(contextName, namespace, projectName, flowResourceNa
 							ID:    edge.ID,
 							Graph: buildEdgeElement(watchCtx, node, edge, nodesMapCopy, flowResourceName, sharedWithFlow, nil),
 						})
+					}
+
+					// Re-emit edges TO this node (target edges) — edge config lives on
+					// the target node, so when target changes, edges need re-validation
+					for _, otherNode := range nodesMapCopy {
+						if otherNode.Name == node.Name {
+							continue
+						}
+						for i := range otherNode.Spec.Edges {
+							edge := &otherNode.Spec.Edges[i]
+							targetNode, _ := utils.ParseFullPortName(edge.To)
+							if targetNode == node.Name {
+								otherShared := containsFlow(otherNode.Annotations[v1alpha1.SharedWithFlowsAnnotation], flowResourceName)
+								wailsruntime.EventsEmit(a.ctx, "flowNodeUpdate", FlowNodeEvent{
+									Type:  string(event.Type),
+									ID:    edge.ID,
+									Graph: buildEdgeElement(watchCtx, &otherNode, edge, nodesMapCopy, flowResourceName, otherShared, nil),
+								})
+							}
+						}
 					}
 				}
 
@@ -777,6 +798,62 @@ func (a *App) ToggleNodeDashboard(contextName, namespace, nodeResourceName strin
 	return nil
 }
 
+// NodeSettings contains the settings for a node from the settings dialog.
+type NodeSettings struct {
+	SharedWithFlows string `json:"sharedWithFlows"`
+	Dashboard       bool   `json:"dashboard"`
+	Module          string `json:"module"`
+	Component       string `json:"component"`
+}
+
+// UpdateNodeSettings updates a node's shared flows, dashboard, module, and component settings.
+func (a *App) UpdateNodeSettings(contextName, namespace, nodeResourceName string, settings NodeSettings) error {
+	mgr, err := a.getManager(contextName, namespace)
+	if err != nil {
+		return err
+	}
+
+	node, err := mgr.GetNode(a.ctx, nodeResourceName, namespace)
+	if err != nil {
+		return fmt.Errorf("get node: %w", err)
+	}
+
+	if node.Annotations == nil {
+		node.Annotations = make(map[string]string)
+	}
+	if node.Labels == nil {
+		node.Labels = make(map[string]string)
+	}
+
+	// Shared flows
+	if settings.SharedWithFlows != "" {
+		node.Annotations[v1alpha1.SharedWithFlowsAnnotation] = settings.SharedWithFlows
+	} else {
+		delete(node.Annotations, v1alpha1.SharedWithFlowsAnnotation)
+	}
+
+	// Dashboard
+	if settings.Dashboard {
+		node.Labels[v1alpha1.DashboardLabel] = "true"
+	} else {
+		delete(node.Labels, v1alpha1.DashboardLabel)
+	}
+
+	// Module and component (advanced settings)
+	if settings.Module != "" {
+		node.Spec.Module = settings.Module
+	}
+	if settings.Component != "" {
+		node.Spec.Component = settings.Component
+	}
+
+	if err := mgr.UpdateNode(a.ctx, node); err != nil {
+		return fmt.Errorf("update node settings: %w", err)
+	}
+
+	return nil
+}
+
 // UpdateNodeConfiguration updates a node's port configuration.
 func (a *App) UpdateNodeConfiguration(contextName, namespace, nodeResourceName, port, configuration, schema string) error {
 	mgr, err := a.getManager(contextName, namespace)
@@ -826,7 +903,8 @@ func (a *App) ConnectNodes(contextName, namespace, flowResourceName, sourceNode,
 		return err
 	}
 
-	node, err := mgr.GetNode(a.ctx, sourceNode, namespace)
+	// Edge definition lives on the SOURCE node
+	srcNode, err := mgr.GetNode(a.ctx, sourceNode, namespace)
 	if err != nil {
 		return fmt.Errorf("get source node: %w", err)
 	}
@@ -837,20 +915,31 @@ func (a *App) ConnectNodes(contextName, namespace, flowResourceName, sourceNode,
 		To:     fmt.Sprintf("%s:%s", targetNode, targetPort),
 		FlowID: flowResourceName,
 	}
-	node.Spec.Edges = append(node.Spec.Edges, newEdge)
+	srcNode.Spec.Edges = append(srcNode.Spec.Edges, newEdge)
 
+	if err := mgr.UpdateNodeSync(a.ctx, srcNode, 30*time.Second); err != nil {
+		return fmt.Errorf("connect nodes: %w", err)
+	}
+
+	// Edge configuration lives on the TARGET node — the runner reads
+	// c.node.Spec.Ports where c.node is the message receiver
 	if configuration != "" {
+		tgtNode, err := mgr.GetNode(a.ctx, targetNode, namespace)
+		if err != nil {
+			return fmt.Errorf("get target node: %w", err)
+		}
+
 		portConfig := v1alpha1.TinyNodePortConfig{
-			Port:          sourcePort,
-			From:          fmt.Sprintf("%s:%s", targetNode, targetPort),
+			Port:          targetPort,
+			From:          fmt.Sprintf("%s:%s", sourceNode, sourcePort),
 			Configuration: []byte(configuration),
 			FlowID:        flowResourceName,
 		}
-		node.Spec.Ports = append(node.Spec.Ports, portConfig)
-	}
+		tgtNode.Spec.Ports = append(tgtNode.Spec.Ports, portConfig)
 
-	if err := mgr.UpdateNodeSync(a.ctx, node, 30*time.Second); err != nil {
-		return fmt.Errorf("connect nodes: %w", err)
+		if err := mgr.UpdateNodeSync(a.ctx, tgtNode, 30*time.Second); err != nil {
+			return fmt.Errorf("connect nodes (target config): %w", err)
+		}
 	}
 
 	return nil
@@ -863,35 +952,52 @@ func (a *App) DisconnectNodes(contextName, namespace, sourceNode, edgeID string)
 		return err
 	}
 
-	node, err := mgr.GetNode(a.ctx, sourceNode, namespace)
+	// Remove edge from SOURCE node
+	srcNode, err := mgr.GetNode(a.ctx, sourceNode, namespace)
 	if err != nil {
 		return fmt.Errorf("get source node: %w", err)
 	}
 
 	var targetTo string
-	newEdges := make([]v1alpha1.TinyNodeEdge, 0, len(node.Spec.Edges))
-	for _, edge := range node.Spec.Edges {
+	var sourcePort string
+	newEdges := make([]v1alpha1.TinyNodeEdge, 0, len(srcNode.Spec.Edges))
+	for _, edge := range srcNode.Spec.Edges {
 		if edge.ID == edgeID {
 			targetTo = edge.To
+			sourcePort = edge.Port
 			continue
 		}
 		newEdges = append(newEdges, edge)
 	}
-	node.Spec.Edges = newEdges
+	srcNode.Spec.Edges = newEdges
 
-	if targetTo != "" {
-		newPorts := make([]v1alpha1.TinyNodePortConfig, 0, len(node.Spec.Ports))
-		for _, portConfig := range node.Spec.Ports {
-			if portConfig.From == targetTo {
-				continue
-			}
-			newPorts = append(newPorts, portConfig)
-		}
-		node.Spec.Ports = newPorts
+	if err := mgr.UpdateNodeSync(a.ctx, srcNode, 30*time.Second); err != nil {
+		return fmt.Errorf("disconnect nodes: %w", err)
 	}
 
-	if err := mgr.UpdateNodeSync(a.ctx, node, 30*time.Second); err != nil {
-		return fmt.Errorf("disconnect nodes: %w", err)
+	// Remove port config from TARGET node
+	if targetTo != "" {
+		targetParts := strings.SplitN(targetTo, ":", 2)
+		if len(targetParts) == 2 {
+			targetNodeName := targetParts[0]
+			targetPort := targetParts[1]
+			fromStr := sourceNode + ":" + sourcePort
+
+			tgtNode, err := mgr.GetNode(a.ctx, targetNodeName, namespace)
+			if err == nil {
+				newPorts := make([]v1alpha1.TinyNodePortConfig, 0, len(tgtNode.Spec.Ports))
+				for _, portConfig := range tgtNode.Spec.Ports {
+					if portConfig.Port == targetPort && portConfig.From == fromStr {
+						continue
+					}
+					newPorts = append(newPorts, portConfig)
+				}
+				if len(newPorts) != len(tgtNode.Spec.Ports) {
+					tgtNode.Spec.Ports = newPorts
+					_ = mgr.UpdateNodeSync(a.ctx, tgtNode, 30*time.Second)
+				}
+			}
+		}
 	}
 
 	return nil
@@ -904,14 +1010,26 @@ func (a *App) UpdateEdgeConfiguration(contextName, namespace, sourceNode, source
 		return err
 	}
 
-	node, err := mgr.GetNode(a.ctx, sourceNode, namespace)
-	if err != nil {
-		return fmt.Errorf("get source node: %w", err)
+	// Parse targetTo: "targetNodeName:targetPort"
+	targetParts := strings.SplitN(targetTo, ":", 2)
+	if len(targetParts) != 2 {
+		return fmt.Errorf("invalid target format: %s", targetTo)
 	}
+	targetNodeName := targetParts[0]
+	targetPort := targetParts[1]
+
+	// Edge config must be stored on the TARGET node — the runner reads
+	// c.node.Spec.Ports where c.node is the message receiver
+	node, err := mgr.GetNode(a.ctx, targetNodeName, namespace)
+	if err != nil {
+		return fmt.Errorf("get target node: %w", err)
+	}
+
+	fromStr := sourceNode + ":" + sourcePort
 
 	found := false
 	for i, portConfig := range node.Spec.Ports {
-		if portConfig.Port == sourcePort && portConfig.From == targetTo {
+		if portConfig.Port == targetPort && portConfig.From == fromStr {
 			node.Spec.Ports[i].Configuration = []byte(configuration)
 			found = true
 			break
@@ -920,8 +1038,8 @@ func (a *App) UpdateEdgeConfiguration(contextName, namespace, sourceNode, source
 
 	if !found {
 		node.Spec.Ports = append(node.Spec.Ports, v1alpha1.TinyNodePortConfig{
-			Port:          sourcePort,
-			From:          targetTo,
+			Port:          targetPort,
+			From:          fromStr,
 			Configuration: []byte(configuration),
 			FlowID:        flowID,
 		})

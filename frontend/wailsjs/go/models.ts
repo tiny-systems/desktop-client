@@ -229,6 +229,40 @@ export namespace main {
 		}
 	}
 	
+	export class NodeSettings {
+	    sharedWithFlows: string;
+	    dashboard: boolean;
+	    module: string;
+	    component: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new NodeSettings(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.sharedWithFlows = source["sharedWithFlows"];
+	        this.dashboard = source["dashboard"];
+	        this.module = source["module"];
+	        this.component = source["component"];
+	    }
+	}
+	export class OtelCollectorStatus {
+	    installed: boolean;
+	    ready: boolean;
+	    message: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new OtelCollectorStatus(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.installed = source["installed"];
+	        this.ready = source["ready"];
+	        this.message = source["message"];
+	    }
+	}
 	export class Preferences {
 	    lastContext: string;
 	    lastNamespace: string;

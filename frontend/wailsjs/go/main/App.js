@@ -258,6 +258,10 @@ export function UpdateNodePosition(arg1, arg2, arg3, arg4, arg5) {
   return window['go']['main']['App']['UpdateNodePosition'](arg1, arg2, arg3, arg4, arg5);
 }
 
+export function UpdateNodeSettings(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['App']['UpdateNodeSettings'](arg1, arg2, arg3, arg4);
+}
+
 export function WatchFlowNodes(arg1, arg2, arg3, arg4) {
   return window['go']['main']['App']['WatchFlowNodes'](arg1, arg2, arg3, arg4);
 }
