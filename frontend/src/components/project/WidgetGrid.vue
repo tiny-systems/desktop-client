@@ -171,7 +171,7 @@ const addWidget = (widget) => {
     id: widget.id,
     x: widget.gridX,
     y: widget.gridY,
-    w: widget.gridW || 3,
+    w: widget.gridW || 6,
     h: widget.gridH || 3,
     content: ''
   })

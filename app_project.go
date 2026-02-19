@@ -723,9 +723,8 @@ func (a *App) GetWidgets(contextName string, namespace string, projectName strin
 
     // Get grid position from widget page or calculate default positions
     // Widget positions are stored by port full name "nodeName:portName"
-    // Default layout: 2 widgets per row (each width 3 in a 6-column grid)
-    // Default height 3 units (matching platform defaults)
-    gridX, gridY, gridW, gridH := 0, 0, 3, 3
+    // Default layout: full width (6 columns), stacked vertically (matching platform)
+    gridX, gridY, gridW, gridH := 0, 0, 6, 3
     var customSchema map[string]interface{}
     var customTitle string
     if pos, ok := widgetPositions[portFullName]; ok {
