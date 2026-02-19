@@ -18,6 +18,10 @@ export function CheckAuthorization(arg1) {
   return window['go']['main']['App']['CheckAuthorization'](arg1);
 }
 
+export function CheckOtelCollector(arg1, arg2) {
+  return window['go']['main']['App']['CheckOtelCollector'](arg1, arg2);
+}
+
 export function ConnectNodes(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8) {
   return window['go']['main']['App']['ConnectNodes'](arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8);
 }
@@ -32,6 +36,10 @@ export function CreateDashboardPage(arg1, arg2, arg3, arg4) {
 
 export function CreateFlow(arg1, arg2, arg3, arg4) {
   return window['go']['main']['App']['CreateFlow'](arg1, arg2, arg3, arg4);
+}
+
+export function CreateNamespace(arg1, arg2) {
+  return window['go']['main']['App']['CreateNamespace'](arg1, arg2);
 }
 
 export function CreateProject(arg1, arg2, arg3) {
@@ -88,6 +96,10 @@ export function GetFlowsWithGraphs(arg1, arg2, arg3) {
 
 export function GetKubeContexts() {
   return window['go']['main']['App']['GetKubeContexts']();
+}
+
+export function GetPendingDeepLink() {
+  return window['go']['main']['App']['GetPendingDeepLink']();
 }
 
 export function GetModules(arg1, arg2) {

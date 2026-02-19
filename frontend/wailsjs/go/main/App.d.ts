@@ -11,6 +11,8 @@ export function BatchUpdateNodePositions(arg1:string,arg2:string,arg3:Record<str
 
 export function CheckAuthorization(arg1:string):Promise<void>;
 
+export function CheckOtelCollector(arg1:string,arg2:string):Promise<main.OtelCollectorStatus>;
+
 export function ConnectNodes(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string,arg6:string,arg7:string,arg8:string):Promise<void>;
 
 export function ConnectToCluster(arg1:string):Promise<kubernetes.Clientset>;
@@ -18,6 +20,8 @@ export function ConnectToCluster(arg1:string):Promise<kubernetes.Clientset>;
 export function CreateDashboardPage(arg1:string,arg2:string,arg3:string,arg4:string):Promise<main.WidgetPage>;
 
 export function CreateFlow(arg1:string,arg2:string,arg3:string,arg4:string):Promise<main.Flow>;
+
+export function CreateNamespace(arg1:string,arg2:string):Promise<void>;
 
 export function CreateProject(arg1:string,arg2:string,arg3:string):Promise<main.Project>;
 
@@ -46,6 +50,8 @@ export function GetFlows(arg1:string,arg2:string,arg3:string):Promise<Array<main
 export function GetFlowsWithGraphs(arg1:string,arg2:string,arg3:string):Promise<Array<main.Flow>>;
 
 export function GetKubeContexts():Promise<Array<main.KubeContext>>;
+
+export function GetPendingDeepLink():Promise<string>;
 
 export function GetModules(arg1:string,arg2:string):Promise<Array<main.Module>>;
 

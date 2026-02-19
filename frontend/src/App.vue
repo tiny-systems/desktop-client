@@ -1,6 +1,6 @@
 <script setup>
 import {ref, onMounted, onUnmounted} from 'vue';
-import {GetBuildInfo} from "../wailsjs/go/main/App";
+import {GetBuildInfo, GetPendingDeepLink} from "../wailsjs/go/main/App";
 import {EventsOn, EventsOff} from "../wailsjs/runtime/runtime";
 
 import ProjectList from "./components/ProjectList.vue";
@@ -11,6 +11,7 @@ const ctx = ref(null)
 const project = ref(null)
 const buildInfo = ref(null)
 const deepLinkUrl = ref(null)
+const initialTab = ref('projects')
 
 const selectProject = (p) => {
   project.value = p
@@ -44,17 +45,31 @@ onMounted(async () => {
   }
 
   EventsOn('deeplink:deploy', handleDeepLink)
+
+  // Check for deep link that arrived before frontend was ready (cold-start)
+  try {
+    const pending = await GetPendingDeepLink()
+    if (pending) handleDeepLink(pending)
+  } catch (e) {
+    console.error('Failed to check pending deep link:', e)
+  }
+
+  EventsOn('navigate:modules', () => {
+    project.value = null
+    initialTab.value = 'modules'
+  })
 })
 
 onUnmounted(() => {
   EventsOff('deeplink:deploy')
+  EventsOff('navigate:modules')
 })
 </script>
 <template>
   <div class="h-screen w-screen overflow-hidden bg-gray-50 dark:bg-gray-900">
     <div class="w-full h-full">
       <Project v-if="project" @close="project = null" :ctx="ctx.name" :ns="ctx.ns" :name="project.name"></Project>
-      <ProjectList :ctx="ctx" @selectProject="selectProject" @selectContext="selectContext" v-else></ProjectList>
+      <ProjectList :ctx="ctx" :initial-tab="initialTab" @selectProject="selectProject" @selectContext="selectContext" v-else></ProjectList>
     </div>
     <div v-if="buildInfo" class="fixed bottom-1 right-2 text-[10px] text-gray-400 dark:text-gray-600 pointer-events-none select-none">
       SDK {{ buildInfo.sdkVersion }} · Built {{ buildInfo.buildTime }}

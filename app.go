@@ -230,6 +230,17 @@ func (a *App) OpenFile() (string, error) {
 	return string(data), nil
 }
 
+// GetPendingDeepLink returns a deep link URL that arrived before the frontend was ready.
+// Called by the frontend on mount to catch URLs from cold-start launches.
+func (a *App) GetPendingDeepLink() string {
+	select {
+	case url := <-pendingDeepLink:
+		return url
+	default:
+		return ""
+	}
+}
+
 // FetchSolutionJSON downloads solution JSON from the given URL
 func (a *App) FetchSolutionJSON(url string) (string, error) {
 	client := &http.Client{Timeout: 30 * time.Second}
