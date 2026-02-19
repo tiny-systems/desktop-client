@@ -40,7 +40,8 @@ const langs = {
     'none': 'None',
     'preview': 'Preview',
     'tableMode': 'Display: Table mode',
-    'readonly': 'Readonly'
+    'readonly': 'Readonly',
+    'secret': 'Secret'
   }
 }
 

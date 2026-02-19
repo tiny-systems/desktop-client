@@ -56,7 +56,7 @@
       </div>
       <button v-if="useInput && isSecret && value"
               type="button"
-              class="w-5 h-5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 cursor-pointer mx-1 flex-shrink-0"
+              class="w-5 h-5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 cursor-pointer mx-1 flex-shrink-0 self-center"
               @click="secretVisible = !secretVisible"
               :title="secretVisible ? 'Hide value' : 'Show value'">
         <EyeSlashIcon v-if="secretVisible" />
