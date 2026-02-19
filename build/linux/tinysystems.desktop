@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=TinySystems
+Comment=Desktop client for TinySystems
+Exec=desktop-client %u
+Type=Application
+Terminal=false
+Categories=Development;
+MimeType=x-scheme-handler/tinysystems;

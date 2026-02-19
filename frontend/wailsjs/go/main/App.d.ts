@@ -31,6 +31,8 @@ export function DisconnectNodes(arg1:string,arg2:string,arg3:string,arg4:string)
 
 export function ExportProject(arg1:string,arg2:string,arg3:string):Promise<string>;
 
+export function FetchSolutionJSON(arg1:string):Promise<string>;
+
 export function GetAvailableComponents(arg1:string,arg2:string):Promise<Array<main.ComponentInfo>>;
 
 export function GetBuildInfo():Promise<main.BuildInfo>;

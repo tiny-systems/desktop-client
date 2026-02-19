@@ -1,13 +1,16 @@
 <script setup>
-import {ref, onMounted} from 'vue';
+import {ref, onMounted, onUnmounted} from 'vue';
 import {GetBuildInfo} from "../wailsjs/go/main/App";
+import {EventsOn, EventsOff} from "../wailsjs/runtime/runtime";
 
 import ProjectList from "./components/ProjectList.vue";
 import Project from "./components/Project.vue";
+import DeepLinkImportModal from "./components/DeepLinkImportModal.vue";
 
 const ctx = ref(null)
 const project = ref(null)
 const buildInfo = ref(null)
+const deepLinkUrl = ref(null)
 
 const selectProject = (p) => {
   project.value = p
@@ -16,12 +19,35 @@ const selectContext = (c) => {
   ctx.value = c
 }
 
+const parseDeepLinkURL = (rawUrl) => {
+  // Extract the export URL from tinysystems://deploy?url=<encoded-url>
+  try {
+    const u = new URL(rawUrl)
+    return u.searchParams.get('url')
+  } catch {
+    return null
+  }
+}
+
+const handleDeepLink = (rawUrl) => {
+  const exportUrl = parseDeepLinkURL(rawUrl)
+  if (exportUrl) {
+    deepLinkUrl.value = exportUrl
+  }
+}
+
 onMounted(async () => {
   try {
     buildInfo.value = await GetBuildInfo()
   } catch (e) {
     console.error('Failed to get build info:', e)
   }
+
+  EventsOn('deeplink:deploy', handleDeepLink)
+})
+
+onUnmounted(() => {
+  EventsOff('deeplink:deploy')
 })
 </script>
 <template>
@@ -33,5 +59,13 @@ onMounted(async () => {
     <div v-if="buildInfo" class="fixed bottom-1 right-2 text-[10px] text-gray-400 dark:text-gray-600 pointer-events-none select-none">
       SDK {{ buildInfo.sdkVersion }} · Built {{ buildInfo.buildTime }}
     </div>
+
+    <!-- Deep link import modal (overlays everything) -->
+    <DeepLinkImportModal
+      v-if="deepLinkUrl"
+      :url="deepLinkUrl"
+      @close="deepLinkUrl = null"
+      @success="deepLinkUrl = null"
+    />
   </div>
 </template>

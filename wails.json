@@ -16,7 +16,14 @@
     "productName": "TinySystems",
     "productVersion": "1.0.0",
     "copyright": "Copyright © 2025 TinySystems",
-    "comments": "Desktop client for TinySystems"
+    "comments": "Desktop client for TinySystems",
+    "protocols": [
+      {
+        "scheme": "tinysystems",
+        "description": "TinySystems Deep Link",
+        "role": "Editor"
+      }
+    ]
   },
   "mac": {
     "entitlements": "build/darwin/entitlements.plist",

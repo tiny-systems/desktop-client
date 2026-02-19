@@ -60,31 +60,31 @@
 
     <TransitionRoot as="template" :show="modalVisible">
       <Dialog as="div" class="relative z-50" :open="modalVisible" @close="modalVisible = false">
-        <div class="fixed inset-0 bg-black/60 backdrop-blur-sm" />
+        <div class="fixed inset-0 bg-black/30 dark:bg-black/60 backdrop-blur-sm" />
         <div class="fixed inset-0 overflow-y-auto">
           <div class="flex min-h-full items-center justify-center p-4">
-            <DialogPanel class="relative bg-gray-900 border border-gray-700 rounded-lg text-xs text-gray-300 p-4 shadow-xl w-full max-w-md">
-              <h3 class="text-sm font-medium text-gray-200 mb-3">Advanced Settings</h3>
+            <DialogPanel class="relative bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-xs text-gray-700 dark:text-gray-300 p-5 shadow-xl w-full max-w-xl">
+              <h3 class="text-sm font-medium text-gray-900 dark:text-gray-200 mb-3">Advanced Settings</h3>
               <form @submit.prevent="handleOk">
                 <div class="grid gap-3 md:grid-cols-2">
                   <div v-for="(item, key) in advancedValue" :key="key">
-                    <label class="block text-gray-400 text-xs mb-1" :for="key">{{ local[key] || key }}</label>
+                    <label class="block text-gray-500 dark:text-gray-400 text-xs mb-1" :for="key">{{ local[key] || key }}</label>
                     <input type="number" v-model="advancedValue[key]" :id="key"
-                           class="modal-input bg-gray-800 border border-gray-600 text-gray-300 text-xs rounded focus:ring-sky-500 focus:border-sky-500 block w-full px-2 py-1.5"
+                           class="modal-input bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-300 text-xs rounded focus:ring-sky-500 focus:border-sky-500 block w-full px-2 py-1.5"
                            v-if="advancedAttr[key].type === 'integer' || advancedAttr[key].type === 'number'" :placeholder="key"/>
                     <div v-else-if="advancedAttr[key].type === 'boolean'" class="flex items-center h-8">
-                      <input :id="key" type="checkbox" v-model="advancedValue[key]" class="w-4 h-4 text-sky-600 bg-gray-700 rounded border-gray-600 focus:ring-sky-500 focus:ring-offset-gray-800"/>
+                      <input :id="key" type="checkbox" v-model="advancedValue[key]" class="w-4 h-4 text-sky-600 bg-gray-100 dark:bg-gray-700 rounded border-gray-300 dark:border-gray-600 focus:ring-sky-500 focus:ring-offset-white dark:focus:ring-offset-gray-800"/>
                     </div>
-                    <textarea @blur="changeEnumValue" :value="enumText" :id="key" :rows="2" v-else-if="key === 'enum'" :placeholder="local['enum_msg']" class="modal-input bg-gray-800 border border-gray-600 text-gray-300 text-xs rounded focus:ring-sky-500 focus:border-sky-500 block w-full px-2 py-1.5 resize-none"></textarea>
-                    <select :id="key" v-else-if="advancedAttr[key].type === 'array'" v-model="advancedValue[key]" :title="local[key]" class="modal-select bg-gray-800 border border-gray-600 text-gray-300 text-xs rounded focus:ring-sky-500 focus:border-sky-500 block w-full px-2 py-1.5">
+                    <textarea @blur="changeEnumValue" :value="enumText" :id="key" :rows="2" v-else-if="key === 'enum'" :placeholder="local['enum_msg']" class="modal-input bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-300 text-xs rounded focus:ring-sky-500 focus:border-sky-500 block w-full px-2 py-1.5 resize-none"></textarea>
+                    <select :id="key" v-else-if="advancedAttr[key].type === 'array'" v-model="advancedValue[key]" :title="local[key]" class="modal-select bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-300 text-xs rounded focus:ring-sky-500 focus:border-sky-500 block w-full px-2 py-1.5">
                       <option value="">{{ local['none'] }}</option>
                       <option v-for="t in advancedAttr[key].enums" :key="t" :value="t">{{ t }}</option>
                     </select>
-                    <input :id="key" type="text" v-model="advancedValue[key]" v-else :placeholder="key" class="modal-input bg-gray-800 border border-gray-600 text-gray-300 text-xs rounded focus:ring-sky-500 focus:border-sky-500 block w-full px-2 py-1.5"/>
+                    <input :id="key" type="text" v-model="advancedValue[key]" v-else :placeholder="key" class="modal-input bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-300 text-xs rounded focus:ring-sky-500 focus:border-sky-500 block w-full px-2 py-1.5"/>
                   </div>
                 </div>
                 <div class="pt-4 flex justify-end space-x-2">
-                  <button type="button" @click="modalVisible = false" class="px-3 py-1.5 text-xs rounded border border-gray-600 text-gray-400 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-sky-500">Cancel</button>
+                  <button type="button" @click="modalVisible = false" class="px-3 py-1.5 text-xs rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-sky-500">Cancel</button>
                   <button type="submit" class="px-3 py-1.5 text-xs rounded bg-sky-600 text-white hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-sky-500">Save</button>
                 </div>
               </form>

@@ -3,11 +3,15 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"os/user"
 	"path/filepath"
 	"runtime/debug"
 	"sync"
+	"time"
 
 	"github.com/go-logr/logr"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
@@ -91,6 +95,13 @@ func (a *App) startup(ctx context.Context) {
 	if err := setupPATH(); err != nil {
 		a.logger.Error(err, "Failed to setup PATH")
 	}
+
+	// Deep link handler — forwards URLs from OS to the frontend
+	go func() {
+		for url := range pendingDeepLink {
+			runtime.EventsEmit(a.ctx, "deeplink:deploy", url)
+		}
+	}()
 }
 
 // setupPATH adds common CLI tool locations to PATH environment variable
@@ -217,4 +228,30 @@ func (a *App) OpenFile() (string, error) {
 	}
 
 	return string(data), nil
+}
+
+// FetchSolutionJSON downloads solution JSON from the given URL
+func (a *App) FetchSolutionJSON(url string) (string, error) {
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Get(url)
+	if err != nil {
+		return "", fmt.Errorf("failed to fetch solution: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("server returned %d", resp.StatusCode)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("failed to read response: %w", err)
+	}
+
+	// Validate it's valid JSON
+	if !json.Valid(body) {
+		return "", fmt.Errorf("response is not valid JSON")
+	}
+
+	return string(body), nil
 }

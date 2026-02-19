@@ -9,6 +9,7 @@ require (
 	github.com/santhosh-tekuri/jsonschema/v5 v5.3.1
 	github.com/tiny-systems/module v0.1.354
 	github.com/wailsapp/wails/v2 v2.11.0
+	golang.org/x/sys v0.40.0
 	gomodules.xyz/jsonpatch/v2 v2.5.0
 	k8s.io/apimachinery v0.34.1
 	k8s.io/client-go v0.34.1
@@ -130,7 +131,6 @@ require (
 	golang.org/x/net v0.48.0 // indirect
 	golang.org/x/oauth2 v0.34.0 // indirect
 	golang.org/x/sync v0.19.0 // indirect
-	golang.org/x/sys v0.40.0 // indirect
 	golang.org/x/term v0.38.0 // indirect
 	golang.org/x/text v0.32.0 // indirect
 	golang.org/x/time v0.12.0 // indirect

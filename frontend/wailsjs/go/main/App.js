@@ -58,6 +58,10 @@ export function ExportProject(arg1, arg2, arg3) {
   return window['go']['main']['App']['ExportProject'](arg1, arg2, arg3);
 }
 
+export function FetchSolutionJSON(arg1) {
+  return window['go']['main']['App']['FetchSolutionJSON'](arg1);
+}
+
 export function GetAvailableComponents(arg1, arg2) {
   return window['go']['main']['App']['GetAvailableComponents'](arg1, arg2);
 }
