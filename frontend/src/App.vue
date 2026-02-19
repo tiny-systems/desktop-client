@@ -90,7 +90,7 @@ onUnmounted(() => {
       <ProjectList :ctx="ctx" :initial-tab="initialTab" @selectProject="selectProject" @selectContext="selectContext" v-else></ProjectList>
     </div>
     <div v-if="buildInfo" class="fixed bottom-1 right-2 text-[10px] text-gray-400 dark:text-gray-600 pointer-events-none select-none">
-      SDK {{ buildInfo.sdkVersion }} · Built {{ buildInfo.buildTime }}
+      © 2026 TinySystems · SDK {{ buildInfo.sdkVersion }} · Built {{ buildInfo.buildTime }}
     </div>
 
     <!-- Deep link import modal (overlays everything) -->
