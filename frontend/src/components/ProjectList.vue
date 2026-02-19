@@ -114,9 +114,44 @@
         </div>
 
         <!-- Empty state -->
-        <div v-else class="flex items-center justify-center h-64">
+        <div v-else class="flex items-center justify-center" :class="isCrdError ? 'min-h-64 py-8' : 'h-64'">
           <div class="text-center">
-            <div v-if="statusClass === 'error'" class="text-red-500 dark:text-red-400 mb-2">
+            <!-- CRD not installed — friendly setup guide -->
+            <div v-if="statusClass === 'error' && isCrdError" class="max-w-lg mx-auto text-left">
+              <div class="flex items-center gap-3 mb-4">
+                <div class="p-2 rounded-full bg-amber-100 dark:bg-amber-900/30">
+                  <svg class="w-6 h-6 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                  </svg>
+                </div>
+                <div>
+                  <h3 class="text-base font-semibold text-gray-900 dark:text-white">TinySystems CRDs not installed</h3>
+                  <p class="text-sm text-gray-500 dark:text-gray-400">Run these commands in your terminal to get started:</p>
+                </div>
+              </div>
+              <div class="bg-gray-900 dark:bg-gray-950 rounded-lg p-4 text-sm font-mono text-gray-300 overflow-x-auto relative group">
+                <button
+                  @click="copyCrdCommands"
+                  class="absolute top-2 right-2 p-1.5 rounded text-gray-500 hover:text-white hover:bg-gray-700 opacity-0 group-hover:opacity-100 transition-opacity"
+                  title="Copy to clipboard"
+                >
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                  </svg>
+                </button>
+                <pre class="whitespace-pre leading-relaxed"><span class="text-gray-500"># Add Tiny Systems Helm repository</span>
+helm repo add tinysystems https://tiny-systems.github.io/module/
+helm repo update
+
+<span class="text-gray-500"># Install CRDs (required once per cluster)</span>
+helm upgrade --install tinysystems-crd tinysystems/tinysystems-crd \
+  --namespace {{ ctx?.ns || 'default' }} \
+  --create-namespace</pre>
+              </div>
+              <p class="text-xs text-gray-400 dark:text-gray-500 mt-3">After installing, click the refresh button above to reload.</p>
+            </div>
+            <!-- Generic error -->
+            <div v-else-if="statusClass === 'error'" class="text-red-500 dark:text-red-400 mb-2">
               <svg class="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
               </svg>
@@ -205,7 +240,7 @@
   </div>
 </template>
 <script setup>
-import {onMounted, ref, watch, nextTick} from 'vue';
+import {computed, onMounted, ref, watch, nextTick} from 'vue';
 import {BrowserOpenURL} from '../../wailsjs/runtime/runtime.js';
 import ContextSelector from "./ContextSelector.vue";
 import ModuleList from "./ModuleList.vue";
@@ -249,6 +284,28 @@ const statusMessage = ref('Initializing...');
 const statusClass = ref('');
 const isLoading = ref(false)
 const projects = ref([]);
+
+const isCrdError = computed(() => {
+  const msg = statusMessage.value || ''
+  return msg.includes('operator.tinysystems.io') || msg.includes('no matches for')
+})
+
+const copyCrdCommands = async () => {
+  const ns = ctx.value?.ns || 'default'
+  const commands = `# Add Tiny Systems Helm repository
+helm repo add tinysystems https://tiny-systems.github.io/module/
+helm repo update
+
+# Install CRDs (required once per cluster)
+helm upgrade --install tinysystems-crd tinysystems/tinysystems-crd \\
+  --namespace ${ns} \\
+  --create-namespace`
+  try {
+    await navigator.clipboard.writeText(commands)
+  } catch (e) {
+    // fallback — ignore
+  }
+}
 
 // Create project dialog state
 const showCreateDialog = ref(false)
