@@ -1055,10 +1055,33 @@ func (a *App) SaveWidgets(contextName string, namespace string, projectName stri
     }
   }
 
-  // Update current page
+  // Update current page — auto-create default page if none exists
   currentPage := pageMap[pageResourceName]
   if currentPage == nil {
-    return fmt.Errorf("page not found: %s", pageResourceName)
+    // Auto-create a default "Home" page (same as platform behavior)
+    pageName := pageResourceName
+    if pageName == "" {
+      pageName = "Home"
+    }
+    createdName, err := mgr.CreatePage(a.ctx, pageName, projectName, namespace, 0)
+    if err != nil {
+      return fmt.Errorf("failed to auto-create page: %w", err)
+    }
+    // Re-fetch pages to get the created page with ResourceVersion
+    updatedPages, err := mgr.GetProjectPageWidgets(a.ctx, projectName)
+    if err != nil {
+      return fmt.Errorf("unable to get widget pages after create: %w", err)
+    }
+    for i := range updatedPages {
+      if updatedPages[i].Name == *createdName {
+        currentPage = &updatedPages[i]
+        pageResourceName = *createdName
+        break
+      }
+    }
+    if currentPage == nil {
+      return fmt.Errorf("page not found after auto-create: %s", *createdName)
+    }
   }
   currentPage.Spec.Widgets = currentPageWidgets
   if err := mgr.UpdatePage(a.ctx, currentPage); err != nil {
