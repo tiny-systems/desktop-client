@@ -78,7 +78,7 @@ const confirmDelete = () => {
       <button
         v-if="editMode"
         @click.stop="openDeleteConfirm(page)"
-        class="p-1 ml-1 rounded hover:bg-red-100 dark:hover:bg-red-900/50 opacity-0 group-hover:opacity-100 transition-opacity"
+        class="p-1 ml-1 rounded hover:bg-red-100 dark:hover:bg-red-900/50"
         title="Delete page"
       >
         <TrashIcon class="w-4 h-4 text-red-500" />
