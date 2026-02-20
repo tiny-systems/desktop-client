@@ -129,11 +129,17 @@
 
     <!-- Empty state -->
     <div v-else class="flex items-center justify-center h-64">
-      <div class="text-center">
+      <div class="text-center max-w-sm">
         <svg class="w-12 h-12 mx-auto text-gray-300 dark:text-gray-600 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
         </svg>
-        <p class="text-gray-500 dark:text-gray-400">No modules installed in this namespace</p>
+        <p class="text-gray-500 dark:text-gray-400 mb-2">No modules installed in this namespace</p>
+        <p class="text-sm text-gray-400 dark:text-gray-500">
+          Browse the <button @click="BrowserOpenURL('https://tinysystems.io/modules')" class="text-sky-500 hover:text-sky-600 font-medium">Modules Directory</button> and pick modules to install.
+        </p>
+        <p class="text-sm text-gray-400 dark:text-gray-500 mt-1">
+          We recommend starting with <button @click="BrowserOpenURL(`https://tinysystems.io/modules/tinysystems/common-module-v0?install${props.ctx?.ns ? '&namespace=' + encodeURIComponent(props.ctx.ns) : ''}`)" class="text-sky-500 hover:text-sky-600 font-medium">common-module</button>.
+        </p>
       </div>
     </div>
   </div>
@@ -141,6 +147,7 @@
 
 <script setup>
 import { ref, watch, reactive, computed } from 'vue'
+import { BrowserOpenURL } from '../../wailsjs/runtime/runtime.js'
 
 const props = defineProps({
   ctx: Object

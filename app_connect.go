@@ -6,6 +6,7 @@ import (
   "path/filepath"
   "time"
 
+  corev1 "k8s.io/api/core/v1"
   v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
   "k8s.io/client-go/kubernetes"
   "k8s.io/client-go/rest"
@@ -138,6 +139,71 @@ func (a *App) GetNamespaces(contextName string) ([]string, error) {
   }
 
   return namespaces, nil
+}
+
+// OtelCollectorStatus describes the state of the otel-collector in a namespace.
+type OtelCollectorStatus struct {
+  Installed bool `json:"installed"`
+  Ready     bool `json:"ready"`
+  Message   string `json:"message"`
+}
+
+// CheckOtelCollector checks if the otel-collector deployment exists and has healthy pods.
+func (a *App) CheckOtelCollector(contextName, namespace string) (*OtelCollectorStatus, error) {
+  config, err := loadContextConfig(contextName)
+  if err != nil {
+    return nil, fmt.Errorf("failed to build client configuration: %w", err)
+  }
+
+  clientset, err := kubernetes.NewForConfig(config)
+  if err != nil {
+    return nil, fmt.Errorf("failed to create Kubernetes clientset: %w", err)
+  }
+
+  deploy, err := clientset.AppsV1().Deployments(namespace).Get(a.ctx, "tinysystems-otel-collector", v1.GetOptions{})
+  if err != nil {
+    return &OtelCollectorStatus{Installed: false, Message: "Not installed"}, nil
+  }
+
+  if deploy.Status.ReadyReplicas > 0 {
+    return &OtelCollectorStatus{
+      Installed: true,
+      Ready:     true,
+      Message:   fmt.Sprintf("%d/%d replicas ready", deploy.Status.ReadyReplicas, *deploy.Spec.Replicas),
+    }, nil
+  }
+
+  return &OtelCollectorStatus{
+    Installed: true,
+    Ready:     false,
+    Message:   fmt.Sprintf("0/%d replicas ready", *deploy.Spec.Replicas),
+  }, nil
+}
+
+// CreateNamespace creates a new Kubernetes namespace in the given context.
+func (a *App) CreateNamespace(contextName, namespace string) error {
+  config, err := loadContextConfig(contextName)
+  if err != nil {
+    return fmt.Errorf("failed to build client configuration: %w", err)
+  }
+
+  clientset, err := kubernetes.NewForConfig(config)
+  if err != nil {
+    return fmt.Errorf("failed to create Kubernetes clientset: %w", err)
+  }
+
+  ns := &corev1.Namespace{
+    ObjectMeta: v1.ObjectMeta{
+      Name: namespace,
+    },
+  }
+
+  _, err = clientset.CoreV1().Namespaces().Create(a.ctx, ns, v1.CreateOptions{})
+  if err != nil {
+    return fmt.Errorf("failed to create namespace '%s': %w", namespace, err)
+  }
+
+  return nil
 }
 
 func loadContextConfig(contextName string) (*rest.Config, error) {

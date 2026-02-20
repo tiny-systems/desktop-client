@@ -232,45 +232,12 @@ export const useFlowStore = defineStore('flowStore', {
           const existingData = this.elements[i].data
           const newData = event.graph.data
 
-          // Volatile fields that change frequently and should not trigger full data replacement
-          // These are runtime state, not configuration that affects the schema editor
-          const volatileFields = ['stats', 'emit', 'status', 'error', 'emitting', 'last_status_update']
-
-          // Check if non-volatile data actually changed
-          const existingStable = { ...existingData }
-          const newStable = { ...newData }
-          volatileFields.forEach(field => {
-            delete existingStable[field]
-            delete newStable[field]
-          })
-
-          const dataChanged = !deepEqual(existingStable, newStable)
-
-          // Only replace data object if non-volatile data actually changed
-          if (dataChanged) {
-            // Preserve existing stats before updating data
-            const existingStats = existingData?.stats
-            this.elements[i].data = { ...newData }
-            // Merge stats: preserve existing stats and layer new stats on top
-            if (existingStats || newData?.stats) {
-              this.elements[i].data.stats = Object.assign({}, existingStats, newData?.stats)
-            }
-          } else {
-            // Just update volatile fields without replacing the whole data object
-            // This preserves object reference and avoids triggering watchers unnecessarily
-            volatileFields.forEach(field => {
-              if (newData?.[field] !== undefined) {
-                if (field === 'stats') {
-                  // Merge stats instead of replacing
-                  if (!this.elements[i].data.stats) {
-                    this.elements[i].data.stats = {}
-                  }
-                  Object.assign(this.elements[i].data.stats, newData.stats)
-                } else {
-                  this.elements[i].data[field] = newData[field]
-                }
-              }
-            })
+          // Always replace data — matches platform behavior.
+          // Merge stats from existing data to avoid losing streaming stats.
+          const existingStats = existingData?.stats
+          this.elements[i].data = { ...newData }
+          if (existingStats || newData?.stats) {
+            this.elements[i].data.stats = Object.assign({}, existingStats, newData?.stats)
           }
 
           // Update position if provided and different

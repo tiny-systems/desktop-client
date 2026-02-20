@@ -13,6 +13,7 @@ import {
 } from '@headlessui/vue'
 import { MagnifyingGlassIcon } from '@heroicons/vue/24/solid'
 import { FolderIcon } from '@heroicons/vue/24/outline'
+import { EventsEmit, BrowserOpenURL } from '../../../wailsjs/runtime/runtime'
 
 const props = defineProps({
   modelValue: Boolean,
@@ -37,6 +38,11 @@ const open = computed({
   get: () => props.modelValue,
   set: (val) => emit('update:modelValue', val)
 })
+
+const goToModules = () => {
+  open.value = false
+  EventsEmit('navigate:modules')
+}
 
 // Load components when modal opens
 watch(() => props.modelValue, async (isOpen) => {
@@ -262,12 +268,17 @@ const closeModal = () => {
             <p v-if="query !== ''" class="mt-3 text-sm text-gray-600 dark:text-gray-400">
               No components found matching "{{ query }}"
             </p>
-            <p v-else class="mt-3 text-sm text-gray-600 dark:text-gray-400">
-              No components available.
-            </p>
-            <p class="mt-2 text-xs text-gray-500 dark:text-gray-500">
-              Make sure modules are installed in the cluster.
-            </p>
+            <template v-else>
+              <p class="mt-3 text-sm text-gray-600 dark:text-gray-400">
+                No components available.
+              </p>
+              <p class="mt-2 text-xs text-gray-500 dark:text-gray-500">
+                Go to the <button @click="goToModules" class="text-sky-500 hover:text-sky-600 font-medium">Modules tab</button> or browse the <button @click="BrowserOpenURL('https://tinysystems.io/modules')" class="text-sky-500 hover:text-sky-600 font-medium">Modules Directory</button> to install modules.
+              </p>
+              <p class="mt-1 text-xs text-gray-500 dark:text-gray-500">
+                We recommend starting with <button @click="BrowserOpenURL(`https://tinysystems.io/modules/tinysystems/common-module-v0?install${flowStore.namespace ? '&namespace=' + encodeURIComponent(flowStore.namespace) : ''}`)" class="text-sky-500 hover:text-sky-600 font-medium">common-module</button>.
+              </p>
+            </template>
           </div>
 
           <!-- Loading overlay -->

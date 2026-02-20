@@ -1,5 +1,5 @@
 <script setup>
-import {computed, onMounted, ref} from 'vue';
+import {computed, nextTick, onMounted, ref, watch} from 'vue';
 
 const props = defineProps({
   ctx:Object
@@ -169,8 +169,10 @@ const getNamespaces = async (contextName) => {
         nsToSelect = fetchedNamespaces[0];
       }
       selectedNamespace.value = nsToSelect;
+      previousNamespace.value = nsToSelect;
     } else {
       selectedNamespace.value = '';
+      previousNamespace.value = '';
       statusMessage.value = `No namespaces found in context: ${contextName}`;
       statusClass.value = 'warning'; // Using a custom warning class
     }
@@ -209,6 +211,65 @@ const handleContextChange = async () => {
     isConnecting.value = false;
   }
 };
+
+// Create namespace dialog state
+const showNewNsDialog = ref(false)
+const newNsName = ref('')
+const newNsError = ref('')
+const isCreatingNs = ref(false)
+const newNsInput = ref(null)
+const previousNamespace = ref('')
+
+watch(showNewNsDialog, (val) => {
+  if (val) {
+    nextTick(() => newNsInput.value?.focus())
+  }
+})
+
+const onNamespaceSelect = () => {
+  if (selectedNamespace.value === '__new__') {
+    selectedNamespace.value = previousNamespace.value
+    showNewNsDialog.value = true
+    return
+  }
+  previousNamespace.value = selectedNamespace.value
+  handleNamespaceChange()
+}
+
+const cancelNewNamespace = () => {
+  if (isCreatingNs.value) return
+  showNewNsDialog.value = false
+  newNsName.value = ''
+  newNsError.value = ''
+}
+
+const createNamespace = async () => {
+  const name = newNsName.value.trim().toLowerCase()
+  if (!name) return
+
+  if (!/^[a-z0-9][a-z0-9-]*[a-z0-9]$/.test(name) && !/^[a-z0-9]$/.test(name)) {
+    newNsError.value = 'Must start and end with a letter or number, and contain only lowercase letters, numbers, and hyphens.'
+    return
+  }
+
+  isCreatingNs.value = true
+  newNsError.value = ''
+
+  try {
+    await GoApp.CreateNamespace(selectedContextName.value, name)
+    // Refresh namespace list and select the new one
+    await getNamespaces(selectedContextName.value)
+    selectedNamespace.value = name
+    previousNamespace.value = name
+    isCreatingNs.value = false
+    showNewNsDialog.value = false
+    newNsName.value = ''
+    handleNamespaceChange()
+  } catch (e) {
+    newNsError.value = `${e?.message || e}`
+    isCreatingNs.value = false
+  }
+}
 
 /**
  * Handles the user selecting a new namespace.
@@ -266,7 +327,7 @@ onMounted(() => {
         <select
           id="namespace-selector"
           v-model="selectedNamespace"
-          @change="handleNamespaceChange"
+          @change="onNamespaceSelect"
           :disabled="namespaces.length === 0"
           class="appearance-none bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 rounded-lg px-3 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 dark:focus:ring-sky-400 focus:border-transparent min-w-40"
         >
@@ -278,6 +339,7 @@ onMounted(() => {
           >
             {{ ns }}
           </option>
+          <option value="__new__">+ New namespace</option>
         </select>
       </div>
 
@@ -314,6 +376,51 @@ onMounted(() => {
         </div>
         <div v-else-if="statusMessage" class="text-sm text-gray-500 dark:text-gray-400">
           {{ statusMessage }}
+        </div>
+      </div>
+    </div>
+
+    <!-- Create Namespace Dialog -->
+    <div v-if="showNewNsDialog" class="fixed inset-0 z-50 overflow-y-auto">
+      <div class="fixed inset-0 bg-black/40 backdrop-blur-md" @click="cancelNewNamespace"></div>
+      <div class="flex min-h-full items-center justify-center p-4">
+        <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-sm p-5">
+          <h3 class="text-base font-semibold text-gray-900 dark:text-white mb-3">Create Namespace</h3>
+          <form @submit.prevent="createNamespace">
+            <div class="mb-3">
+              <input
+                ref="newNsInput"
+                v-model="newNsName"
+                type="text"
+                placeholder="my-namespace"
+                pattern="[a-z0-9][a-z0-9\-]*[a-z0-9]"
+                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent"
+                :disabled="isCreatingNs"
+              />
+              <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">Lowercase letters, numbers, and hyphens only.</p>
+            </div>
+            <div v-if="newNsError" class="mb-3 p-2 bg-red-50 dark:bg-red-900/20 rounded-lg">
+              <p class="text-xs text-red-600 dark:text-red-400">{{ newNsError }}</p>
+            </div>
+            <div class="flex justify-end gap-2">
+              <button
+                type="button"
+                @click="cancelNewNamespace"
+                :disabled="isCreatingNs"
+                class="px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                :disabled="isCreatingNs || !newNsName.trim()"
+                class="px-3 py-1.5 text-sm font-medium text-white bg-sky-600 rounded-lg hover:bg-sky-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1.5"
+              >
+                <div v-if="isCreatingNs" class="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-white"></div>
+                {{ isCreatingNs ? 'Creating...' : 'Create' }}
+              </button>
+            </div>
+          </form>
         </div>
       </div>
     </div>

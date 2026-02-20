@@ -1134,10 +1134,12 @@ const saveEdgeConfiguration = async () => {
       selectedEdge.value.data?.flowID || flowStore.flowResourceName
     )
 
-    // Update local edge data in store so it reflects the new config
+    // Update local edge data in store so it reflects the new config + valid status
     const localEdge = flowStore.getElement(selectedEdge.value.id)
     if (localEdge && localEdge.data) {
       localEdge.data.configuration = edgeFormValue.value
+      localEdge.data.valid = true
+      localEdge.data.error = ''
     }
 
     // Reset dirty state after save
@@ -1159,7 +1161,7 @@ const saveEdgeConfiguration = async () => {
   >
     <!-- Readonly lock watermark -->
     <div v-if="flowStore.readOnly || selectedEdge.data?.blocked" class="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-96 h-96 text-gray-400 dark:text-gray-500 opacity-[0.07]">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-96 h-96 text-gray-400 dark:text-gray-500 opacity-[0.12]">
         <path fill-rule="evenodd" d="M12 1.5a5.25 5.25 0 00-5.25 5.25v3a3 3 0 00-3 3v6.75a3 3 0 003 3h10.5a3 3 0 003-3v-6.75a3 3 0 00-3-3v-3c0-2.9-2.35-5.25-5.25-5.25zm3.75 8.25v-3a3.75 3.75 0 10-7.5 0v3h7.5z" clip-rule="evenodd" />
       </svg>
     </div>
@@ -1381,7 +1383,7 @@ const saveEdgeConfiguration = async () => {
   >
     <!-- Readonly lock watermark -->
     <div v-if="flowStore.readOnly || selectedNode.data?.blocked" class="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-96 h-96 text-gray-400 dark:text-gray-500 opacity-[0.07]">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-96 h-96 text-gray-400 dark:text-gray-500 opacity-[0.12]">
         <path fill-rule="evenodd" d="M12 1.5a5.25 5.25 0 00-5.25 5.25v3a3 3 0 00-3 3v6.75a3 3 0 003 3h10.5a3 3 0 003-3v-6.75a3 3 0 00-3-3v-3c0-2.9-2.35-5.25-5.25-5.25zm3.75 8.25v-3a3.75 3.75 0 10-7.5 0v3h7.5z" clip-rule="evenodd" />
       </svg>
     </div>

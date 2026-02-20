@@ -37,6 +37,11 @@ const traces = ref([])
 let errorEventCallback = null
 let refreshTimeout = null
 
+const isOtelNotFound = computed(() => {
+  const err = telemetryError.value || ''
+  return err.includes('not found') && err.includes('otel-collector')
+})
+
 // Computed metrics from traces
 const metrics = computed(() => {
   if (traces.value.length === 0) {
@@ -260,7 +265,13 @@ const refresh = () => {
       >
         <div class="flex flex-col items-center gap-2 p-4 max-w-md text-center">
           <ExclamationTriangleIcon class="w-8 h-8 text-amber-500" />
-          <p class="text-sm text-gray-900 dark:text-white font-medium">{{ telemetryError }}</p>
+          <p class="text-sm text-gray-900 dark:text-white font-medium">{{ isOtelNotFound ? 'OpenTelemetry collector is not installed' : telemetryError }}</p>
+          <p v-if="isOtelNotFound" class="text-xs text-gray-500 dark:text-gray-400">Install it to enable traces and realtime edge statistics:</p>
+          <div v-if="isOtelNotFound" class="bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded px-3 py-2 text-xs font-mono text-gray-700 dark:text-gray-300 text-left">
+            <pre class="whitespace-pre leading-relaxed">helm upgrade --install tinysystems-otel-collector \
+  tinysystems/tinysystems-otel-collector \
+  --namespace {{ ns }}</pre>
+          </div>
           <button
             @click="clearError"
             class="mt-2 px-3 py-1 text-xs text-gray-700 dark:text-white bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded transition-colors"

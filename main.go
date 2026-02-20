@@ -2,6 +2,7 @@ package main
 
 import (
 	"embed"
+	"fmt"
 	"runtime"
 
 	"github.com/wailsapp/wails/v2"
@@ -9,6 +10,7 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/menu"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
+	"github.com/wailsapp/wails/v2/pkg/options/mac"
 	ctrlog "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
@@ -37,6 +39,8 @@ func main() {
 		Title:            "TinySystems",
 		Width:            1280,
 		Height:           1024,
+		MinWidth:         800,
+		MinHeight:        600,
 		WindowStartState: options.Maximised,
 		AssetServer: &assetserver.Options{
 			Assets: assets,
@@ -48,6 +52,12 @@ func main() {
 			app,
 		},
 		Menu: appMenu, // Enable Cmd shortcuts on macOS
+		Mac: &mac.Options{
+			OnUrlOpen: func(url string) {
+				fmt.Println("[DEEPLINK] Mac.OnUrlOpen called, url:", url)
+				onDeepLinkReceived(url)
+			},
+		},
 
 		Logger:             nil, // Uses default logger
 		LogLevel:           logger.INFO,

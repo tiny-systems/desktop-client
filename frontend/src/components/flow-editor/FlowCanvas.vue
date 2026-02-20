@@ -249,10 +249,10 @@ const handleAutoLayout = async () => {
           ? 'bg-amber-100 text-amber-700 border-amber-300 dark:bg-amber-900/40 dark:text-amber-400 dark:border-amber-700'
           : 'bg-green-100 text-green-700 border-green-300 dark:bg-green-900/40 dark:text-green-400 dark:border-green-700'
       ]"
-      class="absolute top-2 right-12 z-10 flex items-center gap-1 px-2.5 py-1 rounded-full border text-[11px] font-semibold"
+      class="absolute top-2 right-12 z-10 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border text-xs font-bold shadow-sm"
     >
-      <LockClosedIcon v-if="flowStore.readOnly" class="w-3.5 h-3.5" />
-      <LockOpenIcon v-else class="w-3.5 h-3.5" />
+      <LockClosedIcon v-if="flowStore.readOnly" class="w-4 h-4" />
+      <LockOpenIcon v-else class="w-4 h-4" />
       {{ flowStore.readOnly ? 'READ ONLY' : 'EDITING' }}
     </button>
 

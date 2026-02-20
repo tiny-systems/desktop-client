@@ -117,9 +117,9 @@
         <div v-else class="flex items-center justify-center" :class="isCrdError ? 'min-h-64 py-8' : 'h-64'">
           <div class="text-center">
             <!-- CRD not installed — friendly setup guide -->
-            <div v-if="statusClass === 'error' && isCrdError" class="max-w-lg mx-auto text-left">
+            <div v-if="statusClass === 'error' && isCrdError" class="w-full max-w-4xl mx-auto text-left px-4">
               <div class="flex items-center gap-3 mb-4">
-                <div class="p-2 rounded-full bg-amber-100 dark:bg-amber-900/30">
+                <div class="p-2 rounded-full bg-amber-100 dark:bg-amber-900/30 flex-shrink-0">
                   <svg class="w-6 h-6 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
                   </svg>
@@ -129,21 +129,21 @@
                   <p class="text-sm text-gray-500 dark:text-gray-400">Run these commands in your terminal to get started:</p>
                 </div>
               </div>
-              <div class="bg-gray-900 dark:bg-gray-950 rounded-lg p-4 text-sm font-mono text-gray-300 overflow-x-auto relative group">
+              <div class="bg-gray-100 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg p-4 text-[13px] font-mono text-gray-800 dark:text-gray-300 relative group">
                 <button
                   @click="copyCrdCommands"
-                  class="absolute top-2 right-2 p-1.5 rounded text-gray-500 hover:text-white hover:bg-gray-700 opacity-0 group-hover:opacity-100 transition-opacity"
+                  class="absolute top-2 right-2 p-1.5 rounded text-gray-400 hover:text-gray-700 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-gray-700 opacity-0 group-hover:opacity-100 transition-opacity"
                   title="Copy to clipboard"
                 >
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
                   </svg>
                 </button>
-                <pre class="whitespace-pre leading-relaxed"><span class="text-gray-500"># Add Tiny Systems Helm repository</span>
+                <pre class="whitespace-pre leading-relaxed"><span class="text-gray-400 dark:text-gray-500"># Add Tiny Systems Helm repository</span>
 helm repo add tinysystems https://tiny-systems.github.io/module/
 helm repo update
 
-<span class="text-gray-500"># Install CRDs (required once per cluster)</span>
+<span class="text-gray-400 dark:text-gray-500"># Install CRDs</span>
 helm upgrade --install tinysystems-crd tinysystems/tinysystems-crd \
   --namespace {{ ctx?.ns || 'default' }} \
   --create-namespace</pre>
@@ -168,6 +168,39 @@ helm upgrade --install tinysystems-crd tinysystems/tinysystems-crd \
               >
                 Create your first project
               </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Otel collector status banner -->
+      <div v-if="otelStatus && !otelStatus.ready && !isCrdError" class="px-4 pb-4">
+        <div class="max-w-4xl mx-auto bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/50 rounded-lg p-4">
+          <div class="flex items-start gap-3">
+            <svg class="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+            </svg>
+            <div class="flex-1 min-w-0">
+              <h4 class="text-sm font-semibold text-gray-900 dark:text-white">
+                {{ otelStatus.installed ? 'OpenTelemetry collector is not ready' : 'OpenTelemetry collector not installed' }}
+              </h4>
+              <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5 mb-2">
+                {{ otelStatus.installed ? otelStatus.message + ' — modules need this to report metrics and traces.' : 'Modules need this to report metrics and traces. Run in your terminal:' }}
+              </p>
+              <div v-if="!otelStatus.installed" class="bg-gray-100 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg p-3 text-[13px] font-mono text-gray-800 dark:text-gray-300 relative group">
+                <button
+                  @click="copyOtelCommands"
+                  class="absolute top-2 right-2 p-1.5 rounded text-gray-400 hover:text-gray-700 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-gray-700 opacity-0 group-hover:opacity-100 transition-opacity"
+                  title="Copy to clipboard"
+                >
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                  </svg>
+                </button>
+                <pre class="whitespace-pre leading-relaxed"><span class="text-gray-400 dark:text-gray-500"># Install OpenTelemetry collector</span>
+helm upgrade --install tinysystems-otel-collector tinysystems/tinysystems-otel-collector \
+  --namespace {{ ctx?.ns || 'default' }}</pre>
+              </div>
             </div>
           </div>
         </div>
@@ -246,11 +279,19 @@ import ContextSelector from "./ContextSelector.vue";
 import ModuleList from "./ModuleList.vue";
 
 const props = defineProps({
-  ctx: Object
+  ctx: Object,
+  initialTab: {
+    type: String,
+    default: 'projects'
+  }
 })
 
-const activeTab = ref('projects')
+const activeTab = ref(props.initialTab)
 const moduleListRef = ref(null)
+
+watch(() => props.initialTab, (val) => {
+  if (val) activeTab.value = val
+})
 
 const openModulesDirectory = () => {
   BrowserOpenURL('https://tinysystems.io/modules')
@@ -285,6 +326,8 @@ const statusClass = ref('');
 const isLoading = ref(false)
 const projects = ref([]);
 
+const otelStatus = ref(null)
+
 const isCrdError = computed(() => {
   const msg = statusMessage.value || ''
   return msg.includes('operator.tinysystems.io') || msg.includes('no matches for')
@@ -296,10 +339,31 @@ const copyCrdCommands = async () => {
 helm repo add tinysystems https://tiny-systems.github.io/module/
 helm repo update
 
-# Install CRDs (required once per cluster)
+# Install CRDs
 helm upgrade --install tinysystems-crd tinysystems/tinysystems-crd \\
   --namespace ${ns} \\
   --create-namespace`
+  try {
+    await navigator.clipboard.writeText(commands)
+  } catch (e) {
+    // fallback — ignore
+  }
+}
+
+const checkOtelCollector = async (name, ns) => {
+  try {
+    otelStatus.value = await GoApp.CheckOtelCollector(name, ns)
+  } catch (e) {
+    console.error('Error checking otel collector:', e)
+    otelStatus.value = null
+  }
+}
+
+const copyOtelCommands = async () => {
+  const ns = ctx.value?.ns || 'default'
+  const commands = `# Install OpenTelemetry collector
+helm upgrade --install tinysystems-otel-collector tinysystems/tinysystems-otel-collector \\
+  --namespace ${ns}`
   try {
     await navigator.clipboard.writeText(commands)
   } catch (e) {
@@ -332,17 +396,22 @@ const loadProjects = async (name, ns) => {
   statusMessage.value = 'Attempting to read TinyProjects...';
   isLoading.value = true
   projects.value = []
+  otelStatus.value = null
   try {
     const fetchedProjects = await GoApp.GetProjects(name, ns);
     if (!fetchedProjects || fetchedProjects.length === 0) {
       statusMessage.value = 'No projects found in ' + ns + ' namespace';
       statusClass.value = ''
+      checkOtelCollector(name, ns)
       return
     }
 
     projects.value = fetchedProjects;
     statusClass.value = 'success'
     statusMessage.value = 'found ' + fetchedProjects.length + ' projects'
+
+    // Check otel collector status
+    checkOtelCollector(name, ns)
 
   } catch (error) {
     statusMessage.value = `Error loading projects: ${error}`;
