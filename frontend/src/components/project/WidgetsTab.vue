@@ -289,15 +289,21 @@ const handleNodeUpdate = (update) => {
     // Update existing widget - update schema and data from real-time, preserve positions
     const existing = widgets.value[idx]
     const newDefaultSchema = update.widget.defaultSchema || existing.defaultSchema
+    const newData = update.widget.data || existing.data
+
+    // Only bump _updateTime if data or schema actually changed.
+    // Changing _updateTime changes the editorKey in Widget.vue, which
+    // destroys and recreates JSONEditor — losing input focus and values.
+    const dataChanged = JSON.stringify(newData) !== JSON.stringify(existing.data)
+    const schemaChanged = JSON.stringify(newDefaultSchema) !== JSON.stringify(existing.defaultSchema)
+
+    if (!dataChanged && !schemaChanged) return // nothing to update
 
     const updatedWidget = {
       ...existing,
-      // Always update defaultSchema from real-time updates (node schema reflects current state)
       defaultSchema: newDefaultSchema,
-      // During edit mode, preserve local schema changes (reset/edit)
-      // so they aren't overwritten before saveLayout() runs on Done
       schema: editMode.value ? existing.schema : newDefaultSchema,
-      data: update.widget.data || existing.data,
+      data: newData,
       // Preserve these fields (positions, page assignments, custom title)
       gridX: existing.gridX,
       gridY: existing.gridY,
@@ -305,10 +311,8 @@ const handleNodeUpdate = (update) => {
       gridH: existing.gridH,
       pages: existing.pages,
       title: existing.title,
-      // Track update time for reactivity (forces JSONEditor to re-render)
       _updateTime: Date.now(),
     }
-    // Use splice to ensure Vue detects the change
     widgets.value.splice(idx, 1, updatedWidget)
   }
   // Don't add new widgets from watch events — they may belong to other pages.
