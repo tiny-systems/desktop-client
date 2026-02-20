@@ -299,6 +299,10 @@ const handleNodeUpdate = (update) => {
 
     if (!dataChanged && !schemaChanged) return // nothing to update
 
+    // Don't remount JSONEditor while user is typing — preserves focus and input.
+    // Schema changes always trigger remount since they affect form structure.
+    const isUserEditing = ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName)
+
     const updatedWidget = {
       ...existing,
       defaultSchema: newDefaultSchema,
@@ -311,7 +315,7 @@ const handleNodeUpdate = (update) => {
       gridH: existing.gridH,
       pages: existing.pages,
       title: existing.title,
-      _updateTime: Date.now(),
+      _updateTime: (isUserEditing && !schemaChanged) ? existing._updateTime : Date.now(),
     }
     widgets.value.splice(idx, 1, updatedWidget)
   }
