@@ -120,8 +120,10 @@ const saveLayout = async () => {
     // title/pages already updated in widgets.value)
     const updatedWidgets = getWidgetsWithCurrentLayout()
     await GoApp.SaveWidgets(props.ctx, props.ns, props.projectName, activePage.value, updatedWidgets)
-    widgets.value = updatedWidgets
     pendingLayoutChanges.value = []
+    // Reload pages and widgets — a new page may have been auto-created
+    await loadPages()
+    await loadWidgets()
   } catch (err) {
     emit('error', `Failed to save changes: ${err}`)
   }

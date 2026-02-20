@@ -928,82 +928,75 @@ func (a *App) SaveWidgets(contextName string, namespace string, projectName stri
     return fmt.Errorf("unable to get widget pages: %w", err)
   }
 
-  // Build a map of pages by name for easy lookup
-  pageMap := make(map[string]*v1alpha1.TinyWidgetPage)
+  pagesRefs := make([]*v1alpha1.TinyWidgetPage, 0)
   for i := range pages {
-    pageMap[pages[i].Name] = &pages[i]
+    pagesRefs = append(pagesRefs, &pages[i])
   }
 
-  // Build existing widgets map per page to preserve SchemaPatch and other data
-  existingWidgetsPerPage := make(map[string]map[string]v1alpha1.TinyWidget)
-  for _, page := range pages {
-    existingWidgetsPerPage[page.Name] = make(map[string]v1alpha1.TinyWidget)
-    for _, w := range page.Spec.Widgets {
-      existingWidgetsPerPage[page.Name][w.Port] = w
+  // Find or create the requested page (BEFORE processing widgets — matches platform)
+  requestedPage := findPageByName(pagesRefs, pageResourceName)
+  if requestedPage == nil {
+    requestedPageName := pageResourceName
+    if requestedPageName == "" {
+      requestedPageName = "Home"
+    }
+
+    createdName, err := mgr.CreatePage(a.ctx, requestedPageName, projectName, namespace, 0)
+    if err != nil {
+      return fmt.Errorf("failed to auto-create page: %w", err)
+    }
+
+    pageResourceName = *createdName
+
+    // Re-fetch pages to get the created page with ResourceVersion
+    updatedPages, err := mgr.GetProjectPageWidgets(a.ctx, projectName)
+    if err != nil {
+      return fmt.Errorf("unable to get widget pages after create: %w", err)
+    }
+    pagesRefs = make([]*v1alpha1.TinyWidgetPage, 0)
+    for i := range updatedPages {
+      pagesRefs = append(pagesRefs, &updatedPages[i])
+    }
+    requestedPage = findPageByName(pagesRefs, pageResourceName)
+    if requestedPage == nil {
+      return fmt.Errorf("page not found after auto-create: %s", pageResourceName)
     }
   }
 
-  // Track which widgets should be added/removed from other pages
-  // Key: page name, Value: map of port -> widget (widgets to add/keep)
-  otherPagesWidgets := make(map[string]map[string]v1alpha1.TinyWidget)
-  // Track widgets to remove from other pages
-  otherPagesRemove := make(map[string]map[string]bool)
-
-  // Initialize other pages with their existing widgets
-  for pageName, existingWidgets := range existingWidgetsPerPage {
-    if pageName == pageResourceName {
-      continue // Current page is handled separately
-    }
-    otherPagesWidgets[pageName] = make(map[string]v1alpha1.TinyWidget)
-    otherPagesRemove[pageName] = make(map[string]bool)
-    for port, w := range existingWidgets {
-      otherPagesWidgets[pageName][port] = w
-    }
+  // Reset current page widgets (same as platform)
+  requestedPage.Spec = v1alpha1.TinyWidgetPageSpec{
+    Widgets: make([]v1alpha1.TinyWidget, 0),
   }
 
-  // Build widgets for current page
-  currentPageWidgets := make([]v1alpha1.TinyWidget, 0, len(widgets))
-
-  // Process each widget from the save request
+  // Process each widget — assign to target pages (matches platform logic)
   for _, widget := range widgets {
     portFullName := utils.GetPortFullName(widget.NodeName, widget.Port)
 
-    // Determine which pages this widget should be on
-    targetPages := widget.Pages
-    if len(targetPages) == 0 {
-      targetPages = []string{pageResourceName}
+    saveWidgetPages := widget.Pages
+    if len(saveWidgetPages) == 0 {
+      saveWidgetPages = []string{pageResourceName}
     }
 
-    // Check if widget should be on current page
-    shouldBeOnCurrentPage := false
-    for _, p := range targetPages {
-      if p == pageResourceName {
-        shouldBeOnCurrentPage = true
-        break
+    for _, p := range saveWidgetPages {
+      savePage := findPageByName(pagesRefs, p)
+      if savePage == nil {
+        continue
       }
-    }
 
-    if shouldBeOnCurrentPage {
-      // Build widget for current page with full position/schema data
-      var w v1alpha1.TinyWidget
-      if existing, ok := existingWidgetsPerPage[pageResourceName][portFullName]; ok {
-        w = existing
+      w := v1alpha1.TinyWidget{
+        Port:  portFullName,
+        Name:  widget.Title,
+        GridX: widget.GridX,
+        GridY: widget.GridY,
+        GridW: widget.GridW,
+        GridH: widget.GridH,
       }
-      w.Name = widget.Title
-      w.Port = portFullName
-      w.GridX = widget.GridX
-      w.GridY = widget.GridY
-      w.GridW = widget.GridW
-      w.GridH = widget.GridH
 
       // Create SchemaPatch as JSON Patch (RFC 6902) comparing DefaultSchema to Schema
-      // This matches how the platform stores schema customizations
       if widget.Schema != nil && len(widget.Schema) > 0 && widget.DefaultSchema != nil && len(widget.DefaultSchema) > 0 {
-        // Marshal both schemas
         originalBytes, err1 := json.Marshal(widget.DefaultSchema)
         modifiedBytes, err2 := json.Marshal(widget.Schema)
         if err1 == nil && err2 == nil && string(originalBytes) != string(modifiedBytes) {
-          // Create JSON Patch
           patch, err := jsonpatch.CreatePatch(originalBytes, modifiedBytes)
           if err == nil && len(patch) > 0 {
             patchBytes, err := json.Marshal(patch)
@@ -1011,137 +1004,45 @@ func (a *App) SaveWidgets(contextName string, namespace string, projectName stri
               w.SchemaPatch = patchBytes
             }
           }
-        } else if string(originalBytes) == string(modifiedBytes) {
-          // Schemas are the same, clear patch
-          w.SchemaPatch = nil
         }
-      } else if widget.Schema == nil || len(widget.Schema) == 0 {
-        // Clear SchemaPatch if Schema is empty (reset to default)
-        w.SchemaPatch = nil
       }
 
-      currentPageWidgets = append(currentPageWidgets, w)
-    }
-
-    // Handle other pages - add or remove widget as needed
-    for pageName := range otherPagesWidgets {
-      shouldBeOnThisPage := false
-      for _, p := range targetPages {
-        if p == pageName {
-          shouldBeOnThisPage = true
+      // Skip if widget already exists on that page (same as platform's PAGES continue)
+      alreadyExists := false
+      for _, pw := range savePage.Spec.Widgets {
+        if pw.Port == w.Port {
+          alreadyExists = true
           break
         }
       }
-
-      if shouldBeOnThisPage {
-        // Widget should be on this page - add or update it
-        var w v1alpha1.TinyWidget
-        if existing, ok := existingWidgetsPerPage[pageName][portFullName]; ok {
-          w = existing
-        } else {
-          // New widget on this page - use default position
-          w.GridX = 0
-          w.GridY = 0
-          w.GridW = widget.GridW
-          w.GridH = widget.GridH
-        }
-        w.Name = widget.Title
-        w.Port = portFullName
-        otherPagesWidgets[pageName][portFullName] = w
-      } else {
-        // Widget should NOT be on this page - mark for removal
-        otherPagesRemove[pageName][portFullName] = true
+      if alreadyExists {
+        continue
       }
+
+      savePage.Spec.Widgets = append(savePage.Spec.Widgets, w)
     }
   }
 
-  // Update current page — auto-create default page if none exists
-  currentPage := pageMap[pageResourceName]
-  if currentPage == nil {
-    // Auto-create a default "Home" page (same as platform behavior)
-    pageName := pageResourceName
-    if pageName == "" {
-      pageName = "Home"
-    }
-    createdName, err := mgr.CreatePage(a.ctx, pageName, projectName, namespace, 0)
-    if err != nil {
-      return fmt.Errorf("failed to auto-create page: %w", err)
-    }
-    // Re-fetch pages to get the created page with ResourceVersion
-    updatedPages, err := mgr.GetProjectPageWidgets(a.ctx, projectName)
-    if err != nil {
-      return fmt.Errorf("unable to get widget pages after create: %w", err)
-    }
-    for i := range updatedPages {
-      if updatedPages[i].Name == *createdName {
-        currentPage = &updatedPages[i]
-        pageResourceName = *createdName
-        break
-      }
-    }
-    if currentPage == nil {
-      return fmt.Errorf("page not found after auto-create: %s", *createdName)
-    }
-  }
-  currentPage.Spec.Widgets = currentPageWidgets
-  if err := mgr.UpdatePage(a.ctx, currentPage); err != nil {
-    return fmt.Errorf("failed to update page %s: %w", pageResourceName, err)
-  }
-
-  // Update other pages only if there are changes
-  for pageName, widgetsMap := range otherPagesWidgets {
-    page := pageMap[pageName]
-    if page == nil {
-      continue
-    }
-
-    // Remove widgets marked for removal
-    for port := range otherPagesRemove[pageName] {
-      delete(widgetsMap, port)
-    }
-
-    // Check if this page actually changed
-    existingPorts := make(map[string]bool)
-    for _, w := range page.Spec.Widgets {
-      existingPorts[w.Port] = true
-    }
-    newPorts := make(map[string]bool)
-    for port := range widgetsMap {
-      newPorts[port] = true
-    }
-
-    // Only update if widgets changed
-    needsUpdate := len(existingPorts) != len(newPorts)
-    if !needsUpdate {
-      for port := range existingPorts {
-        if !newPorts[port] {
-          needsUpdate = true
-          break
-        }
-      }
-    }
-    if !needsUpdate {
-      for port := range newPorts {
-        if !existingPorts[port] {
-          needsUpdate = true
-          break
-        }
-      }
-    }
-
-    if needsUpdate {
-      // Convert map to slice
-      newWidgets := make([]v1alpha1.TinyWidget, 0, len(widgetsMap))
-      for _, w := range widgetsMap {
-        newWidgets = append(newWidgets, w)
-      }
-      page.Spec.Widgets = newWidgets
-      if err := mgr.UpdatePage(a.ctx, page); err != nil {
-        return fmt.Errorf("failed to update page %s: %w", pageName, err)
-      }
+  // Save all pages (same as platform)
+  for _, page := range pagesRefs {
+    if err := mgr.UpdatePage(a.ctx, page); err != nil {
+      return fmt.Errorf("failed to update page %s: %w", page.Name, err)
     }
   }
 
+  return nil
+}
+
+func findPageByName(pages []*v1alpha1.TinyWidgetPage, name string) *v1alpha1.TinyWidgetPage {
+  for _, page := range pages {
+    // Check by display name (annotation) first, then by k8s resource name
+    if pageName, ok := page.Annotations[v1alpha1.PageTitleAnnotation]; ok && pageName == name {
+      return page
+    }
+    if page.Name == name {
+      return page
+    }
+  }
   return nil
 }
 
