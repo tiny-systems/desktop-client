@@ -2210,7 +2210,7 @@ func parseNodeToWidget(node *v1alpha1.TinyNode) *Widget {
     DefaultSchema: controlSchema,
     Data:          controlData,
     // Default grid size for new widgets (position will be calculated by frontend)
-    GridW: 3,
-    GridH: 4,
+    GridW: 6,
+    GridH: 3,
   }
 }
