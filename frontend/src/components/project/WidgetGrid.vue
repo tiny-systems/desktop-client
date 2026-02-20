@@ -57,7 +57,22 @@ watch(() => props.editMode, (newEditMode) => {
   if (grid) {
     grid.setStatic(!newEditMode)
   }
+  // Update editMode ref in all widget instances
+  widgetInstances.forEach((instance) => {
+    if (instance.editModeRef) {
+      instance.editModeRef.value = newEditMode
+    }
+  })
 })
+
+watch(() => props.pages, (newPages) => {
+  // Update pages ref in all widget instances
+  widgetInstances.forEach((instance) => {
+    if (instance.pagesRef) {
+      instance.pagesRef.value = newPages
+    }
+  })
+}, { deep: true })
 
 const initGrid = () => {
   if (!gridElement.value) return
@@ -125,9 +140,9 @@ const syncWidgets = (widgets) => {
     if (!widgetInstances.has(widget.id)) {
       addWidget(widget)
     } else {
-      // Update existing widget data and position
+      // Update existing widget data reactively (no remount — preserves DOM focus)
       const instance = widgetInstances.get(widget.id)
-      updateWidgetContent(instance, widget)
+      instance.widgetRef.value = widget
       // Only sync GridStack position when NOT in edit mode
       // During edit mode, user is dragging/resizing — don't overwrite with server data
       if (!props.editMode) {
@@ -151,14 +166,18 @@ const addWidget = (widget) => {
   container.style.height = '100%'
   container.style.width = '100%'
 
-  // Create a Vue app for each widget to ensure proper reactivity
+  // Use reactive refs so updates don't require remounting the app
+  const widgetRef = ref(widget)
+  const editModeRef = ref(props.editMode)
+  const pagesRef = ref(props.pages)
+
   const app = createApp({
-    render() {
-      return h(Widget, {
-        widget: widget,
-        readonly: false,  // Always allow interaction with widget controls
-        editMode: props.editMode,
-        pages: props.pages,
+    setup() {
+      return () => h(Widget, {
+        widget: widgetRef.value,
+        readonly: false,
+        editMode: editModeRef.value,
+        pages: pagesRef.value,
         onAction: handleAction,
         onEditSchema: handleEditSchema,
         onResetSchema: handleResetSchema,
@@ -185,32 +204,7 @@ const addWidget = (widget) => {
     contentEl.appendChild(container)
   }
 
-  widgetInstances.set(widget.id, { element, container, app })
-}
-
-const updateWidgetContent = (instance, widget) => {
-  // Unmount old app and create new one with updated props
-  if (instance.app) {
-    instance.app.unmount()
-  }
-
-  const app = createApp({
-    render() {
-      return h(Widget, {
-        widget: widget,
-        readonly: false,  // Always allow interaction with widget controls
-        editMode: props.editMode,
-        pages: props.pages,
-        onAction: handleAction,
-        onEditSchema: handleEditSchema,
-        onResetSchema: handleResetSchema,
-        onUpdateTitle: handleUpdateTitle,
-        onUpdatePages: handleUpdatePages
-      })
-    }
-  })
-  app.mount(instance.container)
-  instance.app = app
+  widgetInstances.set(widget.id, { element, container, app, widgetRef, editModeRef, pagesRef })
 }
 
 const handleAction = (actionData) => {
