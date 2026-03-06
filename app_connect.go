@@ -2,6 +2,7 @@ package main
 
 import (
   "fmt"
+  "os"
   "os/user"
   "path/filepath"
   "time"
@@ -165,18 +166,23 @@ func (a *App) CheckOtelCollector(contextName, namespace string) (*OtelCollectorS
     return &OtelCollectorStatus{Installed: false, Message: "Not installed"}, nil
   }
 
+  var desiredReplicas int32 = 1
+  if deploy.Spec.Replicas != nil {
+    desiredReplicas = *deploy.Spec.Replicas
+  }
+
   if deploy.Status.ReadyReplicas > 0 {
     return &OtelCollectorStatus{
       Installed: true,
       Ready:     true,
-      Message:   fmt.Sprintf("%d/%d replicas ready", deploy.Status.ReadyReplicas, *deploy.Spec.Replicas),
+      Message:   fmt.Sprintf("%d/%d replicas ready", deploy.Status.ReadyReplicas, desiredReplicas),
     }, nil
   }
 
   return &OtelCollectorStatus{
     Installed: true,
     Ready:     false,
-    Message:   fmt.Sprintf("0/%d replicas ready", *deploy.Spec.Replicas),
+    Message:   fmt.Sprintf("0/%d replicas ready", desiredReplicas),
   }, nil
 }
 
@@ -209,7 +215,7 @@ func (a *App) CreateNamespace(contextName, namespace string) error {
 func loadContextConfig(contextName string) (*rest.Config, error) {
   // Set env var with current timestamp to bust exec credential cache
   // This forces gke-gcloud-auth-plugin to get fresh credentials
-  _ = fmt.Sprintf("%d", authTimestamp) // Use the timestamp
+  os.Setenv("TINY_AUTH_TS", fmt.Sprintf("%d", authTimestamp))
 
   // 1. Determine the path to the Kubeconfig file.
   usr, err := user.Current()

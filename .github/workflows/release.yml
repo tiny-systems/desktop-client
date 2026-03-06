@@ -132,8 +132,6 @@ jobs:
           # Wails creates a .app bundle, we need to create a DMG
           if [ -d "build/bin/tinysystems.app" ]; then
             APP_NAME="tinysystems.app"
-          elif [ -d "build/bin/desktop-client.app" ]; then
-            APP_NAME="desktop-client.app"
           else
             echo "Error: No .app bundle found"
             ls -la build/bin/
@@ -144,7 +142,7 @@ jobs:
           if [ -n "${{ secrets.MACOS_CERTIFICATE }}" ]; then
             echo "Signing app with Developer ID certificate..."
             codesign --force --deep \
-              --sign "Developer ID Application" \
+              --sign "Developer ID Application: Tiny Systems Limited (74JHK2JWS7)" \
               --entitlements build/darwin/entitlements.plist \
               --options runtime \
               --timestamp \
@@ -161,7 +159,7 @@ jobs:
 
             # Sign the DMG
             codesign --force \
-              --sign "Developer ID Application" \
+              --sign "Developer ID Application: Tiny Systems Limited (74JHK2JWS7)" \
               --timestamp \
               "build/bin/${{ matrix.output }}"
 
@@ -200,8 +198,6 @@ jobs:
           # Wails creates an exe in build/bin directory
           if [ -f "build/bin/tinysystems.exe" ]; then
             mv build/bin/tinysystems.exe build/bin/${{ matrix.output }}
-          elif [ -f "build/bin/desktop-client.exe" ]; then
-            mv build/bin/desktop-client.exe build/bin/${{ matrix.output }}
           fi
           ls -la build/bin/
 
@@ -215,29 +211,7 @@ jobs:
             mkdir -p build/deb/usr/local/bin
 
             # Copy binary
-            cp build/bin/tinysystems build/deb/usr/local/bin/
-
-            # Create control file
-            cat > build/deb/DEBIAN/control << EOF
-          Package: tinysystems
-          Version: ${GITHUB_REF#refs/tags/v}
-          Section: utils
-          Priority: optional
-          Architecture: amd64
-          Maintainer: Maksym Trofimenko <hello@tinysystems.io>
-          Description: TinySystems Desktop Client
-           Desktop client for TinySystems
-          EOF
-
-            # Build DEB package
-            dpkg-deb --build build/deb build/bin/${{ matrix.output }}
-          elif [ -f "build/bin/desktop-client" ]; then
-            # Create DEB package structure
-            mkdir -p build/deb/DEBIAN
-            mkdir -p build/deb/usr/local/bin
-
-            # Copy binary
-            cp build/bin/desktop-client build/deb/usr/local/bin/tinysystems
+            cp build/bin/tinysystems build/deb/usr/local/bin/tinysystems
 
             # Create control file
             cat > build/deb/DEBIAN/control << EOF

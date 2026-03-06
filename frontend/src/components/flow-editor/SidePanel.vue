@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch, nextTick } from 'vue'
+import { ref, computed, watch, nextTick, onUnmounted } from 'vue'
 import { useFlowStore } from '../../stores/flow'
 import {
   Menu,
@@ -610,6 +610,17 @@ const computeEdgePreview = async () => {
     edgePreviewLoading.value = false
   }
 }
+
+onUnmounted(() => {
+  if (initEndTimer) {
+    clearTimeout(initEndTimer)
+    initEndTimer = null
+  }
+  if (previewTimeout) {
+    clearTimeout(previewTimeout)
+    previewTimeout = null
+  }
+})
 
 // Debounced preview computation
 let previewTimeout = null

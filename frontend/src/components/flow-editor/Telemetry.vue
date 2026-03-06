@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { ChevronUpIcon, ChevronDownIcon, ExclamationTriangleIcon, ArrowPathIcon } from '@heroicons/vue/24/outline'
-import { EventsOn } from '../../../wailsjs/runtime/runtime'
+import { EventsOn, EventsOff } from '../../../wailsjs/runtime/runtime'
 import { GetTraces } from '../../../wailsjs/go/main/App'
 import { useFlowStore } from '../../stores/flow'
 
@@ -129,9 +129,11 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  EventsOff('flowNodeUpdate')
   errorEventCallback = null
   if (refreshTimeout) {
     clearTimeout(refreshTimeout)
+    refreshTimeout = null
   }
 })
 

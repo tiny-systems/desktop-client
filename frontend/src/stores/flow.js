@@ -152,11 +152,10 @@ export const useFlowStore = defineStore('flowStore', {
     checkStaleAnimations() {
       const now = Date.now() / 1000
       for (let i = 0; i < this.elements.length; i++) {
-        if (this.elements[i].data?.stats) {
-          const busyTimestamp = parseInt(this.elements[i].data.stats['tiny_edge_busy'] || 0)
-          const timeSinceActivity = now - busyTimestamp
-          this.elements[i].animated = timeSinceActivity < 7
-        }
+        const el = this.elements[i]
+        if (!isEdge(el) || !el.data?.stats) continue
+        const busyTimestamp = parseInt(el.data.stats['tiny_edge_busy'] || 0)
+        el.animated = (now - busyTimestamp) < 7
       }
     },
     startAnimationCheck() {
@@ -359,6 +358,7 @@ export const useFlowStore = defineStore('flowStore', {
     async startWatching() {
       if (!GoApp || this.watching) return
 
+      this.watching = true
       try {
         await GoApp.WatchFlowNodes(
           this.contextName,
@@ -371,9 +371,9 @@ export const useFlowStore = defineStore('flowStore', {
           this.processNodeEvent(event)
         })
 
-        this.watching = true
         this.startAnimationCheck()
       } catch (err) {
+        this.watching = false
         console.error('Failed to start watching:', err)
       }
     },
