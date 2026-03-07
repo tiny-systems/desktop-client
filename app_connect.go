@@ -3,8 +3,6 @@ package main
 import (
   "fmt"
   "os"
-  "os/user"
-  "path/filepath"
   "time"
 
   corev1 "k8s.io/api/core/v1"
@@ -25,26 +23,22 @@ type KubeContext struct {
 }
 
 func (a *App) GetKubeContexts() ([]KubeContext, error) {
-  // 1. Determine the path to the kubeconfig file
-  // clientcmd.RecommendedHomeFile is a good way to get the default path (~/.kube/config)
-  kubeconfigPath := clientcmd.RecommendedHomeFile
-
-  // 2. Load the raw configuration from the file
-  config, err := clientcmd.LoadFromFile(kubeconfigPath)
+  // Load kubeconfig respecting KUBECONFIG env var
+  loadingRules := clientcmd.NewDefaultClientConfigLoadingRules()
+  config, err := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
+    loadingRules, &clientcmd.ConfigOverrides{},
+  ).RawConfig()
   if err != nil {
-    return nil, err // Handle file reading error
+    return nil, err
   }
 
-  // 3. Extract the contexts
   var contexts []KubeContext
-  currentContext := config.CurrentContext
-
   for name, ctx := range config.Contexts {
     contexts = append(contexts, KubeContext{
       Name:    name,
       Cluster: ctx.Cluster,
       User:    ctx.AuthInfo,
-      Current: name == currentContext,
+      Current: name == config.CurrentContext,
     })
   }
 
@@ -217,17 +211,7 @@ func loadContextConfig(contextName string) (*rest.Config, error) {
   // This forces gke-gcloud-auth-plugin to get fresh credentials
   os.Setenv("TINY_AUTH_TS", fmt.Sprintf("%d", authTimestamp))
 
-  // 1. Determine the path to the Kubeconfig file.
-  usr, err := user.Current()
-  if err != nil {
-    return nil, fmt.Errorf("failed to get current user: %w", err)
-  }
-  kubeConfigPath := filepath.Join(usr.HomeDir, ".kube", "config")
-
-  // 2. Load the configuration specifically for the requested context.
   loadingRules := clientcmd.NewDefaultClientConfigLoadingRules()
-  loadingRules.ExplicitPath = kubeConfigPath
-
   config, err := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
     loadingRules,
     &clientcmd.ConfigOverrides{
