@@ -167,11 +167,18 @@ jobs:
             # Notarize the DMG
             if [ -n "$APPLE_ID" ] && [ -n "$APPLE_APP_PASSWORD" ] && [ -n "$APPLE_TEAM_ID" ]; then
               echo "Notarizing DMG..."
-              xcrun notarytool submit "build/bin/${{ matrix.output }}" \
-                --apple-id "$APPLE_ID" \
-                --password "$APPLE_APP_PASSWORD" \
-                --team-id "$APPLE_TEAM_ID" \
-                --wait
+              # Submit and wait with timeout; retry staple if network drops during poll
+              for attempt in 1 2 3; do
+                if xcrun notarytool submit "build/bin/${{ matrix.output }}" \
+                  --apple-id "$APPLE_ID" \
+                  --password "$APPLE_APP_PASSWORD" \
+                  --team-id "$APPLE_TEAM_ID" \
+                  --wait --timeout 30m; then
+                  break
+                fi
+                echo "Attempt $attempt failed, retrying in 30s..."
+                sleep 30
+              done
 
               # Staple the notarization ticket
               xcrun stapler staple "build/bin/${{ matrix.output }}"
