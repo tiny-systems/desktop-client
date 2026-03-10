@@ -57,7 +57,7 @@ jobs:
       - name: Install macOS dependencies
         if: matrix.os == 'macos-latest'
         run: |
-          # No additional dependencies needed for macOS
+          brew install create-dmg
 
       # Import signing certificate (macOS only)
       - name: Import Code Signing Certificate
@@ -152,17 +152,20 @@ jobs:
             # Verify signature
             codesign -dv --verbose=4 "build/bin/${APP_NAME}"
 
-            # Create DMG
-            hdiutil create -volname "TinySystems" \
-              -srcfolder "build/bin/${APP_NAME}" \
-              -ov -format UDZO \
-              "build/bin/${{ matrix.output }}"
-
-            # Sign the DMG
-            codesign --force \
-              --sign "Developer ID Application: Tiny Systems Limited (74JHK2JWS7)" \
-              --timestamp \
-              "build/bin/${{ matrix.output }}"
+            # Create DMG with drag-to-Applications layout
+            # create-dmg exits 2 if it can't set custom volume icon (non-fatal)
+            create-dmg \
+              --volname "Tiny Systems" \
+              --background "build/darwin/dmg-background.png" \
+              --window-pos 200 120 \
+              --window-size 640 480 \
+              --icon-size 80 \
+              --icon "tinysystems.app" 180 240 \
+              --app-drop-link 460 240 \
+              --codesign "Developer ID Application: Tiny Systems Limited (74JHK2JWS7)" \
+              "build/bin/${{ matrix.output }}" \
+              "build/bin/${APP_NAME}" \
+              || test $? -eq 2
 
             # Notarize the DMG (two-phase: submit, then poll until done)
             if [ -n "$APPLE_ID" ] && [ -n "$APPLE_APP_PASSWORD" ] && [ -n "$APPLE_TEAM_ID" ]; then
@@ -223,10 +226,18 @@ jobs:
               --entitlements build/darwin/entitlements.plist \
               "build/bin/${APP_NAME}"
 
-            hdiutil create -volname "TinySystems" \
-              -srcfolder "build/bin/${APP_NAME}" \
-              -ov -format UDZO \
-              "build/bin/${{ matrix.output }}"
+            create-dmg \
+              --volname "Tiny Systems" \
+              --background "build/darwin/dmg-background.png" \
+              --window-pos 200 120 \
+              --window-size 640 480 \
+              --icon-size 80 \
+              --icon "tinysystems.app" 180 240 \
+              --app-drop-link 460 240 \
+              --no-internet-enable \
+              "build/bin/${{ matrix.output }}" \
+              "build/bin/${APP_NAME}" \
+              || test $? -eq 2
           fi
 
           ls -la build/bin/
