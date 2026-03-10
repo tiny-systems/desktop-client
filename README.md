@@ -61,7 +61,7 @@ The desktop client reads your kubeconfig and talks to the Kubernetes API directl
 
 - [Documentation](https://docs.tinysystems.io)
 - [Cloud Platform](https://tinysystems.io)
-- [Community Slack](https://tinysystems.io/slack)
+- [Contact](https://tinysystems.io/contact)
 
 ## License
 
