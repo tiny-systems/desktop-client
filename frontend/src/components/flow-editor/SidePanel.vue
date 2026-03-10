@@ -1624,9 +1624,9 @@ const saveEdgeConfiguration = async () => {
         </div>
 
         <!-- Control port form -->
-        <div v-if="controlHandle && controlHandleSchema" :key="'control-' + selectedNode?.id" class="bg-white dark:bg-gray-900 shadow rounded text-xs m-1 p-2">
+        <div v-if="controlHandle && controlHandleSchema" :key="'control-' + selectedNode?.id + '-' + JSON.stringify(controlConfigObject)" class="bg-white dark:bg-gray-900 shadow rounded text-xs m-1 p-2">
           <SchemaForm
-            :key="'control-form-' + selectedNode?.id"
+            :key="'control-form-' + selectedNode?.id + '-' + JSON.stringify(controlConfigObject)"
             :schema="controlHandleSchema"
             :model-value="controlFormValue"
             @update:model-value="updateControlFormValue"
