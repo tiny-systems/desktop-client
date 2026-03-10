@@ -130,7 +130,10 @@ jobs:
           APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
-          # Wails creates a .app bundle, we need to create a DMG
+          # Wails creates a .app bundle using the "name" field, rename to "Tiny Systems.app"
+          if [ -d "build/bin/tinysystems.app" ]; then
+            mv "build/bin/tinysystems.app" "build/bin/Tiny Systems.app"
+          fi
           if [ -d "build/bin/Tiny Systems.app" ]; then
             APP_NAME="Tiny Systems.app"
           else
@@ -247,7 +250,9 @@ jobs:
         shell: bash
         run: |
           # Wails creates an exe in build/bin directory
-          if [ -f "build/bin/Tiny Systems.exe" ]; then
+          if [ -f "build/bin/tinysystems.exe" ]; then
+            mv "build/bin/tinysystems.exe" "build/bin/${{ matrix.output }}"
+          elif [ -f "build/bin/Tiny Systems.exe" ]; then
             mv "build/bin/Tiny Systems.exe" "build/bin/${{ matrix.output }}"
           fi
           ls -la build/bin/
@@ -256,6 +261,10 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: |
           # Build DEB package
+          if [ -f "build/bin/tinysystems" ] || [ -f "build/bin/Tiny Systems" ]; then
+            # Normalize name
+            [ -f "build/bin/tinysystems" ] && mv "build/bin/tinysystems" "build/bin/Tiny Systems"
+          fi
           if [ -f "build/bin/Tiny Systems" ]; then
             # Create DEB package structure
             mkdir -p build/deb/DEBIAN
