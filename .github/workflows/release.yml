@@ -131,8 +131,8 @@ jobs:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           # Wails creates a .app bundle, we need to create a DMG
-          if [ -d "build/bin/tinysystems.app" ]; then
-            APP_NAME="tinysystems.app"
+          if [ -d "build/bin/Tiny Systems.app" ]; then
+            APP_NAME="Tiny Systems.app"
           else
             echo "Error: No .app bundle found"
             ls -la build/bin/
@@ -160,7 +160,7 @@ jobs:
               --window-pos 200 120 \
               --window-size 640 480 \
               --icon-size 80 \
-              --icon "tinysystems.app" 180 240 \
+              --icon "Tiny Systems.app" 180 240 \
               --app-drop-link 460 240 \
               --codesign "Developer ID Application: Tiny Systems Limited (74JHK2JWS7)" \
               "build/bin/${{ matrix.output }}" \
@@ -232,7 +232,7 @@ jobs:
               --window-pos 200 120 \
               --window-size 640 480 \
               --icon-size 80 \
-              --icon "tinysystems.app" 180 240 \
+              --icon "Tiny Systems.app" 180 240 \
               --app-drop-link 460 240 \
               --no-internet-enable \
               "build/bin/${{ matrix.output }}" \
@@ -247,8 +247,8 @@ jobs:
         shell: bash
         run: |
           # Wails creates an exe in build/bin directory
-          if [ -f "build/bin/tinysystems.exe" ]; then
-            mv build/bin/tinysystems.exe build/bin/${{ matrix.output }}
+          if [ -f "build/bin/Tiny Systems.exe" ]; then
+            mv "build/bin/Tiny Systems.exe" "build/bin/${{ matrix.output }}"
           fi
           ls -la build/bin/
 
@@ -256,13 +256,13 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: |
           # Build DEB package
-          if [ -f "build/bin/tinysystems" ]; then
+          if [ -f "build/bin/Tiny Systems" ]; then
             # Create DEB package structure
             mkdir -p build/deb/DEBIAN
             mkdir -p build/deb/usr/local/bin
 
             # Copy binary
-            cp build/bin/tinysystems build/deb/usr/local/bin/tinysystems
+            cp "build/bin/Tiny Systems" build/deb/usr/local/bin/tinysystems
 
             # Create control file
             cat > build/deb/DEBIAN/control << EOF
