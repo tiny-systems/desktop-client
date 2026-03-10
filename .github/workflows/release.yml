@@ -164,18 +164,56 @@ jobs:
               --timestamp \
               "build/bin/${{ matrix.output }}"
 
-            # Notarize the DMG
+            # Notarize the DMG (two-phase: submit, then poll until done)
             if [ -n "$APPLE_ID" ] && [ -n "$APPLE_APP_PASSWORD" ] && [ -n "$APPLE_TEAM_ID" ]; then
               echo "Submitting for notarization..."
-              xcrun notarytool submit "build/bin/${{ matrix.output }}" \
+              SUBMIT_OUTPUT=$(xcrun notarytool submit "build/bin/${{ matrix.output }}" \
                 --apple-id "$APPLE_ID" \
                 --password "$APPLE_APP_PASSWORD" \
                 --team-id "$APPLE_TEAM_ID" \
-                --wait --timeout 15m || echo "Warning: Notarization not yet complete (will be processed by Apple in background)"
+                --output-format json 2>&1)
+              echo "$SUBMIT_OUTPUT"
 
-              # Try to staple — if Apple hasn't finished yet, the DMG still works
-              # (Gatekeeper checks online on first launch)
-              xcrun stapler staple "build/bin/${{ matrix.output }}" || echo "Warning: Stapling failed — notarization may still be in progress"
+              SUBMISSION_ID=$(echo "$SUBMIT_OUTPUT" | python3 -c "import sys,json; print(json.load(sys.stdin)['id'])" 2>/dev/null || true)
+
+              if [ -z "$SUBMISSION_ID" ]; then
+                echo "Error: Failed to extract submission ID"
+              else
+                echo "Submission ID: $SUBMISSION_ID"
+                echo "Polling for notarization status (up to 60 minutes)..."
+
+                MAX_ATTEMPTS=60
+                POLL_INTERVAL=60
+                for i in $(seq 1 $MAX_ATTEMPTS); do
+                  sleep $POLL_INTERVAL
+                  STATUS_OUTPUT=$(xcrun notarytool info "$SUBMISSION_ID" \
+                    --apple-id "$APPLE_ID" \
+                    --password "$APPLE_APP_PASSWORD" \
+                    --team-id "$APPLE_TEAM_ID" \
+                    --output-format json 2>&1)
+
+                  STATUS=$(echo "$STATUS_OUTPUT" | python3 -c "import sys,json; print(json.load(sys.stdin)['status'])" 2>/dev/null || true)
+                  echo "Attempt $i/$MAX_ATTEMPTS: status=$STATUS"
+
+                  if [ "$STATUS" = "Accepted" ]; then
+                    echo "Notarization accepted! Stapling ticket..."
+                    xcrun stapler staple "build/bin/${{ matrix.output }}"
+                    echo "Stapling complete."
+                    break
+                  elif [ "$STATUS" = "Invalid" ] || [ "$STATUS" = "Rejected" ]; then
+                    echo "Notarization failed with status: $STATUS"
+                    xcrun notarytool log "$SUBMISSION_ID" \
+                      --apple-id "$APPLE_ID" \
+                      --password "$APPLE_APP_PASSWORD" \
+                      --team-id "$APPLE_TEAM_ID" 2>&1 || true
+                    break
+                  fi
+                done
+
+                if [ "$STATUS" != "Accepted" ] && [ "$STATUS" != "Invalid" ] && [ "$STATUS" != "Rejected" ]; then
+                  echo "Warning: Notarization still in progress after 60 minutes. DMG will work but isn't stapled."
+                fi
+              fi
             else
               echo "Warning: Notarization credentials not set. Skipping notarization."
             fi

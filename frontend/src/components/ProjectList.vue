@@ -115,9 +115,9 @@
 
         <!-- Empty state -->
         <div v-else class="flex items-center justify-center" :class="isCrdError ? 'min-h-64 py-8' : 'h-64'">
-          <div class="text-center">
+          <div :class="isCrdError ? 'w-full' : 'text-center'">
             <!-- CRD not installed — friendly setup guide -->
-            <div v-if="statusClass === 'error' && isCrdError" class="w-full max-w-4xl mx-auto text-left px-4">
+            <div v-if="statusClass === 'error' && isCrdError" class="w-full max-w-5xl mx-auto text-left px-4">
               <div class="flex items-center gap-3 mb-4">
                 <div class="p-2 rounded-full bg-amber-100 dark:bg-amber-900/30 flex-shrink-0">
                   <svg class="w-6 h-6 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -144,9 +144,7 @@ helm repo add tinysystems https://tiny-systems.github.io/module/
 helm repo update
 
 <span class="text-gray-400 dark:text-gray-500"># Install CRDs</span>
-helm upgrade --install tinysystems-crd tinysystems/tinysystems-crd \
-  --namespace {{ ctx?.ns || 'default' }} \
-  --create-namespace</pre>
+helm upgrade --install tinysystems-crd tinysystems/tinysystems-crd --namespace {{ ctx?.ns || 'default' }} --create-namespace</pre>
               </div>
               <p class="text-xs text-gray-400 dark:text-gray-500 mt-3">After installing, click the refresh button above to reload.</p>
             </div>
@@ -198,8 +196,7 @@ helm upgrade --install tinysystems-crd tinysystems/tinysystems-crd \
                   </svg>
                 </button>
                 <pre class="whitespace-pre leading-relaxed"><span class="text-gray-400 dark:text-gray-500"># Install OpenTelemetry collector</span>
-helm upgrade --install tinysystems-otel-collector tinysystems/tinysystems-otel-collector \
-  --namespace {{ ctx?.ns || 'default' }}</pre>
+helm upgrade --install tinysystems-otel-collector tinysystems/tinysystems-otel-collector --namespace {{ ctx?.ns || 'default' }}</pre>
               </div>
             </div>
           </div>
@@ -340,9 +337,7 @@ helm repo add tinysystems https://tiny-systems.github.io/module/
 helm repo update
 
 # Install CRDs
-helm upgrade --install tinysystems-crd tinysystems/tinysystems-crd \\
-  --namespace ${ns} \\
-  --create-namespace`
+helm upgrade --install tinysystems-crd tinysystems/tinysystems-crd --namespace ${ns} --create-namespace`
   try {
     await navigator.clipboard.writeText(commands)
   } catch (e) {
@@ -362,8 +357,7 @@ const checkOtelCollector = async (name, ns) => {
 const copyOtelCommands = async () => {
   const ns = ctx.value?.ns || 'default'
   const commands = `# Install OpenTelemetry collector
-helm upgrade --install tinysystems-otel-collector tinysystems/tinysystems-otel-collector \\
-  --namespace ${ns}`
+helm upgrade --install tinysystems-otel-collector tinysystems/tinysystems-otel-collector --namespace ${ns}`
   try {
     await navigator.clipboard.writeText(commands)
   } catch (e) {
