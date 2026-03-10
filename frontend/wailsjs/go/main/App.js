@@ -218,6 +218,10 @@ export function SendSignal(arg1, arg2, arg3, arg4, arg5) {
   return window['go']['main']['App']['SendSignal'](arg1, arg2, arg3, arg4, arg5);
 }
 
+export function ShowAbout() {
+  return window['go']['main']['App']['ShowAbout']();
+}
+
 export function StopWatchFlowNodes() {
   return window['go']['main']['App']['StopWatchFlowNodes']();
 }

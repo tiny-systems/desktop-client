@@ -111,6 +111,8 @@ export function SaveWidgets(arg1:string,arg2:string,arg3:string,arg4:string,arg5
 
 export function SendSignal(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string):Promise<void>;
 
+export function ShowAbout():Promise<void>;
+
 export function StopWatchFlowNodes():Promise<void>;
 
 export function StopWatchProjectNodes():Promise<void>;

@@ -31,6 +31,11 @@ func main() {
 		appMenu = menu.NewMenuFromItems(
 			menu.AppMenu(),
 			menu.EditMenu(), // Enables Cmd+C/V/X/A and other Cmd key events
+			menu.SubMenu("Help", menu.NewMenuFromItems(
+				menu.Text("About TinySystems", nil, func(cd *menu.CallbackData) {
+					app.ShowAbout()
+				}),
+			)),
 		)
 	}
 

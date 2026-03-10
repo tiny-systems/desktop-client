@@ -1,7 +1,7 @@
 <script setup>
 import {ref, onMounted, onUnmounted} from 'vue';
 import {GetBuildInfo, GetPendingDeepLink} from "../wailsjs/go/main/App";
-import {EventsOn, EventsOff} from "../wailsjs/runtime/runtime";
+import {EventsOn, EventsOff, BrowserOpenURL} from "../wailsjs/runtime/runtime";
 
 import ProjectList from "./components/ProjectList.vue";
 import Project from "./components/Project.vue";
@@ -89,8 +89,12 @@ onUnmounted(() => {
       <Project v-if="project" @close="project = null" :ctx="ctx.name" :ns="ctx.ns" :name="project.name"></Project>
       <ProjectList :ctx="ctx" :initial-tab="initialTab" @selectProject="selectProject" @selectContext="selectContext" v-else></ProjectList>
     </div>
-    <div v-if="buildInfo" class="fixed bottom-1 right-2 text-[10px] text-gray-400 dark:text-gray-600 pointer-events-none select-none">
-      © 2026 TinySystems · SDK {{ buildInfo.sdkVersion }} · Built {{ buildInfo.buildTime }}
+    <div v-if="buildInfo" class="fixed bottom-1 right-2 text-[10px] text-gray-400 dark:text-gray-600 select-none flex items-center gap-1">
+      <span class="pointer-events-none">© 2026 Tiny Systems Ltd · Co. 14302894 · SDK {{ buildInfo.sdkVersion }}</span>
+      <span class="pointer-events-none">·</span>
+      <button @click="BrowserOpenURL('https://tinysystems.io/terms')" class="hover:text-gray-600 dark:hover:text-gray-400 cursor-pointer">Terms</button>
+      <span class="pointer-events-none">·</span>
+      <button @click="BrowserOpenURL('https://tinysystems.io/privacy')" class="hover:text-gray-600 dark:hover:text-gray-400 cursor-pointer">Privacy</button>
     </div>
 
     <!-- Deep link import modal (overlays everything) -->

@@ -138,6 +138,16 @@ func setupPATH() error {
 func (a *App) shutdown(ctx context.Context) {
 }
 
+// ShowAbout displays the About dialog with company and version info.
+func (a *App) ShowAbout() {
+	bi := a.GetBuildInfo()
+	runtime.MessageDialog(a.ctx, runtime.MessageDialogOptions{
+		Type:  runtime.InfoDialog,
+		Title: "About TinySystems",
+		Message: fmt.Sprintf("TinySystems Desktop Client\nVersion: %s\nSDK: %s\n\n© 2026 Tiny Systems Limited\nCompany No. 14302894\n71-75 Shelton Street, Covent Garden\nLondon, WC2H 9JQ\n\nhello@tinysystems.io\nhttps://tinysystems.io", bi.Version, bi.SdkVersion),
+	})
+}
+
 // GetPreferences returns saved user preferences
 func (a *App) GetPreferences() (*Preferences, error) {
 	path, err := getPreferencesPath()
