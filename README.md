@@ -1,4 +1,4 @@
-# TinySystems Desktop Client
+# Tiny Systems Desktop Client
 
 A desktop application for building and managing Kubernetes-native workflows visually.
 
@@ -7,7 +7,7 @@ A desktop application for building and managing Kubernetes-native workflows visu
 ## What it does
 
 - **Visual flow editor** -- drag-and-drop nodes onto a canvas, connect them with edges, and configure each node through JSON schema-driven forms.
-- **Module browser** -- discover, install, and update TinySystems modules directly from the app using Helm.
+- **Module browser** -- discover, install, and update Tiny Systems modules directly from the app using Helm.
 - **Project and flow management** -- create projects, organize flows, and manage widget dashboards for control ports.
 - **Runs locally** -- connects to your Kubernetes cluster via kubeconfig. No cloud account required.
 
@@ -44,13 +44,13 @@ This starts a Vite dev server with hot reload for the Vue 3 frontend. The Go bac
 
 ## How it works
 
-The desktop client reads your kubeconfig and talks to the Kubernetes API directly -- the same way kubectl does. TinySystems modules are packaged as Helm charts; installing a module deploys it as a pod in your cluster. Each node in a flow corresponds to a `TinyNode` custom resource. The client watches these resources and renders the flow graph in real time using Vue Flow.
+The desktop client reads your kubeconfig and talks to the Kubernetes API directly -- the same way kubectl does. Tiny Systems modules are packaged as Helm charts; installing a module deploys it as a pod in your cluster. Each node in a flow corresponds to a `TinyNode` custom resource. The client watches these resources and renders the flow graph in real time using Vue Flow.
 
 ## Related repositories
 
 | Repository | Description |
 |---|---|
-| [module](https://github.com/tiny-systems/module) | Operator SDK for building TinySystems modules |
+| [module](https://github.com/tiny-systems/module) | Operator SDK for building Tiny Systems modules |
 | [common-module](https://github.com/tiny-systems/common-module) | Core components (cron, inject, signal, ticker, etc.) |
 | [http-module](https://github.com/tiny-systems/http-module) | HTTP server and client components |
 | [kubernetes-module](https://github.com/tiny-systems/kubernetes-module) | Kubernetes resource management components |
