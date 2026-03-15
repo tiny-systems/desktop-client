@@ -41,9 +41,6 @@ const pendingSelectionAction = ref(null)
 const isRestoringSelection = ref(false)
 const configurationResetKey = ref(0) // Incremented on discard to force SchemaForm remount
 const configurationInitializing = ref(false) // True after editor remount, cleared after mount-time emits settle
-const controlFormKey = ref(0) // Incremented when control data changes (deferred while form focused)
-const controlFormFocused = ref(false)
-const pendingControlUpdate = ref(false)
 let initEndTimer = null
 const scheduleInitEnd = () => {
   if (initEndTimer) clearTimeout(initEndTimer)
@@ -223,26 +220,10 @@ const controlConfigObject = computed(() => {
 // Control form values
 const controlFormValue = ref({})
 
-// Watch control config changes — update form and bump key for remount
+// Watch control config changes
 watch(controlConfigObject, (val) => {
   controlFormValue.value = { ...val }
-  if (controlFormFocused.value) {
-    pendingControlUpdate.value = true
-    return
-  }
-  controlFormKey.value++
 }, { immediate: true, deep: true })
-
-const onControlFocusIn = () => { controlFormFocused.value = true }
-const onControlFocusOut = (e) => {
-  const form = e.currentTarget
-  if (form && e.relatedTarget && form.contains(e.relatedTarget)) return
-  controlFormFocused.value = false
-  if (pendingControlUpdate.value) {
-    pendingControlUpdate.value = false
-    controlFormKey.value++
-  }
-}
 
 // Handle control form update (send action to node)
 const handleControlUpdate = async (event) => {
@@ -1643,9 +1624,9 @@ const saveEdgeConfiguration = async () => {
         </div>
 
         <!-- Control port form -->
-        <div v-if="controlHandle && controlHandleSchema" :key="'control-' + selectedNode?.id" class="bg-white dark:bg-gray-900 shadow rounded text-xs m-1 p-2" @focusin="onControlFocusIn" @focusout="onControlFocusOut">
+        <div v-if="controlHandle && controlHandleSchema" :key="'control-' + selectedNode?.id" class="bg-white dark:bg-gray-900 shadow rounded text-xs m-1 p-2">
           <SchemaForm
-            :key="'control-form-' + selectedNode?.id + '-' + controlFormKey"
+            :key="'control-form-' + selectedNode?.id"
             :schema="controlHandleSchema"
             :model-value="controlFormValue"
             @update:model-value="updateControlFormValue"
