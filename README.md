@@ -65,4 +65,4 @@ The desktop client reads your kubeconfig and talks to the Kubernetes API directl
 
 ## License
 
-Apache 2.0
+[BSL 1.1](LICENSE)
