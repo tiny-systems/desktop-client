@@ -1258,6 +1258,30 @@ func (a *App) ExportProject(contextName string, namespace string, projectName st
 		})
 	}
 
+	// Get scenarios
+	scenarios, err := mgr.GetProjectScenarios(a.ctx, projectName)
+	// don't fail if scenarios can't be loaded
+	var exportScenarios []utils.ExportScenario
+	if err == nil {
+		for _, scenario := range scenarios {
+			scenarioName := scenario.Annotations[v1alpha1.ScenarioNameAnnotation]
+			if scenarioName == "" {
+				scenarioName = scenario.Name
+			}
+			var ports []utils.ExportScenarioPortData
+			for _, p := range scenario.Spec.Ports {
+				ports = append(ports, utils.ExportScenarioPortData{
+					Port: p.Port,
+					Data: p.Data,
+				})
+			}
+			exportScenarios = append(exportScenarios, utils.ExportScenario{
+				Name:  scenarioName,
+				Ports: ports,
+			})
+		}
+	}
+
 	// Get project description from CRD
 	var projectDescription string
 	project, err := mgr.GetProject(a.ctx, projectName, namespace)
@@ -1272,6 +1296,7 @@ func (a *App) ExportProject(contextName string, namespace string, projectName st
 		TinyFlows:   exportFlows,
 		Elements:    elements,
 		Pages:       exportPages,
+		Scenarios:   exportScenarios,
 	}
 
 	// Strip runtime-internal schema fields before export
@@ -1870,6 +1895,37 @@ func (a *App) ImportProject(contextName string, namespace string, projectName st
 	// Final verification
 	finalPages, _ := mgr.GetProjectPageWidgets(ctx, projectName)
 	a.logger.Info("pages after import complete", "count", len(finalPages), "projectName", projectName)
+
+	// Import scenarios
+	if len(importData.Scenarios) > 0 {
+		emitProgress(fmt.Sprintf("Creating scenarios... (%d scenarios)", len(importData.Scenarios)))
+		for _, importScenario := range importData.Scenarios {
+			scenario, err := mgr.CreateScenario(ctx, importScenario.Name, projectName)
+			if err != nil {
+				a.logger.Error(err, "failed to create scenario", "name", importScenario.Name)
+				continue
+			}
+			var ports []v1alpha1.ScenarioPortData
+			for _, p := range importScenario.Ports {
+				port := p.Port
+				// Remap port node references using nodeIDMap
+				parts := strings.SplitN(port, ":", 2)
+				if len(parts) == 2 {
+					if newName, ok := nodeIDMap[parts[0]]; ok {
+						port = newName + ":" + parts[1]
+					}
+				}
+				ports = append(ports, v1alpha1.ScenarioPortData{
+					Port: port,
+					Data: p.Data,
+				})
+			}
+			scenario.Spec.Ports = ports
+			if err := mgr.UpdateScenario(ctx, scenario); err != nil {
+				a.logger.Error(err, "failed to update scenario", "name", importScenario.Name)
+			}
+		}
+	}
 
 	// Build detailed summary
 	var summary strings.Builder
