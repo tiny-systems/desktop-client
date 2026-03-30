@@ -1896,10 +1896,26 @@ func (a *App) ImportProject(contextName string, namespace string, projectName st
 	finalPages, _ := mgr.GetProjectPageWidgets(ctx, projectName)
 	a.logger.Info("pages after import complete", "count", len(finalPages), "projectName", projectName)
 
-	// Import scenarios
+	// Import scenarios (skip duplicates by name)
 	if len(importData.Scenarios) > 0 {
 		emitProgress(fmt.Sprintf("Creating scenarios... (%d scenarios)", len(importData.Scenarios)))
+
+		existingScenarioNames := make(map[string]bool)
+		if existing, err := mgr.GetProjectScenarios(ctx, projectName); err == nil {
+			for _, s := range existing {
+				name := s.Annotations[v1alpha1.ScenarioNameAnnotation]
+				if name == "" {
+					name = s.Name
+				}
+				existingScenarioNames[name] = true
+			}
+		}
+
 		for _, importScenario := range importData.Scenarios {
+			if existingScenarioNames[importScenario.Name] {
+				a.logger.Info("skipping scenario - already exists", "name", importScenario.Name)
+				continue
+			}
 			scenario, err := mgr.CreateScenario(ctx, importScenario.Name, projectName)
 			if err != nil {
 				a.logger.Error(err, "failed to create scenario", "name", importScenario.Name)
