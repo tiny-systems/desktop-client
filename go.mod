@@ -8,7 +8,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/santhosh-tekuri/jsonschema/v5 v5.3.1
 	github.com/tiny-systems/module v0.1.362
-	github.com/tiny-systems/platform-api v0.0.16
+	github.com/tiny-systems/platform-api v0.3.0
 	github.com/wailsapp/wails/v2 v2.11.0
 	golang.org/x/sys v0.42.0
 	gomodules.xyz/jsonpatch/v2 v2.5.0
