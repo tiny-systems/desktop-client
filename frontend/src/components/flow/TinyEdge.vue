@@ -110,11 +110,18 @@ const edgeStyle = computed(() => {
   return baseStyle
 })
 
-// Icon class based on state - matches platform implementation exactly
+// Icon class based on state - matches platform implementation exactly.
+// Three-tier severity: hard errors (red), sim-uncertain warnings
+// (amber, surfaced by the SDK's ErrEdgeUnverifiable since v0.10.4),
+// and clean (sky when selected, gray otherwise).
 const iconClass = computed(() => {
-  // Invalid edge - red
-  if (props.data?.valid === false) {
+  // Invalid edge — red (hard schema/expression error)
+  if (props.data?.valid === false || props.data?.error) {
     return 'fill-red-500 stroke-red-200 dark:fill-red-700 dark:stroke-red-300 dark:opacity-70'
+  }
+  // Unverifiable edge — amber (runtime might still satisfy it)
+  if (props.data?.warning) {
+    return 'fill-amber-400 stroke-amber-200 dark:fill-amber-600 dark:stroke-amber-300 dark:opacity-80'
   }
   // Selected edge - sky blue
   if (props.selected) {
@@ -156,7 +163,7 @@ const msToTime = (ms) => {
       <!-- Edit button - shows when noConfigure is not set -->
       <button
         v-if="!noConfigure"
-        v-tooltip="data?.valid === false && data?.error ? data.error : 'Configure'"
+        v-tooltip="data?.error || data?.warning || 'Configure'"
         @click="handleEdgeSelect"
       >
         <PencilSquareIcon

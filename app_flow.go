@@ -336,19 +336,28 @@ func buildEdgeElementFull(ctx context.Context, sourceNodeName string, sourceNode
 	}
 
 	// Validate the edge using the same overlaid schema used for UI display.
+	// Tier the result: sim-uncertain failures (configurable-any upstream with
+	// no scenario, "got null" leaves) come back wrapped in ErrEdgeUnverifiable
+	// and we treat them as warnings (amber) rather than hard errors (red),
+	// matching the platform UI's behaviour since SDK v0.10.4.
 	sourcePortFullName := utils.GetPortFullName(sourceNodeName, edge.Port)
 	err := utils.ValidateEdgeWithSchemaAndRuntimeData(ctx, allNodesMap, sourcePortFullName, edgeConfiguration, edgeSchema, runtimeData)
 	if err != nil {
-		data["error"] = err.Error()
-		data["errors"] = map[string]interface{}{"error": data["error"]}
-		var validationErr *jsonschema.ValidationError
-		if errors.As(err, &validationErr) {
-			leaf := validationErr
-			for len(leaf.Causes) > 0 {
-				leaf = leaf.Causes[0]
+		if utils.IsUnverifiable(err) {
+			data["valid"] = true
+			data["warning"] = err.Error()
+		} else {
+			data["error"] = err.Error()
+			data["errors"] = map[string]interface{}{"error": data["error"]}
+			var validationErr *jsonschema.ValidationError
+			if errors.As(err, &validationErr) {
+				leaf := validationErr
+				for len(leaf.Causes) > 0 {
+					leaf = leaf.Causes[0]
+				}
+				data["errors"] = getValidationErrorsMap(validationErr)
+				data["error"] = fmt.Sprintf("%s %s", leaf.KeywordLocation, leaf.Message)
 			}
-			data["errors"] = getValidationErrorsMap(validationErr)
-			data["error"] = fmt.Sprintf("%s %s", leaf.KeywordLocation, leaf.Message)
 		}
 	} else {
 		data["valid"] = true

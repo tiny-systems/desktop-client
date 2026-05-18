@@ -51,7 +51,10 @@
       "Bash(export PATH=\"$GOROOT/bin:/opt/homebrew/bin:$PATH\")",
       "Bash(npm run type-check:*)",
       "Bash(npm run:*)",
-      "Bash(/opt/homebrew/bin/go version)"
+      "Bash(/opt/homebrew/bin/go version)",
+      "mcp__tinysystems-local__get_instructions",
+      "mcp__tinysystems-local__search_solutions",
+      "mcp__tinysystems-local__list_modules"
     ]
   }
 }
